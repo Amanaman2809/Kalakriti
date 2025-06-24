@@ -1,23 +1,26 @@
 import express from "express";
 import dotenv from "dotenv";
-import { PrismaClient } from "../src/generated/prisma/client.js";
-import { supabase } from "./lib/supabase";
+import authRoute from "./routes/auth/signup";
+import otpRoute from "./routes/auth/otp-ops";
+import loginRoute from "./routes/auth/login";
+import meRoute from "./routes/auth/me";
+import resetPassRoute from "./routes/auth/reset-pass";
 
 dotenv.config();
-
-const PORT = process.env.PORT || 8000;
-const prisma = new PrismaClient();
 const app = express();
+
 app.use(express.json());
+app.use("/api/auth", authRoute);
+app.use("/api/otp", otpRoute);
+app.use("/api/auth", loginRoute);
+app.use("/api/auth", meRoute);
+app.use("/api/auth", resetPassRoute);
 
 app.get("/", (_req, res) => {
   res.send("Hello from Kalakriti backend!");
 });
-app.get("/users", async (_req, res) => {
-  const users = await prisma.user.findMany();
-  res.json(users);
-});
 
+const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);
 });
