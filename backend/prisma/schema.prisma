@@ -60,7 +60,8 @@ model Product {
   description String?
   price       Float
   stock       Int      @default(0)
-  category    String
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
   tags        String[]
   images      String[]
   createdAt   DateTime @default(now())
@@ -68,6 +69,12 @@ model Product {
 
   wishlistItems WishlistItem[]
   orderItems    OrderItem[]
+}
+
+model Category {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  products Product[]
 }
 
 model WishlistItem {
