@@ -7,6 +7,9 @@ import meRoute from "./routes/auth/me";
 import resetPassRoute from "./routes/auth/reset-pass";
 import categoryRoute from "./routes/admin/categories";
 import productRoute from "./routes/admin/product";
+import cartRoute from "./routes/cart";
+import wishlistRoute from "./routes/whishlist";
+import orderRoute from "./routes/order";
 
 dotenv.config();
 const app = express();
@@ -19,6 +22,9 @@ app.use("/api/auth", meRoute);
 app.use("/api/auth", resetPassRoute);
 app.use("/api/admin", categoryRoute);
 app.use("/api/products", productRoute);
+app.use("/api/cart", cartRoute);
+app.use("/api/wishlist", wishlistRoute);
+app.use("/api/order", orderRoute);
 
 app.get("/", (_req, res) => {
   res.send("Hello from Kalakriti backend!");

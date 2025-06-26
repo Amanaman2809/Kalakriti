@@ -39,6 +39,7 @@ model User {
   addresses Address[]
   orders    Order[]
   wishlist  WishlistItem[]
+  cartItems CartItem[]
 }
 
 model Address {
@@ -69,6 +70,7 @@ model Product {
 
   wishlistItems WishlistItem[]
   orderItems    OrderItem[]
+  CartItem      CartItem[]
 }
 
 model Category {
@@ -110,4 +112,16 @@ model OrderItem {
 
   order   Order   @relation(fields: [orderId], references: [id])
   product Product @relation(fields: [productId], references: [id])
+}
+
+model CartItem {
+  id        String @id @default(uuid())
+  userId    String
+  productId String
+  quantity  Int
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
 }
