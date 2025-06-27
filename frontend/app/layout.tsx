@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Nunito } from "next/font/google";
+import { Nunito } from "next/font/google";
 import "./globals.css";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 
 const nunito = Nunito({
   subsets: ["latin"],
   display: "swap",
-  weight: ["200", "400", "600", "800"],
+  weight: ["200", "400", "600", "800", "1000"],
   variable: "--font-nunito",
-
-})
+});
 export const metadata: Metadata = {
   title: "Kalakriti",
-  description: "Discover unique handmade pieces that tell stories of tradition,culture, and expectional craftmanship",
+  description:
+    "Discover unique handmade pieces that tell stories of tradition,culture, and expectional craftmanship",
 };
 
 export default function RootLayout({
@@ -21,8 +23,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={nunito.className}>
-      <body>
-        {children}
+      <body className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-grow">{children}</main>
+        <Footer />
       </body>
     </html>
   );
