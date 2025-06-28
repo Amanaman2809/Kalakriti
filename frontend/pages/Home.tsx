@@ -118,11 +118,20 @@ function Home() {
       {/* Products Section */}
       <section className="px-6 py-12 bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Featured Products
-            </h2>
-            <div className="w-20 h-1 bg-primary rounded-full"></div>
+          <div className="flex justify-between items-end mb-8">
+            <div className="flex flex-col">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Featured Products
+              </h2>
+              <div className="w-20 h-1 bg-primary rounded-full"></div>
+            </div>
+            <Link
+              href="/products"
+              className="flex items-center gap-2 text-primary hover:text-primary-dark transition-colors font-semibold pb-1"
+            >
+              View All Products
+              <MoveRight className="w-4 h-4" />
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
