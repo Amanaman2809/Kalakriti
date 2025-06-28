@@ -3,7 +3,8 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Facebook, Github, Instagram, Twitter } from "lucide-react";
+import { Facebook, Instagram, Twitter } from "lucide-react";
+import SocialLink from "@/utils/SocialLink";
 
 const navLinks = [
   { name: "Home", href: "/" },
@@ -105,28 +106,6 @@ function Footer() {
         </div>
       </div>
     </footer>
-  );
-}
-
-function SocialLink({
-  href,
-  icon,
-  label,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center gap-2 text-accent hover:underline transition"
-    >
-      {icon}
-      {label}
-    </a>
   );
 }
 

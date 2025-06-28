@@ -6,7 +6,7 @@ import otpRoute from "./routes/auth/otp-ops";
 import loginRoute from "./routes/auth/login";
 import meRoute from "./routes/auth/me";
 import resetPassRoute from "./routes/auth/reset-pass";
-import categoryRoute from "./routes/admin/categories";
+import categoryRoute from "./routes/categories";
 import productRoute from "./routes/admin/product";
 import cartRoute from "./routes/cart";
 import wishlistRoute from "./routes/whishlist";
@@ -16,15 +16,17 @@ dotenv.config();
 const app = express();
 
 app.use(express.json());
-app.use(cors({
-  origin: `${process.env.NEXT_PUBLIC_BASE_URL}`, 
-}));
+app.use(
+  cors({
+    origin: `${process.env.NEXT_PUBLIC_BASE_URL}`,
+  }),
+);
 app.use("/api/auth", authRoute);
 app.use("/api/otp", otpRoute);
 app.use("/api/auth", loginRoute);
 app.use("/api/auth", meRoute);
 app.use("/api/auth", resetPassRoute);
-app.use("/api/admin", categoryRoute);
+app.use("/api", categoryRoute);
 app.use("/api/products", productRoute);
 app.use("/api/cart", cartRoute);
 app.use("/api/wishlist", wishlistRoute);

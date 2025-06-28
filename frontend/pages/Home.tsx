@@ -5,26 +5,7 @@ import { MoveRight, Star, ShoppingCart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
-
-// Types
-interface Category {
-  id: string;
-  name: string;
-  image: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  images: string[];
-  rating?: number;
-}
-
-interface ProductsResponse {
-  products: Product[];
-}
+import { Category, Product, ProductsResponse } from '@/utils/types';
 
 function Home() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -39,7 +20,7 @@ function Home() {
 
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${url}/api/admin/categories`);
+        const res = await fetch(`${url}/api/categories`);
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         setCategories(data.slice(0, 5)); // Top 5 categories
@@ -82,7 +63,7 @@ function Home() {
               Shop by Category
             </h2>
             <Link
-              href="/categories"
+              href="/category"
               className="flex font-semibold pb-2 items-center gap-2 text-primary hover:text-primary-dark transition-colors"
             >
               View all
