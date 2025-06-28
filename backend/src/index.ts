@@ -1,5 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
+import cors from "cors";
 import authRoute from "./routes/auth/signup";
 import otpRoute from "./routes/auth/otp-ops";
 import loginRoute from "./routes/auth/login";
@@ -15,6 +16,9 @@ dotenv.config();
 const app = express();
 
 app.use(express.json());
+app.use(cors({
+  origin: `${process.env.NEXT_PUBLIC_BASE_URL}`, 
+}));
 app.use("/api/auth", authRoute);
 app.use("/api/otp", otpRoute);
 app.use("/api/auth", loginRoute);

@@ -13,24 +13,24 @@ router.get("/categories", async (_req, res) => {
 
 // Create a new category
 router.post("/categories", requireAuth, requireAdmin, async (req, res) => {
-  const { name } = req.body;
+  const { name, image } = req.body;
   if (!name) {
     res.status(400).json({ error: "Name required" });
     return;
   }
 
   try {
-    const category = await prisma.category.create({ data: { name } });
+    const category = await prisma.category.create({ data: { name, image } });
     res.status(201).json(category);
   } catch (err) {
     res.status(500).json({ error: "Category creation failed" });
   }
 });
 
-// Update the Category Name
+// Update the Category Name and Image
 router.put("/category/:id", requireAuth, requireAdmin, async (req, res) => {
   const { id } = req.params;
-  const { name } = req.body;
+  const { name, image } = req.body;
   if (!name) {
     res.status(400).json({ error: "Name required" });
     return;
@@ -39,7 +39,7 @@ router.put("/category/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const category = await prisma.category.update({
       where: { id },
-      data: { name },
+      data: { name, image },
     });
     res.json(category);
   } catch (err) {
