@@ -40,6 +40,7 @@ model User {
   orders    Order[]
   wishlist  WishlistItem[]
   cartItems CartItem[]
+  Feedback  Feedback[]
 }
 
 model Address {
@@ -53,6 +54,21 @@ model Address {
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
+}
+
+model Feedback {
+  id        String   @id @default(uuid())
+  rating    Int      @db.SmallInt // 1 to 5
+  comment   String? // optional review text
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId]) // 1 review per user per product
 }
 
 model Product {
@@ -71,6 +87,7 @@ model Product {
   wishlistItems WishlistItem[]
   orderItems    OrderItem[]
   CartItem      CartItem[]
+  Feedback      Feedback[]
 }
 
 model Category {
