@@ -1,8 +1,8 @@
 "use client";
-import { CircleUser, SearchIcon, ShoppingCart, Menu, X } from "lucide-react";
+import { CircleUser, SearchIcon, ShoppingCart, Menu, X, Package, Heart, HelpCircle, LogOut } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 
 const navLinks = [
@@ -14,6 +14,7 @@ const navLinks = [
 
 export default function Navbar({ isLoggedIn = true }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -23,7 +24,10 @@ export default function Navbar({ isLoggedIn = true }) {
   // Close profile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target as Node)
+      ) {
         setIsProfileMenuOpen(false);
       }
     };
@@ -154,33 +158,54 @@ export default function Navbar({ isLoggedIn = true }) {
 
                 {/* Profile Dropdown */}
                 {isProfileMenuOpen && (
-                  <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
-                    <div className="py-1">
+                  <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-lg shadow-xl bg-white border border-gray-100 divide-y divide-gray-100 focus:outline-none z-50">
+                    <div className="py-2 px-1">
+                      <div className="px-4 py-2 text-sm text-gray-500 font-medium">
+                        Welcome back!
+                      </div>
                       <Link
                         href="/account"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-primary/10 hover:text-primary rounded-md transition-colors"
                       >
+                        <CircleUser className="w-4 h-4 mr-3" />
                         Your Profile
                       </Link>
                       <Link
                         href="/orders"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-primary/10 hover:text-primary rounded-md transition-colors"
                       >
+                        <Package className="w-4 h-4 mr-3" />
                         Your Orders
                       </Link>
                       <Link
                         href="/wishlist"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-primary/10 hover:text-primary rounded-md transition-colors"
                       >
+                        <Heart className="w-4 h-4 mr-3" />
                         Wishlist
                       </Link>
+                    </div>
+                    <div className="py-2 px-1">
                       <Link
-                      // TODO: implement a function which will delete the token and take to homepage
-                        href="/logout"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        href="/faqs"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-primary/10 hover:text-primary rounded-md transition-colors"
                       >
-                        Sign out
+                        <HelpCircle className="w-4 h-4 mr-3" />
+                        FAQs
                       </Link>
+                    </div>
+                    <div className="py-2 px-1">
+                      <button
+                        onClick={() => {
+                          // TODO: Implement logout logic
+                          localStorage.removeItem("token");
+                          router.push("/");
+                        }}
+                        className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                      >
+                        <LogOut className="w-4 h-4 mr-3" />
+                        Sign Out
+                      </button>
                     </div>
                   </div>
                 )}
