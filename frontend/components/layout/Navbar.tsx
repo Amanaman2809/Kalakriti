@@ -1,5 +1,16 @@
 "use client";
-import { CircleUser, SearchIcon, ShoppingCart, Menu, X, Package, Heart, HelpCircle, LogOut } from "lucide-react";
+import { useSearch } from "@/hooks/useSearch";
+import {
+  CircleUser,
+  SearchIcon,
+  ShoppingCart,
+  Menu,
+  X,
+  Package,
+  Heart,
+  HelpCircle,
+  LogOut,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -13,12 +24,20 @@ const navLinks = [
 ];
 
 export default function Navbar() {
+  const {
+    searchQuery,
+    setSearchQuery,
+    suggestions,
+    showSuggestions,
+    setShowSuggestions,
+    handleSearch,
+    handleSuggestionClick,
+  } = useSearch();
   const pathname = usePathname();
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -40,9 +59,9 @@ export default function Navbar() {
   // Close mobile menu when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
-    const token = localStorage.getItem('token');
-    if(token) {
-      setIsLoggedIn(true)
+    const token = localStorage.getItem("token");
+    if (token) {
+      setIsLoggedIn(true);
     }
   }, [pathname]);
 
@@ -109,6 +128,9 @@ export default function Navbar() {
                       placeholder="Search..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) =>
+                        e.key === "Enter" && handleSearch(searchQuery)
+                      }
                       className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-accent placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                     />
                     <button
@@ -117,6 +139,21 @@ export default function Navbar() {
                     >
                       <X className="h-4 w-4" />
                     </button>
+
+                    {/* Suggestions dropdown */}
+                    {showSuggestions && suggestions.length > 0 && (
+                      <div className="absolute z-10 mt-1 w-full bg-background shadow-lg rounded-md py-1">
+                        {suggestions.map((item) => (
+                          <div
+                            key={item.id}
+                            className="px-4 py-2 hover:bg-accent cursor-pointer"
+                            onClick={() => handleSuggestionClick(item)}
+                          >
+                            {item.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <button
@@ -128,20 +165,41 @@ export default function Navbar() {
                 )}
 
                 {/* Desktop Search */}
-                <div className="hidden md:flex items-center bg-gray-100 hover:bg-gray-200 transition-colors duration-200 rounded-full pl-3 pr-2 py-1">
+                <div className="hidden md:flex items-center relative bg-gray-100 hover:bg-gray-200 transition-colors duration-200 rounded-full pl-3 pr-2 py-1">
                   <SearchIcon className="h-4 w-4 text-gray-500" />
                   <input
                     type="text"
                     placeholder="Search..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && handleSearch(searchQuery)
+                    }
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() =>
+                      setTimeout(() => setShowSuggestions(false), 200)
+                    }
                     className="bg-transparent border-none focus:ring-0 focus:outline-none px-2 py-1 text-sm w-40 lg:w-52 placeholder-gray-500"
                   />
+
+                  {/* Suggestions dropdown */}
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute z-10 top-full left-0 mt-1 w-full bg-background shadow-lg rounded-md py-1">
+                      {suggestions.map((item) => (
+                        <div
+                          key={item.id}
+                          className="px-4 py-2 hover:bg-accent cursor-pointer"
+                          onClick={() => handleSuggestionClick(item)}
+                        >
+                          {item.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </>
             )}
-
-            {/* Cart */}
+            ;{/* Cart */}
             {isLoggedIn && (
               <Link
                 href="/cart"
@@ -150,7 +208,6 @@ export default function Navbar() {
                 <ShoppingCart className="h-5 w-5" />
               </Link>
             )}
-
             {/* Profile/Login */}
             {isLoggedIn ? (
               <div className="relative" ref={profileMenuRef}>
