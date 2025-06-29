@@ -12,9 +12,10 @@ const navLinks = [
   { name: "Contact", href: "/contact" },
 ];
 
-export default function Navbar({ isLoggedIn = true }) {
+export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,6 +40,10 @@ export default function Navbar({ isLoggedIn = true }) {
   // Close mobile menu when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
+    const token = localStorage.getItem('token');
+    if(token) {
+      setIsLoggedIn(true)
+    }
   }, [pathname]);
 
   return (

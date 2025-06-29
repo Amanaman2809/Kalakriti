@@ -18,3 +18,8 @@ export interface Product {
 export interface ProductsResponse {
   products: Product[];
 }
+
+export interface CartParams {
+  productId: string;
+  quantity: number;
+}
