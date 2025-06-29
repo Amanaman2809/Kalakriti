@@ -12,6 +12,7 @@ import cartRoute from "./routes/cart";
 import wishlistRoute from "./routes/whishlist";
 import orderRoute from "./routes/order";
 import feedbackRoute from "./routes/feedback";
+import searchRoute from "./routes/search";
 
 dotenv.config();
 const app = express();
@@ -33,6 +34,7 @@ app.use("/api/cart", cartRoute);
 app.use("/api/wishlist", wishlistRoute);
 app.use("/api/order", orderRoute);
 app.use("/api", feedbackRoute);
+app.use("/api/search", searchRoute);
 
 app.get("/", (_req, res) => {
   res.send("Hello from Kalakriti backend!");
