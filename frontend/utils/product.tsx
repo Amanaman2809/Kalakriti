@@ -1,4 +1,5 @@
-import { CartParams } from "./types";
+import { Star, StarHalf } from "lucide-react";
+import { CartParams, FeedbackSummary, PFeedback } from "./types";
 
 const url = process.env.NEXT_PUBLIC_API_BASE_URL;
 if (!url) throw new Error("API base URL is not set");
@@ -96,7 +97,7 @@ export const removeFromCart = async (item: CartParams) => {
       throw new Error(data.error || `Error ${response.status}`);
     }
 
-    return { success: true }; // 204 has no body
+    return { success: true };
   } catch (error: any) {
     if (error.name === "AbortError") {
       throw new Error("removeFromCart request timed out.");
@@ -104,4 +105,140 @@ export const removeFromCart = async (item: CartParams) => {
     console.error("Failed to remove from cart:", error.message || error);
     throw new Error(error.message || "removeFromCart failed");
   }
+};
+
+// Fetch similar Category Prducts
+export const similarCatProd = async (categoryId: string) => {
+  try {
+    const response = await fetch(`${url}/api/category/${categoryId}/products`);
+    if (!response.ok) {
+      throw new Error(`Failed with status: ${response.status}`);
+    }
+    return response.json();
+  } catch (error: any) {
+    throw new Error(
+      error.message || "Failed to fetch product of this category",
+    );
+  }
+};
+
+export const addFeedback = async (feedback: PFeedback) => {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    throw new Error("You need to login to provide a review");
+  }
+
+  try {
+    const response = await fetch(
+      `${url}/api/products/${feedback.productId}/feedback`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          rating: feedback.rating,
+          comment: feedback.comment,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to add feedback");
+    }
+
+    const data = await response.json();
+    return { success: true, ...data };
+  } catch (error: any) {
+    console.error("Feedback submission error:", error);
+    throw new Error(
+      error.message || "Failed to add feedback. Please try again.",
+    );
+  }
+};
+
+// Fetch all feedbacks for a product
+export const fetchAllFeedbacks = async (productId: string) => {
+  try {
+    const response = await fetch(`${url}/api/products/${productId}/feedbacks`);
+    if (!response.ok) {
+      throw new Error(`Failed with status: ${response.status}`);
+    }
+    return response.json();
+  } catch (error: any) {
+    throw new Error(
+      error.message || "Failed to fetch feedbacks for this product",
+    );
+  }
+};
+
+export const feedbackSummary = async (
+  productId: string,
+): Promise<FeedbackSummary> => {
+  try {
+    const response = await fetch(
+      `${url}/api/products/${productId}/feedback-summary`,
+    );
+    if (!response.ok) {
+      throw new Error(`Failed with status: ${response.status}`);
+    }
+    const { averageRating, totalReviews } = await response.json();
+    return {
+      avg_rating: averageRating,
+      total_reviews: totalReviews,
+    };
+  } catch (error: any) {
+    throw new Error(
+      error.message || "Failed to calculate feedback summary for this product",
+    );
+  }
+};
+
+export const StarRating = ({
+  rating,
+  interactive = false,
+  onRatingChange,
+  size = "md",
+}: {
+  rating: number;
+  interactive?: boolean;
+  onRatingChange?: (rating: number) => void;
+  size?: "sm" | "md" | "lg";
+}) => {
+  const sizes = {
+    sm: "w-4 h-4",
+    md: "w-5 h-5",
+    lg: "w-6 h-6",
+  };
+
+  return (
+    <div className="flex">
+      {[1, 2, 3, 4, 5].map((star) => {
+        const filled = star <= Math.floor(rating);
+        const halfFilled = star === Math.ceil(rating) && rating % 1 >= 0.5;
+
+        return (
+          <button
+            key={star}
+            type="button"
+            onClick={() => interactive && onRatingChange?.(star)}
+            className={`focus:outline-none ${interactive ? "hover:scale-110 transition-transform" : ""}`}
+            aria-label={`${star} star${star !== 1 ? "s" : ""}`}
+            disabled={!interactive}
+          >
+            {filled ? (
+              <Star className={`${sizes[size]} fill-gold text-gold`} />
+            ) : halfFilled ? (
+              <StarHalf className={`${sizes[size]} fill-gold text-gold`} />
+            ) : (
+              <Star className={`${sizes[size]} text-secondary`} />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
 };

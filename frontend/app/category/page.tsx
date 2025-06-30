@@ -137,7 +137,7 @@ function CategoryPage() {
                     key={product.id} 
                     className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 group"
                   >
-                    <Link href={`/product/${product.id}`}>
+                    <Link href={`/products/${product.id}`}>
                       {/* Product Image */}
                       <div className="relative aspect-square">
                         <Image
@@ -161,12 +161,6 @@ function CategoryPage() {
                           <h3 className="font-medium text-gray-900 line-clamp-1">
                             {product.name}
                           </h3>
-                          {product.rating && (
-                            <div className="flex items-center text-sm text-gold">
-                              <Star className="w-4 h-4 fill-gold" />
-                              <span className="ml-1">{product.rating.toFixed(1)}</span>
-                            </div>
-                          )}
                         </div>
                         <p className="mt-1 text-sm text-gray-600 line-clamp-2">
                           {product.description}

@@ -41,7 +41,12 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
 // Place Order
 router.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
   const userId = req.user?.id;
-  const { address } = req.body;
+  const { address, paymentMode } = req.body;
+
+  if (!["COD", "ONLINE"].includes(paymentMode)) {
+    res.status(400).json({ error: "Invalid payment mode" });
+    return;
+  }
 
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
@@ -59,27 +64,32 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
   });
 
   if (!cartItems || cartItems.length === 0) {
-    res.status(400).json({ error: "No items in cart" });
+    res.status(400).json({ error: "Cart is empty" });
     return;
   }
 
   const total = cartItems.reduce(
-    (sum, item) => sum + item.quantity * item.product.price,
+    (acc, item) => acc + item.product.price * item.quantity,
     0,
   );
 
-  try {
+  if (!total) {
+    res.status(400).json({ error: "Invalid total" });
+    return;
+  }
+
+  if (paymentMode === "COD") {
     const order = await prisma.$transaction(async (tx) => {
-      // Create order
       const createdOrder = await tx.order.create({
         data: {
           userId,
-          status: "PLACED",
-          total,
           address,
+          total,
+          paymentMode,
+          paymentStatus: "PAID",
+          status: "PLACED",
         },
       });
-
       // Create order items
       for (const item of cartItems) {
         await tx.orderItem.create({
@@ -105,8 +115,11 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
       return createdOrder;
     });
     res.status(201).json({ message: "Order Placed Successfully", order });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to place order" });
+  }
+
+  if (paymentMode === "ONLINE") {
+    // TODO: Implement Razorpay payment integration
+    res.status(200).json({ message: "Payment Successful" });
   }
 });
 

@@ -3,6 +3,7 @@ import { Nunito } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { Toaster } from "react-hot-toast";
 
 const nunito = Nunito({
   subsets: ["latin"],
@@ -24,6 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={nunito.className}>
       <body className="min-h-screen flex flex-col">
+        <Toaster position="top-right" />
         <Navbar />
         <main className="flex-grow">{children}</main>
         <Footer />

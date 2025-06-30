@@ -6,17 +6,13 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 router.get("/", async (req, res) => {
-  const query = req.query.q as string;
+  const query = (req.query.q as string | undefined) || "";
   const minPrice = req.query.minPrice ? Number(req.query.minPrice) : undefined;
   const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : undefined;
   const page = req.query.page ? Number(req.query.page) : 1;
   const limit = req.query.limit ? Number(req.query.limit) : 20;
 
-  // Validation
-  if (!query) {
-    res.status(400).json({ error: "Missing query parameter" });
-    return;
-  }
+  // Validate pagination and price filters
   if (
     (minPrice !== undefined && isNaN(minPrice)) ||
     (maxPrice !== undefined && isNaN(maxPrice)) ||
@@ -35,7 +31,7 @@ router.get("/", async (req, res) => {
       minPrice,
       maxPrice,
       page,
-      limit,
+      limit
     );
     const hasMore = products.length === limit;
 

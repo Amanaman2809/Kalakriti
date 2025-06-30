@@ -117,7 +117,7 @@ function Home() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {products.map(
-              ({ id, name, images, description, price, rating }) => (
+              ({ id, name, images, description, price }) => (
                 <div
                   key={id}
                   className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300"
@@ -138,12 +138,6 @@ function Home() {
                           <h3 className="font-medium text-gray-900 line-clamp-1">
                             {name}
                           </h3>
-                          {rating && (
-                            <div className="flex items-center text-sm text-primary">
-                              <Star className="w-4 h-4 fill-primary" />
-                              <span className="ml-1">{rating.toFixed(1)}</span>
-                            </div>
-                          )}
                         </div>
                         <p className="mt-1 text-sm text-gray-500 line-clamp-2">
                           {description}

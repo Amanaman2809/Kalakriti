@@ -199,7 +199,7 @@ export default function Navbar() {
                 </div>
               </>
             )}
-            ;{/* Cart */}
+            {/* Cart */}
             {isLoggedIn && (
               <Link
                 href="/cart"
