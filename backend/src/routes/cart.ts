@@ -17,7 +17,31 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
 
   const items = await prisma.cartItem.findMany({
     where: { userId },
-    include: { product: true },
+    select: {
+      id: true,
+      quantity: true,
+      product: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          price: true,
+          stock: true,
+          categoryId: true,
+          tags: true,
+          images: true,
+          createdAt: true,
+          updatedAt: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+        },
+      },
+    },
   });
 
   res.json(items);
@@ -123,5 +147,58 @@ router.delete("/", requireAuth, async (req: AuthenticatedRequest, res) => {
     res.status(500).json({ error: "Failed to remove item from cart" });
   }
 });
+
+// Move from cart to wishlist
+router.post(
+  "/moveWishlist",
+  requireAuth,
+  async (req: AuthenticatedRequest, res) => {
+    const userId = req.user?.id;
+    const { productId } = req.body;
+
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    if (!productId) {
+      res.status(400).json({ error: "Invalid productId" });
+      return;
+    }
+
+    try {
+      const cartItem = await prisma.cartItem.findUnique({
+        where: { userId_productId: { userId, productId } },
+      });
+
+      if (!cartItem) {
+        res.status(404).json({ error: "Item not found in cart" });
+        return;
+      }
+
+      await prisma.$transaction(async (tx) => {
+        // Check for duplicate wishlist item
+        const existingWishlistItem = await tx.wishlistItem.findUnique({
+          where: { userId_productId: { userId, productId } },
+        });
+
+        if (!existingWishlistItem) {
+          await tx.wishlistItem.create({
+            data: { userId, productId },
+          });
+        }
+
+        await tx.cartItem.delete({
+          where: { userId_productId: { userId, productId } },
+        });
+      });
+
+      res.status(204).end();
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to move item to wishlist" });
+    }
+  },
+);
 
 export default router;

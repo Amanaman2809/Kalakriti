@@ -92,19 +92,19 @@ export default function Contact() {
                 href="https://instagram.com/kalakriti"
                 icon={<Instagram className="w-5 h-5" />}
                 label="Instagram"
-                className="hover:bg-pink-50 hover:text-pink-600"
+                className="hover:text-pink-600"
               />
               <SocialLink
                 href="https://facebook.com/kalakriti"
                 icon={<Facebook className="w-5 h-5" />}
                 label="Facebook"
-                className="hover:bg-blue-50 hover:text-blue-600"
+                className="hover:text-blue-600"
               />
               <SocialLink
                 href="https://twitter.com/kalakriti"
                 icon={<Twitter className="w-5 h-5" />}
                 label="Twitter"
-                className="hover:bg-sky-50 hover:text-sky-600"
+                className="hover:text-primary"
               />
             </div>
           </div>
@@ -200,7 +200,7 @@ export default function Contact() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <h3 className="font-medium text-gray-700 mb-2">Store Hours</h3>
+            <h3 className="font-medium text-gray-700 mb-2 border-b border-primary w-fit">Store Hours</h3>
             <ul className="space-y-2 text-gray-600">
               <li className="flex justify-between">
                 <span>Monday - Friday</span>
@@ -217,7 +217,7 @@ export default function Contact() {
             </ul>
           </div>
           <div>
-            <h3 className="font-medium text-gray-700 mb-2">Customer Support</h3>
+            <h3 className="font-medium text-gray-700 mb-2 border-b border-primary w-fit">Customer Support</h3>
             <ul className="space-y-2 text-gray-600">
               <li className="flex justify-between">
                 <span>Email Response</span>

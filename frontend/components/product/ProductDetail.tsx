@@ -14,7 +14,7 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { CartParams, FeedbackSummary, Product } from "@/utils/types";
-import { addToCart, similarCatProd, StarRating } from "@/utils/product";
+import { addToCart, similarCatProd } from "@/utils/product";
 import ProductCard from "./ProductCard";
 import toast from "react-hot-toast";
 
@@ -341,7 +341,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
                 <span className="text-lg font-bold text-primary">
                   {feedback?.avg_rating.toFixed(1) || "0.0"}
                 </span>
-                <Star className="h-5 w-5 fill-gold text-gold" />
+                <Star className="h-5 w-5 fill-primary" />
               </div>
               <span className="text-sm text-gray-600">
                 {feedback?.total_reviews || 0} reviews
@@ -479,7 +479,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
               href="https://wa.me/919853823363"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-[#25D366] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#25D366]/90 transition-colors"
+              className="inline-flex items-center gap-2 bg-secondary text-primary px-4 py-2 rounded-lg text-sm hover:bg-primary hover:text-accent transition-colors"
             >
               <MessageSquare className="h-5 w-5" />
               WhatsApp Assistance

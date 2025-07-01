@@ -1,5 +1,3 @@
-// utils/types.ts
-
 export interface Category {
   id: string;
   name: string;
@@ -39,11 +37,13 @@ export interface Product {
   images: string[];
   createdAt: string;
   updatedAt: string;
-  category: {
-    id: string;
-    name: string;
-    image: string;
-  };
+  category: Category;
+}
+
+export interface CartItem {
+  id: string;
+  quantity: number;
+  product: Product;
 }
 
 export interface ProductsResponse {
@@ -53,4 +53,9 @@ export interface ProductsResponse {
 export interface CartParams {
   productId: string;
   quantity: number;
+}
+
+export interface WishlistItem {
+  id: string;
+  product: Product;
 }

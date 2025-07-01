@@ -122,7 +122,7 @@ function Home() {
                   key={id}
                   className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300"
                 >
-                  <Link href={`/product/${id}`}>
+                  <Link href={`/products/${id}`}>
                     <div className="relative aspect-square">
                       <Image
                         src={images[0]}
