@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
 import { Toaster } from "react-hot-toast";
-
 const nunito = Nunito({
   subsets: ["latin"],
   display: "swap",
@@ -14,21 +11,21 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   title: "Kalakriti",
   description:
-    "Discover unique handmade pieces that tell stories of tradition,culture, and expectional craftmanship",
+  "Discover unique handmade pieces that tell stories of tradition,culture, and expectional craftmanship",
 };
-
+import AppWrapper from '../components/layout/Layout'
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
-}>) {
+}>) {  
   return (
     <html lang="en" className={nunito.className}>
       <body className="min-h-screen flex flex-col">
         <Toaster position="top-right" />
-        <Navbar />
+        <AppWrapper>
         <main className="flex-grow">{children}</main>
-        <Footer />
+        </AppWrapper>
       </body>
     </html>
   );
