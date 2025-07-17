@@ -14,12 +14,27 @@ router.get("/categories", async (_req, res) => {
 // Get all products in a category
 router.get("/category/:id/products", async (req, res) => {
   const { id } = req.params;
-  const products = await prisma.product.findMany({ where: { categoryId: id } });
-  res.json(products);
-});
 
+  if (!id) {
+    res.status(400).json({ error: "Category ID is required" });
+    return;
+  }
+
+  try {
+    const products = await prisma.product.findMany({
+      where: { categoryId: id },
+    });
+
+    res.json(products);
+  } catch (err) {
+    console.error("Error fetching products for category", id, err);
+    res
+      .status(500)
+      .json({ error: "Failed to fetch products for this category" });
+  }
+});
 // Create a new category
-router.post("admin/categories", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/categories", requireAuth, requireAdmin, async (req, res) => {
   const { name, image } = req.body;
   if (!name) {
     res.status(400).json({ error: "Name required" });
@@ -36,7 +51,7 @@ router.post("admin/categories", requireAuth, requireAdmin, async (req, res) => {
 
 // Update the Category Name and Image
 router.put(
-  "admin/category/:id",
+  "/admin/category/:id",
   requireAuth,
   requireAdmin,
   async (req, res) => {
@@ -61,7 +76,7 @@ router.put(
 
 // Delete a category
 router.delete(
-  "admin/category/:id",
+  "/admin/category/:id",
   requireAuth,
   requireAdmin,
   async (req, res) => {

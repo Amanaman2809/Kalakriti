@@ -14,7 +14,7 @@ import orderRoute from "./routes/order";
 import feedbackRoute from "./routes/feedback";
 import searchRoute from "./routes/search";
 import createAdminRoute from './routes/auth/create-admin'
-import {cloudinarySign} from "./routes/cloudinary-sign";
+import cloudinaryRoute from "./routes/cloudinary";
 dotenv.config();
 const app = express();
 
@@ -37,7 +37,7 @@ app.use("/api/wishlist", wishlistRoute);
 app.use("/api/order", orderRoute);
 app.use("/api", feedbackRoute);
 app.use("/api/search", searchRoute);
-app.use("/api/cloudinary-sign", cloudinarySign);
+app.use("/api/cloudinary", cloudinaryRoute);
 
 app.get("/", (_req, res) => {
   res.send("Hello from Kalakriti backend!");
@@ -45,5 +45,6 @@ app.get("/", (_req, res) => {
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
+  console.log(process.env.NEXT_PUBLIC_BASE_URL);
   console.log(`Server is running at http://localhost:${PORT}`);
 });
