@@ -13,7 +13,8 @@ import wishlistRoute from "./routes/whishlist";
 import orderRoute from "./routes/order";
 import feedbackRoute from "./routes/feedback";
 import searchRoute from "./routes/search";
-
+import createAdminRoute from './routes/auth/create-admin'
+import {cloudinarySign} from "./routes/cloudinary-sign";
 dotenv.config();
 const app = express();
 
@@ -27,6 +28,7 @@ app.use("/api/auth", authRoute);
 app.use("/api/otp", otpRoute);
 app.use("/api/auth", loginRoute);
 app.use("/api/auth", meRoute);
+app.use("/api/auth", createAdminRoute);
 app.use("/api/auth", resetPassRoute);
 app.use("/api", categoryRoute);
 app.use("/api/products", productRoute);
@@ -35,6 +37,7 @@ app.use("/api/wishlist", wishlistRoute);
 app.use("/api/order", orderRoute);
 app.use("/api", feedbackRoute);
 app.use("/api/search", searchRoute);
+app.use("/api/cloudinary-sign", cloudinarySign);
 
 app.get("/", (_req, res) => {
   res.send("Hello from Kalakriti backend!");
