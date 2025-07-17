@@ -82,7 +82,7 @@ export default function AdminNavbar() {
 
                     {/* User Profile */}
                     <div className="flex items-center">
-                        <p>{user?.name}</p>
+                        <p className=" mr-2">{user?.name}</p>
                         <div className="relative" ref={profileMenuRef}>
                             <button
                                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
