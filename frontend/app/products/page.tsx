@@ -6,7 +6,7 @@ export const metadata = {
   keywords: "handicrafts, Indian crafts, handmade products, traditional art, unique gifts, artisan goods",
   author: "Kalakriti",
   alternates: {
-    canonical: process.env.NEXT_PUBLIC_BASE_URL + "/products" // Adjust the URL as needed
+    canonical: process.env.NEXT_PUBLIC_BASE_URL + "/products"
   },
 }
 

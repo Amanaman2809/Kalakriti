@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Category, Product } from "@/utils/types";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, ShoppingCart, Star } from "lucide-react";
+import { ChevronRight, ShoppingCart} from "lucide-react";
 
 interface CategoryWithProducts extends Category {
   products: Product[];
@@ -43,6 +43,7 @@ function CategoryPage() {
                 throw new Error(`Failed to fetch products for category ${cat.name}`);
               }
               const products: Product[] = await prodRes.json();
+              console.log(products);
               console.log(`Fetched ${products.length} products for category ${cat.name}`);
               return { 
                 ...cat, 

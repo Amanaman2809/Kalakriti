@@ -1,15 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { Plus, Trash2, Edit, X, Image as ImageIcon, ArrowLeft, Check } from "lucide-react";
 import { Product, Category } from "@/utils/types";
 import { useDropzone } from "react-dropzone";
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function ProductManagement() {
-    const router = useRouter();
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
@@ -17,6 +14,7 @@ export default function ProductManagement() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -29,15 +27,13 @@ export default function ProductManagement() {
         images: [] as string[],
     });
 
-    const [uploadProgress, setUploadProgress] = useState<number>(0);
-    const [isUploading, setIsUploading] = useState(false);
 
     const onDrop = useCallback(async (acceptedFiles: File[]) => {
         setIsUploading(true);
 
         try {
             // 1. Get signature from backend
-            const signResponse = await fetch(`${API_BASE_URL}/api/cloudinary-sign`);
+            const signResponse = await fetch(`${API_BASE_URL}/api/cloudinary/sign`);
             if (!signResponse.ok) throw new Error("Failed to get signature");
 
             const { timestamp, signature, api_key, cloud_name } = await signResponse.json();
@@ -46,7 +42,7 @@ export default function ProductManagement() {
             const uploadPromises = acceptedFiles.map(async (file) => {
                 const formData = new FormData();
                 formData.append('file', file);
-                formData.append('upload_preset', 'product_images'); 
+                formData.append('upload_preset', 'product_images');
                 formData.append('api_key', api_key);
                 formData.append('timestamp', timestamp);
                 formData.append('signature', signature);
@@ -102,10 +98,10 @@ export default function ProductManagement() {
                 setProducts(productsData.products || []);
                 setCategories(Array.isArray(categoriesData) ? categoriesData : []);
 
-                if (categoriesData.length > 0) {
+                if (categories.length > 0 && !editingId) {
                     setFormData(prev => ({
                         ...prev,
-                        categoryId: categoriesData[0].id,
+                        categoryId: categories[0].id,
                     }));
                 }
             } catch (error) {
@@ -116,14 +112,22 @@ export default function ProductManagement() {
         };
 
         fetchData();
-    }, []);
+    }, [categories, editingId]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleRemoveImage = (index: number) => {
+    const handleRemoveImage = async (index: number) => {
+        const url = formData.images[index];
+
+        await fetch(`${API_BASE_URL}/api/cloudinary/remove`, {
+            method: 'POST',
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageUrl: url }),
+        });
+
         setFormData(prev => ({
             ...prev,
             images: prev.images.filter((_, i) => i !== index),
@@ -136,7 +140,7 @@ export default function ProductManagement() {
             description: "",
             price: "",
             stock: "",
-            categoryId: categories[0]?.id || "",
+            categoryId: categories.length > 0 ? categories[0].id : "",
             tags: "",
             images: [],
         });
@@ -144,6 +148,10 @@ export default function ProductManagement() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        const token = localStorage.getItem("token");
+        if (!token) {
+            throw new Error("No auth token found");
+        }
 
         try {
             const productData = {
@@ -152,10 +160,12 @@ export default function ProductManagement() {
                 stock: parseInt(formData.stock),
                 tags: formData.tags.split(",").map(tag => tag.trim()),
             };
-
             const response = await fetch(`${API_BASE_URL}/api/products`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
                 body: JSON.stringify(productData),
             });
 
@@ -177,15 +187,19 @@ export default function ProductManagement() {
             description: product.description,
             price: product.price.toString(),
             stock: product.stock.toString(),
-            categoryId: product.categoryId,
+            categoryId: product.categoryId || (categories.length > 0 ? categories[0].id : ""),
             tags: product.tags.join(", "),
             images: product.images,
         });
     };
 
-    const handleUpdate = async () => {
+    const handleUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
         if (!editingId) return;
-
+        const token = localStorage.getItem("token");
+        if (!token) {
+            throw new Error("No auth token found");
+        }
         try {
             const productData = {
                 ...formData,
@@ -196,7 +210,10 @@ export default function ProductManagement() {
 
             const response = await fetch(`${API_BASE_URL}/api/products/${editingId}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
                 body: JSON.stringify(productData),
             });
 
@@ -213,9 +230,16 @@ export default function ProductManagement() {
 
     const handleDelete = async (id: string) => {
         setIsDeleting(id);
+        const token = localStorage.getItem("token");
+        if (!token) {
+            throw new Error("No auth token found");
+        }
         try {
             const response = await fetch(`${API_BASE_URL}/api/products/${id}`, {
                 method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                }
             });
 
             if (!response.ok) throw new Error("Failed to delete product");
@@ -353,11 +377,15 @@ export default function ProductManagement() {
                                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                                         required
                                     >
-                                        {categories.map(category => (
-                                            <option key={category.id} value={category.id}>
-                                                {category.name}
-                                            </option>
-                                        ))}
+                                        {categories.length > 0 ? (
+                                            categories.map(category => (
+                                                <option key={category.id} value={category.id}>
+                                                    {category.name}
+                                                </option>
+                                            ))
+                                        ) : (
+                                            <option value="">Loading categories...</option>
+                                        )}
                                     </select>
                                 </div>
 
@@ -515,7 +543,7 @@ export default function ProductManagement() {
                                                             {(product.description ?? "").length > 80
                                                                 ? `${product.description.slice(0, 80)}.....`
                                                                 : product.description}
-                                                            
+
                                                         </div>
                                                     </div>
                                                 </div>
@@ -529,10 +557,10 @@ export default function ProductManagement() {
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <span
                                                     className={`px-2 py-1 text-xs rounded-full font-medium ${product.stock > 10
-                                                            ? "bg-green-100 text-green-800"
-                                                            : product.stock > 0
-                                                                ? "bg-yellow-100 text-yellow-800"
-                                                                : "bg-red-100 text-red-800"
+                                                        ? "bg-green-100 text-green-800"
+                                                        : product.stock > 0
+                                                            ? "bg-yellow-100 text-yellow-800"
+                                                            : "bg-red-100 text-red-800"
                                                         }`}
                                                 >
                                                     {product.stock} in stock
