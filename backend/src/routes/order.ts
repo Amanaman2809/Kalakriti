@@ -15,7 +15,6 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
 
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
-    return;
   }
 
   try {
@@ -28,6 +27,7 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
             product: true,
           },
         },
+        address: true, // Include address details
       },
     });
 
@@ -41,21 +41,30 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
 // Place Order
 router.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
   const userId = req.user?.id;
-  const { address, paymentMode } = req.body;
+  const { addressId, paymentMode } = req.body;
 
   if (!["COD", "ONLINE"].includes(paymentMode)) {
     res.status(400).json({ error: "Invalid payment mode" });
-    return;
+    return; 
   }
 
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
-    return;
+    return; 
   }
 
-  if (!address || typeof address !== "string") {
-    res.status(400).json({ error: "Invalid address" });
-    return;
+  if (!addressId || typeof addressId !== "string") {
+    res.status(400).json({ error: "Invalid address ID" });
+    return; 
+  }
+
+  // Verify address belongs to user
+  const address = await prisma.address.findFirst({
+    where: { id: addressId, userId },
+  });
+
+  if (!address) {
+    res.status(404).json({ error: "Address not found" });
   }
 
   const cartItems = await prisma.cartItem.findMany({
@@ -65,61 +74,72 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
 
   if (!cartItems || cartItems.length === 0) {
     res.status(400).json({ error: "Cart is empty" });
-    return;
   }
 
   const total = cartItems.reduce(
     (acc, item) => acc + item.product.price * item.quantity,
-    0,
+    0
   );
 
   if (!total) {
     res.status(400).json({ error: "Invalid total" });
-    return;
   }
 
-  if (paymentMode === "COD") {
-    const order = await prisma.$transaction(async (tx) => {
-      const createdOrder = await tx.order.create({
-        data: {
-          userId,
-          address,
-          total,
-          paymentMode,
-          paymentStatus: "PAID",
-          status: "PLACED",
-        },
-      });
-      // Create order items
-      for (const item of cartItems) {
-        await tx.orderItem.create({
+  try {
+    if (paymentMode === "COD") {
+      const order = await prisma.$transaction(async (tx) => {
+        // Create order with address relation
+        const createdOrder = await tx.order.create({
           data: {
-            orderId: createdOrder.id,
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.product.price,
+            userId,
+            addressId, // Use addressId instead of raw address string
+            total,
+            paymentMode,
+            paymentStatus: "PAID",
+            status: "PLACED",
+            items: {
+              create: cartItems.map((item) => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                price: item.product.price,
+              })),
+            },
+          },
+          include: {
+            address: true,
+            items: true,
           },
         });
 
-        // Deduct Stock
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { decrement: item.quantity } },
-        });
-      }
+        // Update product stock
+        await Promise.all(
+          cartItems.map((item) =>
+            tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { decrement: item.quantity } },
+            })
+          )
+        );
 
-      await tx.cartItem.deleteMany({
-        where: { userId },
+        // Clear cart
+        await tx.cartItem.deleteMany({ where: { userId } });
+
+        return createdOrder;
       });
 
-      return createdOrder;
-    });
-    res.status(201).json({ message: "Order Placed Successfully", order });
-  }
+      res.status(201).json({
+        message: "Order Placed Successfully",
+        order,
+      });
+    }
 
-  if (paymentMode === "ONLINE") {
-    // TODO: Implement Razorpay payment integration
-    res.status(200).json({ message: "Payment Successful" });
+    if (paymentMode === "ONLINE") {
+      // TODO: Implement Razorpay payment integration
+      res.status(200).json({ message: "Payment Successful" });
+    }
+  } catch (error) {
+    console.error("Order placement failed:", error);
+    res.status(500).json({ error: "Failed to place order" });
   }
 });
 
@@ -129,36 +149,30 @@ router.put(
   requireAuth,
   requireAdmin,
   async (req: AuthenticatedRequest, res) => {
-    const userId = req.user?.id;
-    if (!userId) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
-
     const { id } = req.params;
     const { status } = req.body;
 
     const allowedStatuses = ["PLACED", "SHIPPED", "DELIVERED"];
     if (!allowedStatuses.includes(status)) {
       res.status(400).json({ error: "Invalid status" });
-      return;
-    }
-
-    const order = await prisma.order.findUnique({ where: { id } });
-    if (!order) {
-      res.status(404).json({ error: "Order not found" });
-      return;
-    }
-
-    const currentIndex = allowedStatuses.indexOf(order.status);
-    const newIndex = allowedStatuses.indexOf(status);
-
-    if (newIndex < currentIndex) {
-      res.status(400).json({ error: "Cannot downgrade status" });
-      return;
+      return; 
     }
 
     try {
+      const order = await prisma.order.findUnique({ where: { id } });
+      if (!order) {
+        res.status(404).json({ error: "Order not found" });
+        return; 
+      }
+
+      const currentIndex = allowedStatuses.indexOf(order.status);
+      const newIndex = allowedStatuses.indexOf(status);
+
+      if (newIndex < currentIndex) {
+        res.status(400).json({ error: "Cannot downgrade status" });
+        return; 
+      }
+
       const updated = await prisma.order.update({
         where: { id },
         data: { status },
@@ -169,7 +183,7 @@ router.put(
       console.error(err);
       res.status(500).json({ error: "Failed to update order status" });
     }
-  },
+  }
 );
 
 export default router;

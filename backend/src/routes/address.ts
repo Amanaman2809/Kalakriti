@@ -2,7 +2,7 @@ import express from "express";
 import { PrismaClient } from "../generated/prisma/client";
 import { requireAuth, AuthenticatedRequest } from "../middlewares/requireAuth";
 import { body, param, validationResult } from "express-validator";
-
+import { Request, Response, NextFunction } from "express";
 const router = express.Router();
 const prisma = new PrismaClient();
 
@@ -27,7 +27,7 @@ const validateAddress = [
 ];
 
 // Get all addresses for the authenticated user
-router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get("/", requireAuth, async (req: AuthenticatedRequest, res:Response) => {
   try {
     const addresses = await prisma.address.findMany({
       where: { userId: req.user!.id },
@@ -64,13 +64,14 @@ router.get(
   "/:id",
   requireAuth,
   [param("id").isUUID().withMessage("Invalid address ID")],
-  async (req: AuthenticatedRequest, res) => {
+  async (req: AuthenticatedRequest, res:Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         errors: errors.array(),
       });
+      return;
     }
 
     try {
@@ -94,10 +95,11 @@ router.get(
       });
 
       if (!address) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: "Address not found",
         });
+        return;
       }
 
       res.json({
@@ -119,13 +121,14 @@ router.post(
   "/",
   requireAuth,
   validateAddress,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: AuthenticatedRequest, res:Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         errors: errors.array(),
       });
+      return;
     }
 
     try {
@@ -181,13 +184,14 @@ router.put(
     param("id").isUUID().withMessage("Invalid address ID"),
     ...validateAddress,
   ],
-  async (req: AuthenticatedRequest, res) => {
+  async (req: AuthenticatedRequest, res:Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         errors: errors.array(),
       });
+      return;
     }
 
     try {
@@ -200,10 +204,11 @@ router.put(
       });
 
       if (!existingAddress) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: "Address not found",
         });
+        return;
       }
 
       const updatedAddress = await prisma.address.update({
@@ -250,13 +255,14 @@ router.delete(
   "/:id",
   requireAuth,
   [param("id").isUUID().withMessage("Invalid address ID")],
-  async (req: AuthenticatedRequest, res) => {
+  async (req: AuthenticatedRequest, res:Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         errors: errors.array(),
       });
+      return;
     }
 
     try {
@@ -269,10 +275,11 @@ router.delete(
       });
 
       if (!existingAddress) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: "Address not found",
         });
+        return;
       }
 
       // If deleting the default address, set another address as default
@@ -313,13 +320,14 @@ router.patch(
   "/:id/set-default",
   requireAuth,
   [param("id").isUUID().withMessage("Invalid address ID")],
-  async (req: AuthenticatedRequest, res) => {
+  async (req: AuthenticatedRequest, res:Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         errors: errors.array(),
       });
+      return;
     }
 
     try {
@@ -332,10 +340,11 @@ router.patch(
       });
 
       if (!existingAddress) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: "Address not found",
         });
+        return;
       }
 
       // Transaction to ensure atomic update
