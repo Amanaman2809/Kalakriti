@@ -18,6 +18,10 @@ export default function CheckoutPage() {
   const [addrError, setAddrError] = useState<string | null>(null);
   const [cartError, setCartError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
+
+
   const [newAddress, setNewAddress] = useState<AddressInput>({
     street: "",
     city: "",
@@ -80,6 +84,51 @@ export default function CheckoutPage() {
       if (selectedAddress === id) setSelectedAddress(null);
     } catch (err: any) {
       setAddrError(err.message || "Failed to delete address");
+    }
+  };
+
+  const handlePlaceOrder = async () => {
+    if (!selectedAddress || !paymentMethod) return;
+
+    setIsPlacingOrder(true);
+    setOrderError(null);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      const selectedAddr = addresses.find(a => a.id === selectedAddress);
+      if (!selectedAddr) throw new Error('Address not found');
+
+      // Format the address as a string
+      const formattedAddress = `${selectedAddr.street}, ${selectedAddr.city}, ${selectedAddr.state}, ${selectedAddr.country} - ${selectedAddr.postalCode}`;
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/orders`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          address: formattedAddress,
+          paymentMode: paymentMethod.toUpperCase() // 'COD' or 'ONLINE'
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to place order');
+      }
+
+      const { orderId } = await response.json();
+      router.push(`/orders/${orderId}`);
+    } catch (err) {
+      setOrderError(err instanceof Error ? err.message : 'Order placement failed');
+    } finally {
+      setIsPlacingOrder(false);
     }
   };
 
@@ -304,15 +353,25 @@ export default function CheckoutPage() {
             </div>
 
             <button
-              className={`w-full mt-6 py-3 text-white font-medium rounded ${
-                !selectedAddress || !paymentMethod
+              onClick={handlePlaceOrder}
+              disabled={!selectedAddress || !paymentMethod || isPlacingOrder}
+              className={`w-full mt-6 py-3 text-white font-medium rounded ${!selectedAddress || !paymentMethod
                   ? "bg-gray-400 cursor-not-allowed"
                   : "bg-primary hover:bg-primary-dark"
-              }`}
-              disabled={!selectedAddress || !paymentMethod}
+                }`}
             >
-              Place Order
+              {isPlacingOrder ? (
+                <>
+                  <span className="animate-pulse">Processing</span>
+                  <span className="ml-2">...</span>
+                </>
+              ) : (
+                'Place Order'
+              )}
             </button>
+            {orderError && (
+              <div className="mt-4 text-red-500 text-center">{orderError}</div>
+            )}
           </div>
         </div>
       </div>

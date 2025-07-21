@@ -1,10 +1,13 @@
+export type PaymentMode = "COD" | "ONLINE";
+export type PaymentStatus = "PENDING" | "PAID" | "FAILED";
+export type OrderStatus = "PLACED" | "SHIPPED" | "DELIVERED";
+
 export interface Category {
   id: string;
   name: string;
   image: string;
 }
 
-// this is the interface of the reviews server respond for a product
 export interface Review {
   id: string;
   rating: number;
@@ -69,4 +72,34 @@ export interface Address {
   postalCode: string;
   phone: string;
   userId: string;
+}
+
+export interface Order {
+  id: string;
+  userId: string;
+  paymentMode: PaymentMode;
+  paymentStatus: PaymentStatus;
+  status: OrderStatus;
+  total: number;
+  address: string;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    name: string;
+    email: string;
+  };
+  items: OrderItem[];
+}
+
+export interface OrderItem {
+  id: string;
+  orderId: string;
+  productId: string;
+  quantity: number;
+  price: number;
+  product: {
+    name: string;
+    image: string;
+    price: number;
+  };
 }

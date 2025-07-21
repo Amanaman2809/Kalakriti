@@ -15,6 +15,7 @@ import {
     Plus
 } from "lucide-react";
 import ProductManagement from "@/pages/ProductManagement";
+import OrdersManagement from "@/pages/OrderManagement";
 
 export default function AdminDashboard() {
     const router = useRouter();
@@ -185,29 +186,13 @@ export default function AdminDashboard() {
 
                     {activeTab === "products" && (
                         <div className="space-y-6">
-                            {/* <div className="flex justify-between items-center">
-                                <h2 className="text-2xl font-bold text-gray-800">Product Management</h2>
-                                <button className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 flex items-center space-x-2 transition-colors">
-                                    <Plus className="h-4 w-4" />
-                                    <span>Add New Product</span>
-                                </button>
-                            </div>
-
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                                <p className="text-gray-600">Product list and management interface would be here</p>
-                            </div> */}
                             <ProductManagement/>
                         </div>
                     )}
 
                     {activeTab === "orders" && (
                         <div className="space-y-6">
-                            <h2 className="text-2xl font-bold text-gray-800">Order Management</h2>
-
-                            {/* Order list would go here */}
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                                <p className="text-gray-600">Complete order management interface would be here</p>
-                            </div>
+                            <OrdersManagement/>
                         </div>
                     )}
                 </div>
