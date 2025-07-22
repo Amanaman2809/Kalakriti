@@ -129,7 +129,7 @@ export default function OrderHistory() {
                   <div key={item.id} className="flex py-4 border-b border-gray-100 last:border-0">
                     <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
                       <img
-                        src={item.product.image || '/placeholder-product.png'}
+                        src={item.product.images[0] || '/placeholder-product.png'}
                         alt={item.product.name}
                         className="h-full w-full object-cover object-center"
                       />

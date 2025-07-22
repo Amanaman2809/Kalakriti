@@ -81,7 +81,7 @@ export interface Order {
   paymentStatus: PaymentStatus;
   status: OrderStatus;
   total: number;
-  address: string;
+  address: Address;
   createdAt: string;
   updatedAt: string;
   user?: {
@@ -97,9 +97,5 @@ export interface OrderItem {
   productId: string;
   quantity: number;
   price: number;
-  product: {
-    name: string;
-    image: string;
-    price: number;
-  };
+  product:Product;
 }

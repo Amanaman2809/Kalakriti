@@ -148,8 +148,8 @@ export default function CheckoutPage() {
         );
         toast.success("Address updated successfully");
       }
-
-      setAddresses(updatedAddresses);
+      const newAdd = await getAddresses();
+      setAddresses(newAdd);
       setSelectedAddress(newSelectedAddress);
       setAddressForm({ show: false, mode: "add", editingId: null });
     } catch (err: any) {
@@ -227,8 +227,9 @@ export default function CheckoutPage() {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to place order');
       }
-
-      const { orderId } = await response.json();
+      const res = await response.json();
+      console.log(res)
+      const orderId  = res?.order?.id ;
       toast.success("Order placed successfully!");
       router.push(`/orders/${orderId}`);
     } catch (err: any) {
@@ -417,20 +418,20 @@ export default function CheckoutPage() {
               <div className="space-y-3">
                 {addresses.map(address => (
                   <div
-                    key={address.id}
-                    className={`border rounded-md p-4 cursor-pointer transition-colors ${selectedAddress === address.id
+                    key={address?.id}
+                    className={`border rounded-md p-4 cursor-pointer transition-colors ${selectedAddress === address?.id
                       ? "border-primary bg-primary/10"
                       : "border-gray-200 hover:border-gray-300"
                       }`}
-                    onClick={() => setSelectedAddress(address.id)}
+                    onClick={() => setSelectedAddress(address?.id)}
                   >
                     <div className="flex justify-between">
                       <div>
-                        <h3 className="font-medium">{address.street}</h3>
+                        <h3 className="font-medium">{address?.street}</h3>
                         <p className="text-sm text-gray-600">
-                          {address.city}, {address.state}, {address.country} - {address.postalCode}
+                          {address?.city}, {address?.state}, {address?.country} - {address?.postalCode}
                         </p>
-                        <p className="text-sm text-gray-500 mt-1">Phone: {address.phone}</p>
+                        <p className="text-sm text-gray-500 mt-1">Phone: {address?.phone}</p>
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -447,7 +448,7 @@ export default function CheckoutPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDeleteAddress(address.id);
+                              handleDeleteAddress(address?.id);
                             }}
                             className="text-gray-400 hover:text-red-500"
                             title="Delete address"
@@ -457,7 +458,7 @@ export default function CheckoutPage() {
                         )}
                       </div>
                     </div>
-                    {selectedAddress === address.id && (
+                    {selectedAddress === address?.id && (
                       <div className="mt-2 flex items-center gap-1 text-sm text-primary">
                         <Check className="h-4 w-4" />
                         <span>Selected</span>
