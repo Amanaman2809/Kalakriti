@@ -142,6 +142,37 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
     res.status(500).json({ error: "Failed to place order" });
   }
 });
+router.get("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+  const { id } = req.params;
+  const userId = req.user?.id;
+
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+        address: true,
+      },
+    });
+
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
+    }
+
+    if (order?.userId !== userId && !(req.user?.role==="ADMIN")) {
+      res.status(403).json({ error: "Unauthorized to view this order" });
+    }
+    console.log(order);
+    res.json(order);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch order" });
+  }
+});
 
 // Change Order Status -- Admin Only
 router.put(
