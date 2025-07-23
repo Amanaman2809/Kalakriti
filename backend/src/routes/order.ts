@@ -166,7 +166,6 @@ router.get("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
     if (order?.userId !== userId && !(req.user?.role==="ADMIN")) {
       res.status(403).json({ error: "Unauthorized to view this order" });
     }
-    console.log(order);
     res.json(order);
   } catch (err) {
     console.error(err);
