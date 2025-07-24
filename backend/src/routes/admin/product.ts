@@ -5,8 +5,6 @@ import { requireAuth, requireAdmin } from "../../middlewares/requireAuth";
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// TODO: Implement filter by category, and Typesense integration
-// Public: list products
 router.get("/", async (_req: Request, res: Response) => {
   try {
     const products = await prisma.product.findMany({
