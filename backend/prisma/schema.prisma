@@ -54,7 +54,7 @@ model Address {
   isDefault  Boolean      @default(false)
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @default(now()) @updatedAt
-  type       AddressType?
+
 
   userId String
   user   User    @relation(fields: [userId], references: [id])
@@ -63,12 +63,6 @@ model Address {
   @@index([userId])
   @@index([isDefault])
   @@index([userId, isDefault])
-}
-
-enum AddressType {
-  HOME
-  WORK
-  OTHER
 }
 
 model Feedback {

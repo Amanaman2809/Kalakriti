@@ -202,6 +202,65 @@ router.get("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
 });
 
 router.patch(
+  "/:id",
+  requireAuth,
+  requireAdmin,
+  async (req: AuthenticatedRequest, res) => {
+    const { id } = req.params;
+    const {
+      status,
+      paymentStatus,
+      carrierName,
+      trackingNumber,
+      estimatedDelivery,
+    } = req.body;
+
+    try {
+      // First get the current order
+      const order = await prisma.order.findUnique({ where: { id } });
+      if (!order) {
+        res.status(404).json({ error: "Order not found" });
+        return;
+      }
+
+      const updateData: any = {
+        statusUpdatedAt: new Date(),
+      };
+
+      if (status) updateData.status = status;
+      if (paymentStatus) updateData.paymentStatus = paymentStatus;
+      if (carrierName) updateData.carrierName = carrierName;
+      if (trackingNumber) updateData.trackingNumber = trackingNumber;
+      if (estimatedDelivery) {
+        updateData.estimatedDelivery = new Date(estimatedDelivery);
+      }
+
+      // Set timestamps based on status
+      if (status === "SHIPPED" && !order.shippedAt) {
+        updateData.shippedAt = new Date();
+      } else if (status === "DELIVERED" && !order.deliveredAt) {
+        updateData.deliveredAt = new Date();
+      }
+
+      const updatedOrder = await prisma.order.update({
+        where: { id },
+        data: updateData,
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          items: { include: { product: true } },
+          address: true,
+        },
+      });
+
+      res.json(updatedOrder);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to update order" });
+    }
+  }
+);
+
+router.patch(
   "/:id/status",
   requireAuth,
   requireAdmin,
