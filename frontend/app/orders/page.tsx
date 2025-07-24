@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Truck, Check, Clock, X, ArrowLeft } from 'lucide-react';
+import { Truck, Check, Clock, X, ArrowLeft, ChevronRight, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { Order, OrderStatus } from '@/utils/types';
 
@@ -39,45 +39,42 @@ export default function OrderHistory() {
     fetchOrders();
   }, []);
 
-  const getStatusIcon = (status: OrderStatus) => {
+  const getStatusColor = (status: OrderStatus) => {
     switch (status) {
-      case 'PLACED':
-        return <Clock className="h-5 w-5 text-yellow-500" />;
-      case 'SHIPPED':
-        return <Truck className="h-5 w-5 text-blue-500" />;
-      case 'DELIVERED':
-        return <Check className="h-5 w-5 text-green-500" />;
-      default:
-        return <X className="h-5 w-5 text-red-500" />;
+      case 'PLACED': return 'bg-yellow-100 text-yellow-800';
+      case 'SHIPPED': return 'bg-blue-100 text-blue-800';
+      case 'DELIVERED': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="px-6 py-16 min-h-screen flex items-center justify-center">
+      <div className="px-4 py-8 flex items-center justify-center">
         <div className="text-center max-w-md">
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Orders</h2>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <div className="flex justify-center space-x-3">
+          <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <h2 className="text-lg font-bold text-red-500 mb-2">Error Loading Orders</h2>
+            <p className="text-sm text-gray-600 mb-3">{error}</p>
+            <div className="flex justify-center space-x-2">
               <Link
                 href="/"
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 flex items-center"
               >
-                <ArrowLeft className="inline mr-1 h-4 w-4" /> Back to Home
+                <ArrowLeft className="h-3 w-3 mr-1" />
+                Home
               </Link>
               {error.includes('Unauthorized') && (
                 <Link
                   href="/login"
-                  className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+                  className="px-3 py-1.5 text-sm bg-primary text-white rounded-md hover:bg-primary/90 flex items-center"
                 >
                   Login
                 </Link>
@@ -90,75 +87,93 @@ export default function OrderHistory() {
   }
 
   return (
-    <div className="space-y-6 px-4 py-8 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Your Orders</h1>
+    <div className="px-4 py-6 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Your Orders</h1>
+        <Link
+          href="/products"
+          className="text-primary hover:text-primary/80 flex items-center"
+        >
+          Shop More <ChevronRight className="h-4 w-4 ml-1" />
+        </Link>
       </div>
 
       {orders.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-          <Truck className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">No orders yet</h3>
-          <p className="mt-2 text-gray-500">Your order history will appear here</p>
+        <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+          <Truck className="mx-auto h-10 w-10 text-gray-400 mb-3" />
+          <h3 className="text-md font-medium text-gray-900">No orders yet</h3>
+          <p className="mt-1 text-sm text-gray-500">Your order history will appear here</p>
           <Link
             href="/products"
-            className="mt-4 inline-block px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+            className="mt-3 inline-flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
           >
-            Continue Shopping
+            Start Shopping
           </Link>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid gap-4">
           {orders.map((order) => (
-            <div key={order.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-gray-500">Order #{order.id}</p>
-                  <p className="text-sm text-gray-500">
-                    Placed on {new Date(order.createdAt).toLocaleDateString()}
-                  </p>
+           
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:border-primary/30 transition-colors">
+                <div className="p-4 flex justify-between items-center border-b border-gray-100">
+                  <div className="flex items-center space-x-4">
+                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${getStatusColor(order.status)}`}>
+                      {order.status.toLowerCase()}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      #{order.id.slice(0, 8).toUpperCase()}
+                    </span>
+                    <span className="text-sm text-gray-400">
+                      {new Date(order.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  {getStatusIcon(order.status)}
-                  <span className="capitalize">{order.status.toLowerCase()}</span>
-                </div>
-              </div>
+                <Link
+                  key={order.id}
+                  href={`/orders/${order.id}`}
+                  className="block group"
+                >
 
-              <div className="p-4">
-                {order.items.map((item) => (
-                  <div key={item.id} className="flex py-4 border-b border-gray-100 last:border-0">
-                    <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
-                      <img
-                        src={item.product.images[0] || '/placeholder-product.png'}
-                        alt={item.product.name}
-                        className="h-full w-full object-cover object-center"
-                      />
-                    </div>
-
-                    <div className="ml-4 flex flex-1 flex-col">
-                      <div>
-                        <h3 className="text-base font-medium text-gray-900">
-                          {item.product.name}
-                        </h3>
-                        <p className="mt-1 text-sm text-gray-500">
-                          ₹{item.price.toLocaleString()} × {item.quantity}
-                        </p>
-                      </div>
-                    </div>
+                  <div className='flex items-center gap-1'>
+                    <p className='text-gray-400 hover:text-primary '>
+                  
+                      Track order or View details
+                    </p>
+                    <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-primary" />
                   </div>
-                ))}
-              </div>
+                </Link>
+                </div>
 
-              <div className="p-4 bg-gray-50 flex justify-between items-center">
-                <p className="text-sm text-gray-500">Payment method: {order.paymentMode}</p>
-                <p className="text-lg font-medium">
-                  Total: ₹{order.total.toLocaleString()}
-                </p>
+                <div className="px-3 py-2 flex items-center gap-4">
+                  <div className="flex w-16">
+                    {order.items.slice(0, 2).map((item, index) => (
+                      <div key={index} className="aspect-square overflow-hidden rounded-sm border border-gray-200">
+                        <img
+                          src={item.product.images[0] || '/placeholder-product.png'}
+                          alt={item.product.name}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="min-w-0">
+                    <p className=" font-medium text-gray-900 truncate">
+                      {order.items[0]?.product.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {order.items.length} item{order.items.length !== 1 ? 's' : ''} • ₹{order.total.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+        // </Link>
+      ))}
     </div>
+  )
+}
+    </div >
   );
 }

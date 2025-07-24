@@ -84,6 +84,11 @@ export interface Order {
   address: Address;
   createdAt: string;
   updatedAt: string;
+  shippedAt: string;
+  estimatedDelivery: string;
+  deliveredAt:string;
+  carrierName: string;
+  trackingNumber: string;
   user?: {
     name: string;
     email: string;
