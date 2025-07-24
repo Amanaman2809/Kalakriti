@@ -46,9 +46,9 @@ export default function AdminLoginPage() {
             setLoading(false);
         }
     };
-
+    
     return (
-        <div className="min-h-screen bg-accent flex items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center">
             <div className="w-full max-w-md bg-background rounded-xl shadow-lg overflow-hidden">
                 <div className="bg-primary p-6 text-center">
                     <h2 className="text-2xl font-bold text-white">Admin Login</h2>

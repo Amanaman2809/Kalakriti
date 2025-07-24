@@ -113,23 +113,23 @@ export default function OrderHistory() {
       ) : (
         <div className="grid gap-4">
           {orders.map((order) => (
-           
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:border-primary/30 transition-colors">
-                <div className="p-4 flex justify-between items-center border-b border-gray-100">
-                  <div className="flex items-center space-x-4">
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${getStatusColor(order.status)}`}>
-                      {order.status.toLowerCase()}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      #{order.id.slice(0, 8).toUpperCase()}
-                    </span>
-                    <span className="text-sm text-gray-400">
-                      {new Date(order.createdAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </span>
+
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:border-primary/30 transition-colors">
+              <div className="p-4 flex justify-between items-center border-b border-gray-100">
+                <div className="flex items-center space-x-4">
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${getStatusColor(order.status)}`}>
+                    {order.status.toLowerCase()}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    #{order.id.slice(0, 8).toUpperCase()}
+                  </span>
+                  <span className="text-sm text-gray-400">
+                    {new Date(order.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </span>
                 </div>
                 <Link
                   key={order.id}
@@ -139,41 +139,41 @@ export default function OrderHistory() {
 
                   <div className='flex items-center gap-1'>
                     <p className='text-gray-400 hover:text-primary '>
-                  
+
                       Track order or View details
                     </p>
                     <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-primary" />
                   </div>
                 </Link>
-                </div>
+              </div>
 
-                <div className="px-3 py-2 flex items-center gap-4">
-                  <div className="flex w-16">
-                    {order.items.slice(0, 2).map((item, index) => (
-                      <div key={index} className="aspect-square overflow-hidden rounded-sm border border-gray-200">
-                        <img
-                          src={item.product.images[0] || '/placeholder-product.png'}
-                          alt={item.product.name}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="min-w-0">
-                    <p className=" font-medium text-gray-900 truncate">
-                      {order.items[0]?.product.name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {order.items.length} item{order.items.length !== 1 ? 's' : ''} • ₹{order.total.toLocaleString()}
-                    </p>
-                  </div>
+              <div className="px-3 py-2 flex items-center gap-4">
+                <div className="flex w-16">
+                  {order.items.slice(0, 2).map((item, index) => (
+                    <div key={index} className="aspect-square overflow-hidden rounded-sm border border-gray-200">
+                      <img
+                        src={item.product.images[0] || '/placeholder-product.png'}
+                        alt={item.product.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="min-w-0">
+                  <p className=" font-medium text-gray-900 truncate">
+                    {order.items[0]?.product.name}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {order.items.length} item{order.items.length !== 1 ? 's' : ''} • ₹{order.total.toLocaleString()}
+                  </p>
                 </div>
               </div>
-        // </Link>
-      ))}
-    </div>
-  )
-}
+            </div>
+
+          ))}
+        </div>
+      )
+      }
     </div >
   );
 }

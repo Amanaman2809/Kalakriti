@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Search, Truck, Loader2, Package } from 'lucide-react';
+import { ArrowLeft, Search, Truck, Loader2, Package, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { Order, OrderStatus, PaymentStatus } from '@/utils/types';
@@ -230,12 +230,13 @@ export default function OrdersListPage() {
                                                 {order.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <Link
                                                 href={`/admin/orders/${order.id}`}
-                                                className="text-primary hover:text-primary/80"
+                                                className="text-primary flex items-center  hover:text-primary/80"
                                             >
                                                 View Details
+                                                <ChevronRight className='w-4'/>
                                             </Link>
                                         </td>
                                     </tr>

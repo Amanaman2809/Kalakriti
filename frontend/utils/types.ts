@@ -1,27 +1,50 @@
+export const PaymentModeValues: PaymentMode[] = ["COD", "ONLINE"];
+export const PaymentStatusValues: PaymentStatus[] = [
+  "PENDING",
+  "PAID",
+  "FAILED",
+];
+export const OrderStatusValues: OrderStatus[] = [
+  "PLACED",
+  "SHIPPED",
+  "DELIVERED",
+];
+export const AddressTypeValues: AddressType[] = ["HOME", "WORK", "OTHER"];
+export const RoleValues: Role[] = ["USER", "ADMIN"];
+
 export type PaymentMode = "COD" | "ONLINE";
 export type PaymentStatus = "PENDING" | "PAID" | "FAILED";
 export type OrderStatus = "PLACED" | "SHIPPED" | "DELIVERED";
+export type AddressType = "HOME" | "WORK" | "OTHER";
+export type Role = "USER" | "ADMIN";
 
 export interface Category {
   id: string;
   name: string;
-  image: string;
+  image: string | null;
+  products?: Product[];
 }
 
 export interface Review {
   id: string;
   rating: number;
-  comment: string;
-  createdAt: string;
+  comment: string | null;
+  createdAt: Date;
   user: {
     name: string;
   };
 }
 
 export interface PFeedback {
+  id: string;
   rating: number;
-  comment: string;
+  comment: string | null;
   productId: string;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  user: User;
+  product: Product;
 }
 
 export interface FeedbackSummary {
@@ -32,21 +55,28 @@ export interface FeedbackSummary {
 export interface Product {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   price: number;
   stock: number;
   categoryId: string;
   tags: string[];
   images: string[];
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
   category: Category;
+  wishlistItems?: WishlistItem[];
+  orderItems?: OrderItem[];
+  CartItem?: CartItem[];
+  Feedback?: PFeedback[];
 }
 
 export interface CartItem {
   id: string;
   quantity: number;
+  userId: string;
+  productId: string;
   product: Product;
+  user: User;
 }
 
 export interface ProductsResponse {
@@ -60,7 +90,10 @@ export interface CartParams {
 
 export interface WishlistItem {
   id: string;
+  userId: string;
+  productId: string;
   product: Product;
+  user: User;
 }
 
 export interface Address {
@@ -71,7 +104,13 @@ export interface Address {
   country: string;
   postalCode: string;
   phone: string;
+  isDefault: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  type: AddressType | null;
   userId: string;
+  user: User;
+  orders?: Order[];
 }
 
 export interface Order {
@@ -81,18 +120,17 @@ export interface Order {
   paymentStatus: PaymentStatus;
   status: OrderStatus;
   total: number;
+  addressId: string;
   address: Address;
-  createdAt: string;
-  updatedAt: string;
-  shippedAt: string;
-  estimatedDelivery: string;
-  deliveredAt:string;
-  carrierName: string;
-  trackingNumber: string;
-  user?: {
-    name: string;
-    email: string;
-  };
+  createdAt: Date;
+  updatedAt: Date;
+  shippedAt: Date | null;
+  deliveredAt: Date | null;
+  estimatedDelivery: Date | null;
+  carrierName: string | null;
+  trackingNumber: string | null;
+  statusUpdatedAt: Date;
+  user: User;
   items: OrderItem[];
 }
 
@@ -102,5 +140,27 @@ export interface OrderItem {
   productId: string;
   quantity: number;
   price: number;
-  product:Product;
+  order: Order;
+  product: Product;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  password: string | null;
+  oauthId: string | null;
+  oauthProvider: string | null;
+  otp: string | null;
+  otpExpiresAt: Date | null;
+  isVerified: boolean;
+  role: Role;
+  createdAt: Date;
+  updatedAt: Date;
+  addresses: Address[];
+  orders: Order[];
+  wishlist: WishlistItem[];
+  cartItems: CartItem[];
+  Feedback: PFeedback[];
 }
