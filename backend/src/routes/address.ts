@@ -3,6 +3,7 @@ import { PrismaClient } from "../generated/prisma/client";
 import { requireAuth, AuthenticatedRequest } from "../middlewares/requireAuth";
 import { body, param, validationResult } from "express-validator";
 import { Request, Response, NextFunction } from "express";
+
 const router = express.Router();
 const prisma = new PrismaClient();
 

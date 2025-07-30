@@ -4,7 +4,6 @@ import cors from "cors";
 import authRoute from "./routes/auth/signup";
 import otpRoute from "./routes/auth/otp-ops";
 import loginRoute from "./routes/auth/login";
-import meRoute from "./routes/auth/me";
 import resetPassRoute from "./routes/auth/reset-pass";
 import categoryRoute from "./routes/categories";
 import productRoute from "./routes/admin/product";
@@ -29,7 +28,6 @@ app.use(
 app.use("/api/auth", authRoute);
 app.use("/api/otp", otpRoute);
 app.use("/api/auth", loginRoute);
-app.use("/api/auth", meRoute);
 app.use("/api/auth", createAdminRoute);
 app.use("/api/auth", resetPassRoute);
 app.use("/api", categoryRoute);
