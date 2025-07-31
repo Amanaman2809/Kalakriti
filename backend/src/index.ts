@@ -12,9 +12,10 @@ import wishlistRoute from "./routes/whishlist";
 import orderRoute from "./routes/order";
 import feedbackRoute from "./routes/feedback";
 import searchRoute from "./routes/search";
-import createAdminRoute from './routes/auth/create-admin'
+import createAdminRoute from "./routes/auth/create-admin";
 import cloudinaryRoute from "./routes/cloudinary";
-import addressRoute from './routes/address'
+import addressRoute from "./routes/address";
+
 dotenv.config();
 const app = express();
 

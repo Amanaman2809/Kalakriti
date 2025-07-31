@@ -23,11 +23,10 @@ const googleStrategy = new GoogleStrategy(
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
-      
       if (!isProfileValid(profile)) {
         return done(new Error("Invalid Google profile: email missing"));
       }
-      
+
       let user = await prisma.user.findUnique({
         where: { email: profile.emails?.[0].value },
       });
@@ -39,26 +38,31 @@ const googleStrategy = new GoogleStrategy(
             email: profile.emails[0].value,
             oauthId: profile.id,
             oauthProvider: "google",
-            isVerified: true, 
+            isVerified: true,
             password: null,
             phone: "",
-            role: "USER", 
+            role: "USER",
           },
         });
       }
 
-      // Generate token using your existing JWT system
       const token = generateToken({
         id: user.id,
         email: user.email,
         role: user.role,
       });
 
-      return done(null, { user, token });
+      const userWithToken = {
+        ...user,
+        token,
+      };
+
+      return done(null, userWithToken); 
     } catch (error) {
       return done(error as Error);
     }
   }
 );
+
 
 export default googleStrategy;

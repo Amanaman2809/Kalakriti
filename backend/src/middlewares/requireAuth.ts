@@ -1,18 +1,19 @@
 import { NextFunction, Request, Response } from "express";
 import { verifyToken } from "../lib/jwt";
+import { Role } from "../generated/prisma";
 
-export interface AuthenticatedRequest extends Request {
+export type AuthenticatedRequest = Request & {
   user?: {
     id: string;
     email: string;
-    role: "USER" | "ADMIN";
+    role: Role;
   };
-}
+};
 
 export async function requireAuth(
-  req: AuthenticatedRequest,
+  req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -26,7 +27,7 @@ export async function requireAuth(
     const decoded = (await verifyToken(token)) as {
       id: string;
       email: string;
-      role: "USER" | "ADMIN";
+      role:Role;
     };
     req.user = decoded;
     next();
@@ -36,14 +37,13 @@ export async function requireAuth(
   }
 }
 
-export function requireAdmin(
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction,
-) {
-  if (req.user?.role !== "ADMIN") {
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const user = (req as AuthenticatedRequest).user;
+
+  if (user?.role !== "ADMIN") {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
+
   next();
 }

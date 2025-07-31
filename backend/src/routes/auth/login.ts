@@ -77,7 +77,7 @@ router.get(
         return;
       }
 
-      const { user, token } = req.user as {
+      const { user, token } = req.user as  unknown as{
         user: {
           id: string;
           name: string;
@@ -98,7 +98,7 @@ router.get(
         },
       });
     } catch (error) {
-      next(error); // Pass errors to Express error handler
+      next(error); 
     }
   }
 );
