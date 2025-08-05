@@ -57,7 +57,7 @@ const googleStrategy = new GoogleStrategy(
         token,
       };
 
-      return done(null, userWithToken); 
+      return done(null, userWithToken);
     } catch (error) {
       return done(error as Error);
     }

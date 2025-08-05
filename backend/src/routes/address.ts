@@ -28,7 +28,7 @@ const validateAddress = [
 ];
 
 // Get all addresses for the authenticated user
-router.get("/", requireAuth, async (req: Request, res:Response) => {
+router.get("/", requireAuth, async (req, res: Response) => {
   try {
     const addresses = await prisma.address.findMany({
       where: { userId: req.user!.id },
@@ -122,7 +122,7 @@ router.post(
   "/",
   requireAuth,
   validateAddress,
-  async (req:Request, res:Response) => {
+  async (req: Request, res:Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({
@@ -185,7 +185,7 @@ router.put(
     param("id").isUUID().withMessage("Invalid address ID"),
     ...validateAddress,
   ],
-  async (req:Request, res:Response) => {
+  async (req: Request, res:Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({

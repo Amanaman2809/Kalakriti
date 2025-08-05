@@ -1,14 +1,14 @@
 import { NextFunction, Request, Response } from "express";
 import { verifyToken } from "../lib/jwt";
-import { Role } from "../generated/prisma";
+// import { Role } from "../generated/prisma";
 
-// export type AuthenticatedRequest = Request & {
+// export interface AuthenticatedRequest extends Request {
 //   user?: {
 //     id: string;
 //     email: string;
 //     role: Role;
 //   };
-// };
+// }
 
 export async function requireAuth(
   req: Request,
@@ -34,7 +34,11 @@ export async function requireAuth(
   }
 }
 
-export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+export function requireAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   const user = req.user;
 
   if (user?.role !== "ADMIN") {

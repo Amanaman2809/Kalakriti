@@ -10,6 +10,14 @@ const prisma = new PrismaClient();
 
 passport.use(googleStrategy);
 
+export interface GoogleUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  token: string;
+}
+
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -55,12 +63,12 @@ router.post("/login", async (req, res) => {
   });
 });
 
-// Google OAuth routes
 router.get(
   "/google",
   passport.authenticate("google", {
     scope: ["profile", "email"],
     session: false,
+    prompt: "consent",
   })
 );
 
@@ -77,26 +85,12 @@ router.get(
         return;
       }
 
-      const { user, token } = req.user as  unknown as{
-        user: {
-          id: string;
-          name: string;
-          email: string;
-          role: string;
-        };
-        token: string;
-      };
+      const user = req.user as GoogleUser;
 
-      res.json({
-        message: "Google login successful",
-        token,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
-      });
+      const query = new URLSearchParams({
+        token:user.token,
+      }).toString();
+      res.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/login?${query}`);
     } catch (error) {
       next(error); 
     }
