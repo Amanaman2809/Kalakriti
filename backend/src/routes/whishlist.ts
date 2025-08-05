@@ -1,12 +1,11 @@
-import express from "express";
+import express,{Request} from "express";
 import { PrismaClient } from "../generated/prisma/client";
-import { AuthenticatedRequest, requireAuth } from "../middlewares/requireAuth";
-
+import {requireAuth } from "../middlewares/requireAuth";
 const router = express.Router();
 const prisma = new PrismaClient();
 
 // get user's wishlist
-router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get("/", requireAuth, async (req, res) => {
   const userId = req.user?.id;
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
@@ -37,7 +36,7 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
 });
 
 // add to wishlist
-router.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
+router.post("/", requireAuth, async (req, res) => {
   const userId = req.user?.id;
   const { productId } = req.body;
 
@@ -86,7 +85,7 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
 router.delete(
   "/:productId",
   requireAuth,
-  async (req: AuthenticatedRequest, res) => {
+  async (req, res) => {
     const userId = req.user?.id;
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
@@ -116,7 +115,7 @@ router.delete(
 router.put(
   "/:productId",
   requireAuth,
-  async (req: AuthenticatedRequest, res) => {
+  async (req:Request, res) => {
     const userId = req.user?.id;
     const { productId } = req.params;
 

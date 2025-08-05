@@ -1,13 +1,13 @@
 import express from "express";
 import { PrismaClient } from "../generated/prisma/client";
 import { requireAuth } from "../middlewares/requireAuth";
-import { AuthenticatedRequest } from "../middlewares/requireAuth";
+// import { AuthenticatedRequest } from "../middlewares/requireAuth";
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 // User Cart
-router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get("/", requireAuth, async (req, res) => {
   const userId = req.user?.id;
 
   if (!userId) {
@@ -48,7 +48,7 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
 });
 
 // Add item to cart
-router.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
+router.post("/", requireAuth, async (req, res) => {
   const userId = req.user?.id;
 
   if (!userId) {
@@ -97,7 +97,7 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
 });
 
 // Delete item from cart
-router.delete("/", requireAuth, async (req: AuthenticatedRequest, res) => {
+router.delete("/", requireAuth, async (req, res) => {
   const userId = req.user?.id;
   const { productId, quantityToRemove } = req.body;
   if (!userId) {
@@ -152,7 +152,7 @@ router.delete("/", requireAuth, async (req: AuthenticatedRequest, res) => {
 router.post(
   "/moveWishlist",
   requireAuth,
-  async (req: AuthenticatedRequest, res) => {
+  async (req, res) => {
     const userId = req.user?.id;
     const { productId } = req.body;
 

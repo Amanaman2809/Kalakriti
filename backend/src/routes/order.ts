@@ -1,7 +1,7 @@
 import express from "express";
 import { OrderStatus, PrismaClient } from "../generated/prisma/client";
 import {
-  AuthenticatedRequest,
+  // AuthenticatedRequest,
   requireAdmin,
   requireAuth,
 } from "../middlewares/requireAuth";
@@ -14,7 +14,7 @@ router.get(
   "/admin",
   requireAuth,
   requireAdmin,
-  async (req: AuthenticatedRequest, res) => {
+  async (req, res) => {
     try {
       const orders = await prisma.order.findMany({
         orderBy: { createdAt: "desc" },
@@ -33,7 +33,7 @@ router.get(
 );
 
 // Fetch Orders
-router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get("/", requireAuth, async (req, res) => {
   const userId = req.user?.id;
 
   if (!userId) {
@@ -62,7 +62,7 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
 });
 
 // Place Order
-router.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
+router.post("/", requireAuth, async (req, res) => {
   const userId = req.user?.id;
   const { addressId, paymentMode } = req.body;
 
@@ -166,7 +166,7 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.get("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get("/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   const userId = req.user?.id;
 
@@ -205,7 +205,7 @@ router.patch(
   "/:id",
   requireAuth,
   requireAdmin,
-  async (req: AuthenticatedRequest, res) => {
+  async (req, res) => {
     const { id } = req.params;
     const {
       status,
@@ -264,7 +264,7 @@ router.patch(
   "/:id/status",
   requireAuth,
   requireAdmin,
-  async (req: AuthenticatedRequest, res) => {
+  async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     const validStatuses: OrderStatus[] = ["PLACED", "SHIPPED", "DELIVERED"];

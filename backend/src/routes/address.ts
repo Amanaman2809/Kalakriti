@@ -1,6 +1,6 @@
 import express from "express";
 import { PrismaClient } from "../generated/prisma/client";
-import { requireAuth, AuthenticatedRequest } from "../middlewares/requireAuth";
+import { requireAuth } from "../middlewares/requireAuth";
 import { body, param, validationResult } from "express-validator";
 import { Request, Response, NextFunction } from "express";
 
@@ -28,7 +28,7 @@ const validateAddress = [
 ];
 
 // Get all addresses for the authenticated user
-router.get("/", requireAuth, async (req: AuthenticatedRequest, res:Response) => {
+router.get("/", requireAuth, async (req: Request, res:Response) => {
   try {
     const addresses = await prisma.address.findMany({
       where: { userId: req.user!.id },
@@ -65,7 +65,7 @@ router.get(
   "/:id",
   requireAuth,
   [param("id").isUUID().withMessage("Invalid address ID")],
-  async (req: AuthenticatedRequest, res:Response) => {
+  async (req: Request, res:Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({
@@ -122,7 +122,7 @@ router.post(
   "/",
   requireAuth,
   validateAddress,
-  async (req: AuthenticatedRequest, res:Response) => {
+  async (req:Request, res:Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({
@@ -185,7 +185,7 @@ router.put(
     param("id").isUUID().withMessage("Invalid address ID"),
     ...validateAddress,
   ],
-  async (req: AuthenticatedRequest, res:Response) => {
+  async (req:Request, res:Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({
@@ -256,7 +256,7 @@ router.delete(
   "/:id",
   requireAuth,
   [param("id").isUUID().withMessage("Invalid address ID")],
-  async (req: AuthenticatedRequest, res:Response) => {
+  async (req: Request, res:Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({
@@ -321,7 +321,7 @@ router.patch(
   "/:id/set-default",
   requireAuth,
   [param("id").isUUID().withMessage("Invalid address ID")],
-  async (req: AuthenticatedRequest, res:Response) => {
+  async (req: Request, res:Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({

@@ -9,9 +9,10 @@
     "rootDir": "./src",
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "typeRoots": ["./node_modules/@types","./src/types", "./src/types/express"],
     "types": ["express"]
   },
+  "files": ["./src/types/express/globals.d.ts"],
   "include": ["src", "src/types"],
   "exclude": ["node_modules", "dist"]
 }

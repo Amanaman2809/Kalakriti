@@ -1,7 +1,7 @@
 // routes/feedback.ts
 import express from "express";
 import { PrismaClient } from "../generated/prisma/client";
-import { requireAuth, AuthenticatedRequest } from "../middlewares/requireAuth";
+import { requireAuth } from "../middlewares/requireAuth";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 router.post(
   "/products/:id/feedback",
   requireAuth,
-  async (req: AuthenticatedRequest, res) => {
+  async (req, res) => {
     const userId = req.user?.id;
     const productId = req.params.id;
     const { rating, comment } = req.body;
