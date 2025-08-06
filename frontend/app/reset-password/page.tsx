@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const [step, setStep] = useState<"phone" | "otp" | "password">("phone");
-  const [phone, setPhone] = useState("");
+  const [step, setStep] = useState<"email" | "otp" | "password">("email");
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -37,17 +38,19 @@ export default function ResetPasswordPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone }),
+          body: JSON.stringify({ email }),
         }
       );
 
       if (!res.ok) {
-        throw new Error("Failed to send OTP");
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to send OTP");
       }
 
       setResendDisabled(true);
       setCountdown(60); // 60 seconds countdown
-      setSuccessMsg("OTP sent to your phone number");
+      setSuccessMsg("OTP sent to your email");
+      setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to send OTP. Please try again.");
     } finally {
@@ -55,12 +58,12 @@ export default function ResetPasswordPage() {
     }
   };
 
-  const handlePhoneSubmit = async (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Basic phone validation
-    if (!/^[0-9]{10}$/.test(phone)) {
-      setErrorMsg("Please enter a valid 10-digit phone number");
+    // Basic email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setErrorMsg("Please enter a valid email address");
       return;
     }
 
@@ -74,13 +77,24 @@ export default function ResetPasswordPage() {
     setErrorMsg("");
 
     try {
-      // Basic OTP validation
       if (!/^[0-9]{6}$/.test(otp)) {
         throw new Error("Please enter a valid 6-digit OTP");
       }
 
-      // Optional: Verify OTP before proceeding to password step
-      // This is optional since your API verifies OTP with password reset
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/otp/verify-otp`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, otp }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "OTP verification failed");
+      }
+
       setStep("password");
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -95,7 +109,6 @@ export default function ResetPasswordPage() {
     setErrorMsg("");
 
     try {
-      // Password validation
       if (password !== confirmPassword) {
         throw new Error("Passwords don't match");
       }
@@ -108,14 +121,13 @@ export default function ResetPasswordPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone, otp, password }),
+          body: JSON.stringify({ email, otp, password }),
         }
       );
 
-      const data = await res.json();
-
       if (!res.ok) {
-        throw new Error(data.error || "Password reset failed");
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Password reset failed");
       }
 
       setSuccessMsg("Password reset successfully! Redirecting to login...");
@@ -129,17 +141,21 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen bg-accent flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-background rounded-xl shadow-lg overflow-hidden">
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="w-full max-w-md bg-white rounded-xl shadow-lg overflow-hidden"
+      >
         {/* Header */}
         <div className="bg-primary p-6 text-center">
           <h2 className="text-2xl font-bold text-white">
-            {step === "phone" && "Reset Password"}
+            {step === "email" && "Reset Password"}
             {step === "otp" && "Verify OTP"}
             {step === "password" && "New Password"}
           </h2>
-          <p className="text-secondary mt-1">
-            {step === "phone" && "Enter your phone number to receive OTP"}
-            {step === "otp" && `Enter OTP sent to ${phone}`}
+          <p className="text-primary mt-1">
+            {step === "email" && "Enter your email to receive OTP"}
+            {step === "otp" && `Enter OTP sent to ${email}`}
             {step === "password" && "Create a new password"}
           </p>
         </div>
@@ -148,63 +164,77 @@ export default function ResetPasswordPage() {
           {/* Step indicator */}
           <div className="flex justify-center mb-6">
             <div className="flex items-center">
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                step === "phone" ? "bg-primary text-white" : "bg-secondary text-text"
-              }`}>
-                1
-              </div>
-              <div className={`w-12 h-1 ${step !== "phone" ? "bg-primary" : "bg-secondary"}`}></div>
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                step === "otp" ? "bg-primary text-white" : 
-                step === "password" ? "bg-primary text-white" : "bg-secondary text-text"
-              }`}>
-                2
-              </div>
-              <div className={`w-12 h-1 ${step === "password" ? "bg-primary" : "bg-secondary"}`}></div>
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                step === "password" ? "bg-primary text-white" : "bg-secondary text-text"
-              }`}>
-                3
-              </div>
+              {[1, 2, 3].map((num) => (
+                <div key={num} className="flex items-center">
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                    (step === "email" && num === 1) ||
+                    (step === "otp" && num <= 2) ||
+                    (step === "password" && num <= 3)
+                    ? "bg-primary text-white"
+                      : "bg-gray-200 text-gray-600"
+                  }`}>
+                    {num}
+                  </div>
+                  {num < 3 && (
+                    <div className={`w-12 h-1 ${
+                      (step === "otp" && num === 1) ||
+                      (step === "password" && num <= 2)
+                      ? "bg-primary"
+                        : "bg-gray-200"
+                    }`}></div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Messages */}
           {errorMsg && (
-            <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm mb-4">
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-3 bg-red-50 text-red-700 rounded-lg text-sm mb-4 border border-red-100"
+            >
               {errorMsg}
-            </div>
+            </motion.div>
           )}
 
           {successMsg && (
-            <div className="p-3 bg-green-100 text-green-700 rounded-lg text-sm mb-4">
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-3 bg-green-50 text-green-700 rounded-lg text-sm mb-4 border border-green-100"
+            >
               {successMsg}
-            </div>
+            </motion.div>
           )}
 
-          {/* Phone Step */}
-          {step === "phone" && (
-            <form onSubmit={handlePhoneSubmit} className="space-y-4">
+          {/* Email Step */}
+          {step === "email" && (
+            <motion.form
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              onSubmit={handleEmailSubmit}
+              className="space-y-4"
+            >
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-text mb-1">
-                  Phone Number
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email Address
                 </label>
                 <input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="9999999999"
-                  className="w-full px-4 py-2 border border-secondary rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
                   required
-                  pattern="[0-9]{10}"
-                  inputMode="numeric"
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-primary hover:bg-opacity-90 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center"
+                className="w-full bg-primary hover:bg-blue-950 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center"
               >
                 {loading ? (
                   <>
@@ -218,14 +248,19 @@ export default function ResetPasswordPage() {
                   "Send OTP"
                 )}
               </button>
-            </form>
+            </motion.form>
           )}
 
           {/* OTP Step */}
           {step === "otp" && (
-            <form onSubmit={handleOtpSubmit} className="space-y-4">
+            <motion.form
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              onSubmit={handleOtpSubmit}
+              className="space-y-4"
+            >
               <div>
-                <label htmlFor="otp" className="block text-sm font-medium text-text mb-1">
+                <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-1">
                   OTP Code
                 </label>
                 <input
@@ -234,7 +269,7 @@ export default function ResetPasswordPage() {
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
                   placeholder="123456"
-                  className="w-full px-4 py-3 text-center text-xl border border-secondary rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-4 py-3 text-center text-xl border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
                   required
                   maxLength={6}
                   pattern="\d{6}"
@@ -254,7 +289,7 @@ export default function ResetPasswordPage() {
               <div className="flex justify-between">
                 <button
                   type="button"
-                  onClick={() => setStep("phone")}
+                  onClick={() => setStep("email")}
                   className="px-4 py-2 text-primary font-medium rounded-lg hover:bg-accent transition"
                 >
                   Back
@@ -262,19 +297,24 @@ export default function ResetPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-primary hover:bg-opacity-90 text-white font-medium rounded-lg transition duration-200"
+                  className="px-4 py-2 bg-primary hover:bg-blue-950 text-white font-medium rounded-lg transition duration-200"
                 >
                   {loading ? "Verifying..." : "Verify OTP"}
                 </button>
               </div>
-            </form>
+            </motion.form>
           )}
 
           {/* Password Step */}
           {step === "password" && (
-            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <motion.form
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              onSubmit={handlePasswordSubmit}
+              className="space-y-4"
+            >
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-text mb-1">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                   New Password
                 </label>
                 <div className="relative">
@@ -284,14 +324,14 @@ export default function ResetPasswordPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-4 py-2 border border-secondary rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent pr-10"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent pr-10 transition"
                     required
                     minLength={8}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-text"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                   >
                     {showPassword ? (
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -305,13 +345,13 @@ export default function ResetPasswordPage() {
                     )}
                   </button>
                 </div>
-                <p className="text-xs text-text mt-1 opacity-70">
+                <p className="text-xs text-gray-500 mt-1">
                   Must be at least 8 characters
                 </p>
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-text mb-1">
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
                   Confirm Password
                 </label>
                 <input
@@ -320,7 +360,7 @@ export default function ResetPasswordPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-4 py-2 border border-secondary rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
                   required
                 />
               </div>
@@ -336,7 +376,7 @@ export default function ResetPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-primary hover:bg-opacity-90 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center"
+                  className="px-4 py-2 bg-primary hover:bg-blue-950 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center"
                 >
                   {loading ? (
                     <>
@@ -351,17 +391,20 @@ export default function ResetPasswordPage() {
                   )}
                 </button>
               </div>
-            </form>
+            </motion.form>
           )}
 
-          <div className="text-center text-sm text-text mt-4">
+          <div className="text-center text-sm text-gray-600 mt-6">
             Remember your password?{" "}
-            <a href="/login" className="text-primary font-medium hover:underline">
+            <a 
+              href="/login" 
+              className="text-primary font-medium hover:underline"
+            >
               Login
             </a>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

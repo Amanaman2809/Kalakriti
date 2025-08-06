@@ -1,101 +1,125 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import { PrismaClient } from "../../generated/prisma/client";
-import { generateOTP, hashOTP } from "../../utils/otp";
+import { generateOTP, hashOTP, sendOTPByEmail } from "../../utils/otp";
 import { canRequestOTP } from "../../lib/rateLimit";
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// TODO: Implement OTP sending service integration
-// [!] Currently all of this is just a mock, we need to integrate the real logic here
+interface OTPRequest {
+  email: string;
+}
 
-// Request OTP
-router.post("/request-otp", async (req, res) => {
-  const { phone } = req.body;
-  if (!phone) {
-    res.status(400).json({ error: "Phone number is required" });
-    return;
+interface OTPVerificationRequest {
+  email: string;
+  otp: string;
+}
+
+// Request OTP via Email
+router.post(
+  "/request-otp",
+  async (req: Request<{}, {}, OTPRequest>, res: Response) => {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (!canRequestOTP(email)) {
+        return res.status(429).json({
+          error: "Too many requests. Please try again later.",
+        });
+      }
+
+      const otp = generateOTP();
+      const hashed = hashOTP(otp);
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); 
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          otp: hashed,
+          otpExpiresAt: expiresAt,
+        },
+      });
+
+      const emailSent = await sendOTPByEmail(email, otp);
+      if (!emailSent) {
+        throw new Error("Failed to send email");
+      }
+
+      return res.status(200).json({
+        message: "OTP sent successfully to your email",
+      });
+    } catch (error) {
+      console.error("OTP request error:", error);
+      return res.status(500).json({ error: "Failed to process OTP request" });
+    }
   }
-
-  if (!canRequestOTP(phone)) {
-    res.status(429).json({ error: "Too many requests" });
-    return;
-  }
-
-  const user = await prisma.user.findUnique({ where: { phone } });
-  if (!user) {
-    res.status(404).json({ error: "User not found" });
-    return;
-  }
-
-  const otp = generateOTP();
-  const hashed = hashOTP(otp);
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      otp: hashed,
-      otpExpiresAt: expiresAt,
-    },
-  });
-
-  // TODO: Integrate OTP sending service. For now, just logging the OTP
-  // [!] Mock implementation
-  console.log(`OTP sent to ${phone}: ${otp}`);
-
-  res.status(200).json({ message: "OTP sent successfully" });
-});
-
-// Mock Testing Route
-router.get("/:phone", async (req, res) => {
-  const { phone } = req.params;
-  const user = await prisma.user.findUnique({ where: { phone } });
-  if (!user || !user.otp) {
-    res.status(404).json({ error: "No otp stored for this user" });
-    return;
-  }
-
-  res.status(200).json({ hashedOtp: user.otp, expiresAt: user.otpExpiresAt });
-});
+);
 
 // Verify OTP
-router.post("/verify-otp", async (req, res) => {
-  const { phone, otp } = req.body;
+router.post(
+  "/verify-otp",
+  async (req: Request<{}, {}, OTPVerificationRequest>, res: Response) => {
+    const { email, otp } = req.body;
 
-  if (!phone || !otp) {
-    res.status(400).json({ error: "Phone and OTP are required" });
-    return;
+    if (!email || !otp) {
+      return res.status(400).json({
+        error: "Email and OTP are required",
+      });
+    }
+
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (!user || !user.otp || !user.otpExpiresAt) {
+        return res.status(400).json({ error: "Invalid verification request" });
+      }
+
+      if (user.otpExpiresAt < new Date()) {
+        return res.status(400).json({ error: "OTP has expired" });
+      }
+
+      const hashedInput = hashOTP(otp);
+      if (hashedInput !== user.otp) {
+        return res.status(400).json({ error: "Invalid OTP" });
+      }
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          isVerified: true,
+          otp: null,
+          otpExpiresAt: null,
+        },
+      });
+
+      return res.status(200).json({
+        message: "OTP verified successfully",
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          isVerified: true,
+        },
+      });
+    } catch (error) {
+      console.error("OTP verification error:", error);
+      return res.status(500).json({ error: "Failed to verify OTP" });
+    }
   }
-
-  const user = await prisma.user.findUnique({ where: { phone } });
-
-  if (!user || !user.otp || !user.otpExpiresAt) {
-    res.status(400).json({ error: "OTP not requested or invalid phone" });
-    return;
-  }
-
-  if (user.otpExpiresAt < new Date()) {
-    res.status(400).json({ error: "OTP expired" });
-    return;
-  }
-
-  const hashedInput = hashOTP(otp);
-  if (hashedInput !== user.otp) {
-    res.status(400).json({ error: "Invalid OTP" });
-    return;
-  }
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      isVerified: true,
-      otp: null,
-      otpExpiresAt: null,
-    },
-  });
-
-  res.status(200).json({ message: "OTP verified successfully" });
-});
+);
 
 export default router;
