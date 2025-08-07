@@ -168,7 +168,7 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-accent flex items-center justify-center p-4">
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -176,13 +176,13 @@ export default function ResetPasswordPage() {
         className="w-full max-w-md bg-white rounded-xl shadow-lg overflow-hidden"
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-center">
+        <div className="bg-primary p-6 text-center">
           <h2 className="text-2xl font-bold text-white">
             {step === "email" && "Reset Password"}
             {step === "otp" && "Verify OTP"}
             {step === "password" && "New Password"}
           </h2>
-          <p className="text-indigo-100 mt-1">
+          <p className="text-accent mt-1">
             {step === "email" && "Enter your email to receive OTP"}
             {step === "otp" && `Enter OTP sent to ${email}`}
             {step === "password" && "Create a new password"}
@@ -198,7 +198,7 @@ export default function ResetPasswordPage() {
                   <div className={`flex items-center justify-center w-8 h-8 rounded-full ${(step === "email" && num === 1) ||
                       (step === "otp" && num <= 2) ||
                       (step === "password" && num <= 3)
-                      ? "bg-indigo-600 text-white"
+                      ? "bg-primary text-white"
                       : "bg-gray-200 text-gray-600"
                     }`}>
                     {num}
@@ -206,7 +206,7 @@ export default function ResetPasswordPage() {
                   {num < 3 && (
                     <div className={`w-12 h-1 ${(step === "otp" && num === 1) ||
                         (step === "password" && num <= 2)
-                        ? "bg-indigo-600"
+                        ? "bg-primary"
                         : "bg-gray-200"
                       }`}></div>
                   )}
@@ -257,14 +257,14 @@ export default function ResetPasswordPage() {
                     setErrorMsg("");
                   }}
                   placeholder="your@email.com"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-transparent transition"
                   required
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center"
+                className="w-full bg-primary hover:bg-blue-950 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center"
               >
                 {loading ? (
                   <>
@@ -302,7 +302,7 @@ export default function ResetPasswordPage() {
                     setErrorMsg("");
                   }}
                   placeholder="123456"
-                  className="w-full px-4 py-3 text-center text-xl border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                  className="w-full px-4 py-3 text-center text-xl border border-gray-300 rounded-lg focus:border-transparent transition"
                   required
                   maxLength={6}
                   pattern="\d{6}"
@@ -313,7 +313,7 @@ export default function ResetPasswordPage() {
                     type="button"
                     onClick={requestOTP}
                     disabled={resendDisabled}
-                    className="text-xs text-indigo-600 hover:underline disabled:text-gray-400"
+                    className="text-xs text-primary hover:underline disabled:text-gray-400"
                   >
                     {resendDisabled ? `Resend OTP in ${countdown}s` : "Resend OTP"}
                   </button>
@@ -326,14 +326,14 @@ export default function ResetPasswordPage() {
                     setStep("email");
                     setOtp("");
                   }}
-                  className="px-4 py-2 text-indigo-600 font-medium rounded-lg hover:bg-indigo-50 transition"
+                  className="px-4 py-2 text-primary font-medium rounded-lg hover:bg-accent transition"
                 >
                   Back
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition duration-200"
+                  className="px-4 py-2 bg-primary hover:bg-blue-950 text-white font-medium rounded-lg transition duration-200"
                 >
                   {loading ? "Verifying..." : "Verify OTP"}
                 </button>
@@ -363,7 +363,7 @@ export default function ResetPasswordPage() {
                       setErrorMsg("");
                     }}
                     placeholder="••••••••"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent pr-10 transition"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-transparent pr-10 transition"
                     required
                     minLength={8}
                   />
@@ -402,7 +402,7 @@ export default function ResetPasswordPage() {
                     setErrorMsg("");
                   }}
                   placeholder="••••••••"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-transparent transition"
                   required
                 />
               </div>
@@ -415,14 +415,14 @@ export default function ResetPasswordPage() {
                     setPassword("");
                     setConfirmPassword("");
                   }}
-                  className="px-4 py-2 text-indigo-600 font-medium rounded-lg hover:bg-indigo-50 transition"
+                  className="px-4 py-2 text-primary font-medium rounded-lg hover:bg-accent transition"
                 >
                   Back
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center"
+                  className="px-4 py-2 bg-primary hover:bg-blue-950 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center"
                 >
                   {loading ? (
                     <>
@@ -444,7 +444,7 @@ export default function ResetPasswordPage() {
             Remember your password?{" "}
             <a
               href="/login"
-              className="text-indigo-600 font-medium hover:underline"
+              className="text-primary font-medium hover:underline"
             >
               Login
             </a>
