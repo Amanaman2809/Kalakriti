@@ -1,3 +1,4 @@
+
 import express, { Request, Response } from "express";
 import { PrismaClient } from "../../generated/prisma/client";
 import { generateOTP, hashOTP, sendOTPByEmail } from "../../utils/otp";
@@ -15,7 +16,8 @@ interface OTPVerificationRequest {
   otp: string;
 }
 
-// Request OTP via Email
+
+// Request OTP
 router.post(
   "/request-otp",
   async (req: Request<{}, {}, OTPRequest>, res: Response) => {
@@ -26,6 +28,11 @@ router.post(
     }
 
     try {
+      // Validate email format
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: "Invalid email format" });
+      }
+
       const user = await prisma.user.findUnique({
         where: { email },
       });
@@ -42,7 +49,7 @@ router.post(
 
       const otp = generateOTP();
       const hashed = hashOTP(otp);
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); 
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
 
       await prisma.user.update({
         where: { id: user.id },
@@ -58,7 +65,7 @@ router.post(
       }
 
       return res.status(200).json({
-        message: "OTP sent successfully to your email",
+        message: "OTP sent successfully",
       });
     } catch (error) {
       console.error("OTP request error:", error);
