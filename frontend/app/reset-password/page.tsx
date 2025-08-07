@@ -18,27 +18,35 @@ export default function ResetPasswordPage() {
   const [resendDisabled, setResendDisabled] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
+  // Clear messages when step changes
+  useEffect(() => {
+    setErrorMsg("");
+    setSuccessMsg("");
+  }, [step]);
+
   // Countdown timer effect
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
     } else {
       setResendDisabled(false);
     }
+    return () => clearTimeout(timer);
   }, [countdown]);
 
   const requestOTP = async () => {
     try {
       setLoading(true);
       setErrorMsg("");
-      
+      setSuccessMsg("");
+
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/otp/request-otp`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({ email: email.trim() }),
         }
       );
 
@@ -48,11 +56,11 @@ export default function ResetPasswordPage() {
       }
 
       setResendDisabled(true);
-      setCountdown(60); // 60 seconds countdown
+      setCountdown(60);
       setSuccessMsg("OTP sent to your email");
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to send OTP. Please try again.");
+      throw new Error(err.message);
     } finally {
       setLoading(false);
     }
@@ -60,15 +68,19 @@ export default function ResetPasswordPage() {
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Basic email validation
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    setErrorMsg("");
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setErrorMsg("Please enter a valid email address");
       return;
     }
 
-    await requestOTP();
-    setStep("otp");
+    try {
+      await requestOTP();
+      setStep("otp");
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to send OTP. Please try again.");
+    }
   };
 
   const handleOtpSubmit = async (e: React.FormEvent) => {
@@ -76,17 +88,22 @@ export default function ResetPasswordPage() {
     setLoading(true);
     setErrorMsg("");
 
-    try {
-      if (!/^[0-9]{6}$/.test(otp)) {
-        throw new Error("Please enter a valid 6-digit OTP");
-      }
+    if (!/^[0-9]{6}$/.test(otp.trim())) {
+      setErrorMsg("Please enter a valid 6-digit OTP");
+      setLoading(false);
+      return;
+    }
 
+    try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/otp/verify-otp`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, otp }),
+          body: JSON.stringify({
+            email: email.trim(),
+            otp: otp.trim()
+          }),
         }
       );
 
@@ -108,20 +125,29 @@ export default function ResetPasswordPage() {
     setLoading(true);
     setErrorMsg("");
 
-    try {
-      if (password !== confirmPassword) {
-        throw new Error("Passwords don't match");
-      }
-      if (password.length < 8) {
-        throw new Error("Password must be at least 8 characters");
-      }
+    if (password.trim() !== confirmPassword.trim()) {
+      setErrorMsg("Passwords don't match");
+      setLoading(false);
+      return;
+    }
 
+    if (password.trim().length < 8) {
+      setErrorMsg("Password must be at least 8 characters");
+      setLoading(false);
+      return;
+    }
+
+    try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/reset-pass`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, otp, password }),
+          body: JSON.stringify({
+            email: email.trim(),
+            otp: otp.trim(),
+            password: password.trim()
+          }),
         }
       );
 
@@ -131,7 +157,9 @@ export default function ResetPasswordPage() {
       }
 
       setSuccessMsg("Password reset successfully! Redirecting to login...");
-      setTimeout(() => router.push("/login"), 2000);
+      setTimeout(() => {
+        router.push("/login");
+      }, 2000);
     } catch (err: any) {
       setErrorMsg(err.message);
     } finally {
@@ -140,20 +168,21 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-accent flex items-center justify-center p-4">
-      <motion.div 
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.3 }}
         className="w-full max-w-md bg-white rounded-xl shadow-lg overflow-hidden"
       >
         {/* Header */}
-        <div className="bg-primary p-6 text-center">
+        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-center">
           <h2 className="text-2xl font-bold text-white">
             {step === "email" && "Reset Password"}
             {step === "otp" && "Verify OTP"}
             {step === "password" && "New Password"}
           </h2>
-          <p className="text-primary mt-1">
+          <p className="text-indigo-100 mt-1">
             {step === "email" && "Enter your email to receive OTP"}
             {step === "otp" && `Enter OTP sent to ${email}`}
             {step === "password" && "Create a new password"}
@@ -166,22 +195,20 @@ export default function ResetPasswordPage() {
             <div className="flex items-center">
               {[1, 2, 3].map((num) => (
                 <div key={num} className="flex items-center">
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                    (step === "email" && num === 1) ||
-                    (step === "otp" && num <= 2) ||
-                    (step === "password" && num <= 3)
-                    ? "bg-primary text-white"
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-full ${(step === "email" && num === 1) ||
+                      (step === "otp" && num <= 2) ||
+                      (step === "password" && num <= 3)
+                      ? "bg-indigo-600 text-white"
                       : "bg-gray-200 text-gray-600"
-                  }`}>
+                    }`}>
                     {num}
                   </div>
                   {num < 3 && (
-                    <div className={`w-12 h-1 ${
-                      (step === "otp" && num === 1) ||
-                      (step === "password" && num <= 2)
-                      ? "bg-primary"
+                    <div className={`w-12 h-1 ${(step === "otp" && num === 1) ||
+                        (step === "password" && num <= 2)
+                        ? "bg-indigo-600"
                         : "bg-gray-200"
-                    }`}></div>
+                      }`}></div>
                   )}
                 </div>
               ))}
@@ -190,7 +217,7 @@ export default function ResetPasswordPage() {
 
           {/* Messages */}
           {errorMsg && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="p-3 bg-red-50 text-red-700 rounded-lg text-sm mb-4 border border-red-100"
@@ -200,7 +227,7 @@ export default function ResetPasswordPage() {
           )}
 
           {successMsg && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="p-3 bg-green-50 text-green-700 rounded-lg text-sm mb-4 border border-green-100"
@@ -225,16 +252,19 @@ export default function ResetPasswordPage() {
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setErrorMsg("");
+                  }}
                   placeholder="your@email.com"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                   required
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-primary hover:bg-blue-950 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center"
               >
                 {loading ? (
                   <>
@@ -267,9 +297,12 @@ export default function ResetPasswordPage() {
                   id="otp"
                   type="text"
                   value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
+                  onChange={(e) => {
+                    setOtp(e.target.value);
+                    setErrorMsg("");
+                  }}
                   placeholder="123456"
-                  className="w-full px-4 py-3 text-center text-xl border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+                  className="w-full px-4 py-3 text-center text-xl border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                   required
                   maxLength={6}
                   pattern="\d{6}"
@@ -280,7 +313,7 @@ export default function ResetPasswordPage() {
                     type="button"
                     onClick={requestOTP}
                     disabled={resendDisabled}
-                    className="text-xs text-primary hover:underline disabled:text-gray-400"
+                    className="text-xs text-indigo-600 hover:underline disabled:text-gray-400"
                   >
                     {resendDisabled ? `Resend OTP in ${countdown}s` : "Resend OTP"}
                   </button>
@@ -289,15 +322,18 @@ export default function ResetPasswordPage() {
               <div className="flex justify-between">
                 <button
                   type="button"
-                  onClick={() => setStep("email")}
-                  className="px-4 py-2 text-primary font-medium rounded-lg hover:bg-accent transition"
+                  onClick={() => {
+                    setStep("email");
+                    setOtp("");
+                  }}
+                  className="px-4 py-2 text-indigo-600 font-medium rounded-lg hover:bg-indigo-50 transition"
                 >
                   Back
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-primary hover:bg-blue-950 text-white font-medium rounded-lg transition duration-200"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition duration-200"
                 >
                   {loading ? "Verifying..." : "Verify OTP"}
                 </button>
@@ -322,9 +358,12 @@ export default function ResetPasswordPage() {
                     id="password"
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setErrorMsg("");
+                    }}
                     placeholder="••••••••"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent pr-10 transition"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent pr-10 transition"
                     required
                     minLength={8}
                   />
@@ -358,9 +397,12 @@ export default function ResetPasswordPage() {
                   id="confirmPassword"
                   type={showPassword ? "text" : "password"}
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setErrorMsg("");
+                  }}
                   placeholder="••••••••"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                   required
                 />
               </div>
@@ -368,15 +410,19 @@ export default function ResetPasswordPage() {
               <div className="flex justify-between">
                 <button
                   type="button"
-                  onClick={() => setStep("otp")}
-                  className="px-4 py-2 text-primary font-medium rounded-lg hover:bg-accent transition"
+                  onClick={() => {
+                    setStep("otp");
+                    setPassword("");
+                    setConfirmPassword("");
+                  }}
+                  className="px-4 py-2 text-indigo-600 font-medium rounded-lg hover:bg-indigo-50 transition"
                 >
                   Back
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-primary hover:bg-blue-950 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center"
                 >
                   {loading ? (
                     <>
@@ -396,9 +442,9 @@ export default function ResetPasswordPage() {
 
           <div className="text-center text-sm text-gray-600 mt-6">
             Remember your password?{" "}
-            <a 
-              href="/login" 
-              className="text-primary font-medium hover:underline"
+            <a
+              href="/login"
+              className="text-indigo-600 font-medium hover:underline"
             >
               Login
             </a>
