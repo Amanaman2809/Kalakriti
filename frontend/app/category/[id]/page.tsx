@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { Category, Product } from "@/utils/types";
+import Link from "next/link";
 
 export default function CategoryDetailPage() {
   const params = useParams();
@@ -81,7 +82,8 @@ export default function CategoryDetailPage() {
               </h1>
               <div className="flex items-center gap-2">
                 <span className="bg-primary text-white px-3 py-1 rounded-full text-sm font-medium">
-                  {products.length} {products.length === 1 ? "product" : "products"}
+                  {products.length}{" "}
+                  {products.length === 1 ? "product" : "products"}
                 </span>
               </div>
             </div>
@@ -93,7 +95,7 @@ export default function CategoryDetailPage() {
           <h2 className="text-2xl font-semibold mb-6 border-b border-secondary pb-2">
             Featured Products
           </h2>
-          
+
           {products.length === 0 ? (
             <div className="text-center py-12 bg-accent rounded-xl">
               <div className="text-primary mb-4">
@@ -132,20 +134,24 @@ export default function CategoryDetailPage() {
 function ProductCard({ product }: { product: Product }) {
   return (
     <div className="group relative bg-background rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 border border-secondary">
-      <div className="aspect-square relative">
-        <Image
-          src={product.images?.[0] ?? "/fallback.jpg"}
-          alt={product.name}
-          fill
-          className="object-cover group-hover:opacity-90 transition-opacity"
-          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-      </div>
+      <Link href={`/products/${product.id}`} className="block">
+        <div className="aspect-square relative hover:cursor-pointer">
+          <Image
+            src={product.images?.[0] ?? "/fallback.jpg"}
+            alt={product.name}
+            fill
+            className="object-cover group-hover:opacity-90 transition-opacity"
+            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+      </Link>
       <div className="p-4">
-        <h3 className="font-semibold mb-1 line-clamp-1">
-          {product.name}
-        </h3>
+        <Link href={`/products/${product.id}`}>
+          <h3 className="font-semibold mb-1 line-clamp-1 hover:cursor-pointer">
+            {product.name}
+          </h3>
+        </Link>
         <p className="text-sm text-text/80 mb-3 line-clamp-2">
           {product.description}
         </p>
@@ -175,11 +181,11 @@ function LoadingSkeleton() {
             </div>
           </div>
         </div>
-        
+
         <h2 className="text-2xl font-semibold mb-6 border-b border-secondary pb-2">
           <div className="h-8 w-1/3 rounded bg-secondary/20 animate-pulse"></div>
         </h2>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="space-y-4">

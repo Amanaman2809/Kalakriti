@@ -1,10 +1,9 @@
 import express, { Request, Response } from "express";
-import { PrismaClient } from "../../generated/prisma/client";
+import { Prisma, PrismaClient } from "../../generated/prisma/client";
 import { requireAuth, requireAdmin } from "../../middlewares/requireAuth";
 
 const router = express.Router();
 const prisma = new PrismaClient();
-
 router.get("/", async (_req: Request, res: Response) => {
   try {
     const products = await prisma.product.findMany({
@@ -120,15 +119,34 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
-// Admin: delete product
 router.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
   const { id } = req.params;
+
   try {
     await prisma.product.delete({ where: { id } });
-    res.status(204).end();
+    return res.status(204).end();
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Delete failed" });
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      switch (err.code) {
+        case "P2025": // Record not found
+          return res.status(404).json({ error: "Product not found" });
+        case "P2003": // Foreign key constraint violation
+          return res.status(409).json({
+            error:
+              "Cannot delete product because it is referenced in orders, cart, wishlist, or feedback",
+          });
+        default:
+          console.error("Known Prisma error:", err);
+          return res.status(500).json({ error: "Database request failed" });
+      }
+    }
+
+    if (err instanceof Prisma.PrismaClientValidationError) {
+      return res.status(400).json({ error: "Invalid product ID format" });
+    }
+
+    console.error("Unexpected error:", err);
+    return res.status(500).json({ error: "Unexpected server error" });
   }
 });
 

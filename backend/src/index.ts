@@ -15,6 +15,7 @@ import searchRoute from "./routes/search";
 import createAdminRoute from "./routes/auth/create-admin";
 import cloudinaryRoute from "./routes/cloudinary";
 import addressRoute from "./routes/address";
+import adminStats from "./routes/admin/dashboard";
 
 dotenv.config();
 const app = express();
@@ -24,7 +25,7 @@ app.use(
   cors({
     origin: `${process.env.NEXT_PUBLIC_BASE_URL}`,
     credentials: true,
-  })
+  }),
 );
 app.use("/api/auth", authRoute);
 app.use("/api/otp", otpRoute);
@@ -39,7 +40,8 @@ app.use("/api/orders", orderRoute);
 app.use("/api", feedbackRoute);
 app.use("/api/search", searchRoute);
 app.use("/api/cloudinary", cloudinaryRoute);
-app.use("/api/address", addressRoute);
+app.use("/api/addresses", addressRoute);
+app.use("/api", adminStats);
 
 app.get("/", (_req, res) => {
   res.send("Hello from Kalakriti backend!");
