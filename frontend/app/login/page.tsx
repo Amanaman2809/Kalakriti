@@ -41,7 +41,7 @@ export default function LoginPage() {
         throw new Error(data.error || "Login failed");
       }
       localStorage.setItem("token", data.token);
-      router.push("/"); // or wherever
+      router.push("/");
     } catch (err: any) {
       setErrorMsg(err.message || "Unexpected error");
     } finally {
@@ -61,50 +61,69 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-accent flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-background rounded-xl shadow-lg overflow-hidden">
-        <div className="bg-primary p-6 text-center">
+    <div className="min-h-screen bg-gradient-to-br from-accent via-accent/90 to-primary/70 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute -top-20 -left-20 w-72 h-72 bg-primary/10 rounded-full"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-background/20 rounded-full"></div>
+        <div className="absolute top-1/3 right-1/4 w-40 h-40 bg-primary/20 rounded-full"></div>
+      </div>
+
+      <div className="w-full max-w-md bg-background/95 backdrop-blur-md rounded-2xl overflow-hidden border border-white/10 z-10">
+        <div className="bg-gradient-to-r from-primary to-primary/80 p-7 text-center relative">
           <h2 className="text-2xl font-bold text-white">Welcome Back</h2>
-          <p className="text-secondary mt-1">Sign in to your account</p>
+          <p className="text-secondary/90 mt-2">Sign in to continue your journey</p>
         </div>
 
-        <form onSubmit={handleLogin} className="p-6 space-y-5">
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-text mb-1">
+        <form onSubmit={handleLogin} className="p-7 space-y-6">
+          <div className="space-y-5">
+            <div className="relative">
+              <label htmlFor="email" className="block text-sm font-medium text-text mb-2">
                 Email Address
               </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                className="w-full px-4 py-2 border border-secondary rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                required
-                autoComplete="username"
-              />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className="w-full pl-10 pr-4 py-3 border border-secondary/30 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-transparent bg-background/50 transition-all duration-200"
+                  required
+                  autoComplete="username"
+                />
+              </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-text mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-text mb-2">
                 Password
               </label>
               <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-4 py-2 border border-secondary rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent pr-10"
+                  className="w-full pl-10 pr-10 py-3 border border-secondary/30 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-transparent bg-background/50 transition-all duration-200"
                   required
                   autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-text"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-text/70 hover:text-primary transition-colors duration-200"
                 >
                   {showPassword ? (
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -118,10 +137,10 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
-              <div className="text-right mt-1">
+              <div className="text-right mt-2">
                 <a
                   href="/reset-password"
-                  className="text-xs text-primary hover:underline"
+                  className="text-xs text-primary hover:underline transition-colors duration-200"
                 >
                   Forgot password?
                 </a>
@@ -130,7 +149,10 @@ export default function LoginPage() {
           </div>
 
           {errorMsg && (
-            <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">
+            <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               {errorMsg}
             </div>
           )}
@@ -138,27 +160,32 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary hover:bg-opacity-90 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center"
+            className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white font-medium py-3 px-4 rounded-xl transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
           >
             {loading ? (
               <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 Signing in...
               </>
             ) : (
-              "Sign In"
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                </svg>
+                Sign In
+              </>
             )}
           </button>
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="w-full border-t border-secondary/30"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-background text-text">Or</span>
+              <span className="px-3 bg-background text-text/70">Or continue with</span>
             </div>
           </div>
 
@@ -166,7 +193,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded-lg transition duration-200"
+            className="w-full flex items-center justify-center gap-3 bg-white border border-secondary/30 hover:border-secondary/50 text-gray-700 font-medium py-3 px-4 rounded-xl transition-all duration-300 shadow-sm hover:shadow-md"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -177,11 +204,11 @@ export default function LoginPage() {
             Continue with Google
           </button>
 
-          <div className="text-center text-sm text-text">
+          <div className="text-center text-sm text-text/80">
             Don't have an account?{" "}
             <a
               href="/signup"
-              className="text-primary font-medium hover:underline"
+              className="text-primary font-medium hover:underline transition-colors duration-200"
             >
               Sign up
             </a>
