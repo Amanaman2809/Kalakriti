@@ -13,7 +13,8 @@ import {
   X,
   Home,
   Building,
-  Navigation,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 interface UserData {
@@ -61,21 +62,24 @@ export default function AccountSetting() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
+
   const [addressForm, setAddressForm] = useState<AddressFormData>({
     street: "",
     city: "",
     state: "",
-    country: "",
+    country: "India",
     postalCode: "",
     phone: "",
   });
+
   const [profileForm, setProfileForm] = useState<ProfileFormData>({
     name: "",
     email: "",
     phone: "",
   });
 
-  // Fetch user data
+  // Your existing functions here (fetchUserData, fetchAddresses, etc.)
   const fetchUserData = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -84,7 +88,7 @@ export default function AccountSetting() {
         return;
       }
 
-      const response = await fetch("http://localhost:5000/api/auth/me", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -94,11 +98,10 @@ export default function AccountSetting() {
 
       const data = await response.json();
       setUser(data.user);
-      // Initialize profile form with user data
       setProfileForm({
         name: data.user.name,
         email: data.user.email,
-        phone: data.user.phone,
+        phone: data.user.phone || "",
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -107,11 +110,10 @@ export default function AccountSetting() {
     }
   };
 
-  // Fetch addresses
   const fetchAddresses = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/addresses", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/addresses`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -124,9 +126,7 @@ export default function AccountSetting() {
         setUser({ ...user, address: data.data });
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch addresses",
-      );
+      setError(err instanceof Error ? err.message : "Failed to fetch addresses");
     }
   };
 
@@ -134,31 +134,29 @@ export default function AccountSetting() {
     fetchUserData();
   }, []);
 
-  // Handle profile form changes
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProfileForm({ ...profileForm, [e.target.name]: e.target.value });
   };
 
-  // Handle address form changes
   const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAddressForm({ ...addressForm, [e.target.name]: e.target.value });
   };
 
-  // Reset address form
   const resetAddressForm = () => {
     setAddressForm({
       street: "",
       city: "",
       state: "",
-      country: "",
+      country: "India",
       postalCode: "",
       phone: "",
     });
     setEditingAddressId(null);
     setIsAddingAddress(false);
+    setError("");
+    setSuccessMessage("");
   };
 
-  // Reset profile form to original values
   const resetProfileForm = () => {
     if (user) {
       setProfileForm({
@@ -168,44 +166,48 @@ export default function AccountSetting() {
       });
     }
     setIsEditingProfile(false);
+    setError("");
+    setSuccessMessage("");
   };
 
-  // Update profile
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setProcessing(true);
+    setError("");
+
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(
-        "http://localhost:5000/api/auth/edit-profile",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(profileForm),
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/edit-profile`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify(profileForm),
+      });
 
       const data = await response.json();
 
-      if (!response.ok)
-        throw new Error(data.error || "Failed to update profile");
+      if (!response.ok) throw new Error(data.error || "Failed to update profile");
 
       setSuccessMessage("Profile updated successfully!");
       setIsEditingProfile(false);
-      fetchUserData(); // Refresh user data
+      fetchUserData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update profile");
+    } finally {
+      setProcessing(false);
     }
   };
 
-  // Add new address
   const handleAddAddress = async (e: React.FormEvent) => {
     e.preventDefault();
+    setProcessing(true);
+    setError("");
+
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/addresses", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/addresses`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -220,98 +222,88 @@ export default function AccountSetting() {
 
       setSuccessMessage("Address added successfully!");
       resetAddressForm();
-      fetchAddresses(); // Refresh addresses
+      fetchAddresses();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add address");
+    } finally {
+      setProcessing(false);
     }
   };
 
-  // Update address
   const handleUpdateAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingAddressId) return;
 
+    setProcessing(true);
+    setError("");
+
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(
-        `http://localhost:5000/api/addresses/${editingAddressId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(addressForm),
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/addresses/${editingAddressId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify(addressForm),
+      });
 
       const data = await response.json();
 
-      if (!response.ok)
-        throw new Error(data.error || "Failed to update address");
+      if (!response.ok) throw new Error(data.error || "Failed to update address");
 
       setSuccessMessage("Address updated successfully!");
       resetAddressForm();
-      fetchAddresses(); // Refresh addresses
+      fetchAddresses();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update address");
+    } finally {
+      setProcessing(false);
     }
   };
 
-  // Delete address
   const handleDeleteAddress = async (id: string) => {
     if (!confirm("Are you sure you want to delete this address?")) return;
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(
-        `http://localhost:5000/api/addresses/${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/addresses/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
 
       if (!response.ok) throw new Error("Failed to delete address");
 
       setSuccessMessage("Address deleted successfully!");
-      fetchAddresses(); // Refresh addresses
+      fetchAddresses();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete address");
     }
   };
 
-  // Set default address
   const handleSetDefaultAddress = async (id: string) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(
-        `http://localhost:5000/api/addresses/${id}/set-default`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/addresses/${id}/set-default`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
 
       const data = await response.json();
 
-      if (!response.ok)
-        throw new Error(data.error || "Failed to set default address");
+      if (!response.ok) throw new Error(data.error || "Failed to set default address");
 
       setSuccessMessage("Default address updated successfully!");
-      fetchAddresses(); // Refresh addresses
+      fetchAddresses();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to set default address",
-      );
+      setError(err instanceof Error ? err.message : "Failed to set default address");
     }
   };
 
-  // Start editing an address
   const startEditingAddress = (address: Address) => {
     setAddressForm({
       street: address.street,
@@ -327,21 +319,25 @@ export default function AccountSetting() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-gray-600">Loading your account...</p>
+        </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error && !user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-6 rounded-lg shadow-md text-center">
-          <div className="text-red-500 text-lg font-medium mb-2">Error</div>
-          <p className="text-gray-700 mb-4">{error}</p>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-text mb-2">Error</h3>
+          <p className="text-gray-600 mb-6">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
+            className="bg-primary text-white px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors"
           >
             Try Again
           </button>
@@ -352,105 +348,126 @@ export default function AccountSetting() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-gray-700">No user data found</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div className="min-h-screen bg-background py-8">
+      <div className="max-w-5xl mx-auto px-6">
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           {/* Header */}
-          <div className="px-6 py-5 border-b border-gray-200">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Account Settings
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Manage your profile information and addresses
-            </p>
+          <div className="bg-gradient-to-r from-primary to-primary/80 px-8 py-6 text-white">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-2xl font-bold">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">Account Settings</h1>
+                <p className="text-white/80">Manage your profile and addresses</p>
+              </div>
+            </div>
           </div>
 
           {/* Messages */}
           {error && (
-            <div className="mx-6 mt-6 p-4 bg-red-50 text-red-700 rounded-lg">
+            <div className="mx-8 mt-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
               {error}
             </div>
           )}
           {successMessage && (
-            <div className="mx-6 mt-6 p-4 bg-green-50 text-green-700 rounded-lg">
+            <div className="mx-8 mt-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-xl flex items-center gap-3">
+              <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <div className="w-2 h-2 bg-white rounded-full"></div>
+              </div>
               {successMessage}
             </div>
           )}
 
-          <div className="p-6 space-y-8">
+          <div className="p-8 space-y-10">
             {/* Profile Information */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <User className="w-5 h-5 mr-2" />
+            <section>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-text flex items-center gap-3">
+                  <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <User className="w-5 h-5 text-primary" />
+                  </div>
                   Personal Information
                 </h2>
                 {!isEditingProfile ? (
                   <button
                     onClick={() => setIsEditingProfile(true)}
-                    className="flex items-center px-3 py-1 text-primary hover:text-secondary font-medium"
+                    className="flex items-center gap-2 text-primary hover:text-primary/80 font-medium transition-colors"
                   >
-                    <Edit3 className="w-4 h-4 mr-1" />
-                    Edit
+                    <Edit3 className="w-4 h-4" />
+                    Edit Profile
                   </button>
                 ) : (
                   <button
                     onClick={resetProfileForm}
-                    className="flex items-center px-3 py-1 text-gray-600 hover:text-gray-800 font-medium"
+                    className="flex items-center gap-2 text-gray-600 hover:text-gray-800 font-medium transition-colors"
                   >
-                    <X className="w-4 h-4 mr-1" />
+                    <X className="w-4 h-4" />
                     Cancel
                   </button>
                 )}
               </div>
 
               {isEditingProfile ? (
-                <form onSubmit={handleProfileUpdate} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <form onSubmit={handleProfileUpdate} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Name
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Full Name
                       </label>
-                      <input
-                        name="name"
-                        value={profileForm.name}
-                        onChange={handleProfileChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                      />
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                          name="name"
+                          value={profileForm.name}
+                          onChange={handleProfileChange}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                          required
+                          placeholder="Enter your full name"
+                        />
+                      </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Email
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email Address
                       </label>
-                      <input
-                        name="email"
-                        type="email"
-                        value={profileForm.email}
-                        onChange={handleProfileChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                      />
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                          name="email"
+                          type="email"
+                          value={profileForm.email}
+                          onChange={handleProfileChange}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                          required
+                          placeholder="Enter your email"
+                        />
+                      </div>
                     </div>
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phone
-                      </label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Phone Number
+                    </label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <input
                         name="phone"
                         value={profileForm.phone}
                         onChange={handleProfileChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                         required
+                        placeholder="Enter your phone number"
                       />
                     </div>
                   </div>
@@ -458,59 +475,50 @@ export default function AccountSetting() {
                   <div className="flex justify-end">
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 flex items-center"
+                      disabled={processing}
+                      className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-70"
                     >
-                      <Save className="w-4 h-4 mr-2" />
-                      Save Changes
+                      {processing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4" />
+                          Save Changes
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Name
-                    </label>
-                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <p className="text-gray-900">{user.name}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {[
+                    { label: "Full Name", value: user.name, icon: User },
+                    { label: "Email Address", value: user.email, icon: Mail },
+                    { label: "Phone Number", value: user.phone, icon: Phone },
+                    { label: "Account Role", value: user.role, icon: User },
+                  ].map((field, index) => (
+                    <div key={index} className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <div className="flex items-center gap-3 mb-2">
+                        <field.icon className="w-4 h-4 text-gray-600" />
+                        <label className="text-sm font-medium text-gray-700">{field.label}</label>
+                      </div>
+                      <p className="text-gray-900 font-medium">{field.value}</p>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email
-                    </label>
-                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <p className="text-gray-900">{user.email}</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone
-                    </label>
-                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <p className="text-gray-900">{user.phone}</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Role
-                    </label>
-                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <p className="text-gray-900">{user.role}</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               )}
-            </div>
+            </section>
 
             {/* Address Management */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <MapPin className="w-5 h-5 mr-2" />
+            <section>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-text flex items-center gap-3">
+                  <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-primary" />
+                  </div>
                   Addresses
                 </h2>
                 <button
@@ -518,120 +526,153 @@ export default function AccountSetting() {
                     resetAddressForm();
                     setIsAddingAddress(true);
                   }}
-                  className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:text-primary hover:bg-secondary"
+                  className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl hover:bg-primary/90 transition-colors"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
+                  <Plus className="w-4 h-4" />
                   Add Address
                 </button>
               </div>
 
               {/* Add/Edit Address Form */}
               {(isAddingAddress || editingAddressId) && (
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <h3 className="text-md font-medium text-gray-900 mb-4">
-                    {editingAddressId ? "Edit Address" : "Add New Address"}
+                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 mb-6">
+                  <h3 className="text-lg font-semibold text-text mb-4 flex items-center gap-2">
+                    {editingAddressId ? (
+                      <>
+                        <Edit3 className="w-5 h-5" />
+                        Edit Address
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-5 h-5" />
+                        Add New Address
+                      </>
+                    )}
                   </h3>
 
                   <form
-                    onSubmit={
-                      editingAddressId ? handleUpdateAddress : handleAddAddress
-                    }
+                    onSubmit={editingAddressId ? handleUpdateAddress : handleAddAddress}
                     className="space-y-4"
                   >
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Street Address
                         </label>
-                        <input
-                          name="street"
-                          value={addressForm.street}
-                          onChange={handleAddressChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          required
-                        />
+                        <div className="relative">
+                          <Home className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <input
+                            name="street"
+                            value={addressForm.street}
+                            onChange={handleAddressChange}
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                            required
+                            placeholder="Enter street address"
+                          />
+                        </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           City
                         </label>
-                        <input
-                          name="city"
-                          value={addressForm.city}
-                          onChange={handleAddressChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          required
-                        />
+                        <div className="relative">
+                          <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <input
+                            name="city"
+                            value={addressForm.city}
+                            onChange={handleAddressChange}
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                            required
+                            placeholder="Enter city"
+                          />
+                        </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           State/Province
                         </label>
                         <input
                           name="state"
                           value={addressForm.state}
                           onChange={handleAddressChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                           required
+                          placeholder="Enter state"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Country
                         </label>
                         <input
                           name="country"
                           value={addressForm.country}
                           onChange={handleAddressChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                           required
+                          placeholder="Enter country"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Postal Code
                         </label>
                         <input
                           name="postalCode"
                           value={addressForm.postalCode}
                           onChange={handleAddressChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                           required
+                          placeholder="Enter postal code"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Phone Number
                         </label>
-                        <input
-                          name="phone"
-                          value={addressForm.phone}
-                          onChange={handleAddressChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          required
-                        />
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <input
+                            name="phone"
+                            value={addressForm.phone}
+                            onChange={handleAddressChange}
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                            required
+                            placeholder="Enter phone number"
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex justify-end space-x-3">
+                    <div className="flex justify-end gap-3 pt-4">
                       <button
                         type="button"
                         onClick={resetAddressForm}
-                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                        className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-secondary hvoer:text-primary flex items-center"
+                        disabled={processing}
+                        className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-70"
                       >
-                        <Save className="w-4 h-4 mr-2" />
-                        {editingAddressId ? "Update Address" : "Add Address"}
+                        {processing ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            {editingAddressId ? 'Updating...' : 'Adding...'}
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            {editingAddressId ? "Update Address" : "Add Address"}
+                          </>
+                        )}
                       </button>
                     </div>
                   </form>
@@ -644,84 +685,84 @@ export default function AccountSetting() {
                   user.address.map((address) => (
                     <div
                       key={address.id}
-                      className="border border-gray-200 rounded-lg p-4"
+                      className="border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center mb-2">
-                            {address.isDefault ? (
-                              <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-primary text-xs font-medium rounded-full mr-2">
+                          <div className="flex items-center gap-3 mb-3">
+                            {address.isDefault && (
+                              <span className="inline-flex items-center px-3 py-1 bg-primary text-white text-xs font-medium rounded-full">
                                 <Star className="w-3 h-3 mr-1 fill-current" />
                                 Default
                               </span>
-                            ) : null}
-                            <h4 className="text-md font-medium text-gray-900">
-                              {address.street}, {address.city}
+                            )}
+                            <h4 className="text-lg font-semibold text-text">
+                              {address.street}
                             </h4>
                           </div>
 
-                          <div className="text-sm text-gray-600 space-y-1">
-                            <p>{address.street}</p>
-                            <p>
-                              {address.city}, {address.state}{" "}
-                              {address.postalCode}
+                          <div className="text-gray-600 space-y-1">
+                            <p className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4 flex-shrink-0" />
+                              {address.city}, {address.state} {address.postalCode}
                             </p>
-                            <p>{address.country}</p>
-                            <p className="flex items-center">
-                              <Phone className="w-3 h-3 mr-1" />
+                            <p className="flex items-center gap-2">
+                              <Building className="w-4 h-4 flex-shrink-0" />
+                              {address.country}
+                            </p>
+                            <p className="flex items-center gap-2">
+                              <Phone className="w-4 h-4 flex-shrink-0" />
                               {address.phone}
                             </p>
-                            <p className="text-xs text-gray-500">
-                              Added:{" "}
-                              {new Date(address.createdAt).toLocaleDateString()}
+                            <p className="text-xs text-gray-500 mt-2">
+                              Added: {new Date(address.createdAt).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex space-x-2 ml-4">
+                        <div className="flex items-center gap-2 ml-6">
                           {!address.isDefault && (
                             <button
-                              onClick={() =>
-                                handleSetDefaultAddress(address.id)
-                              }
-                              className="p-2 text-primary hover:bg-blue-50 rounded-full"
+                              onClick={() => handleSetDefaultAddress(address.id)}
+                              className="p-2 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                               title="Set as default"
                             >
-                              <Star className="w-4 h-4" />
+                              <Star className="w-5 h-5" />
                             </button>
                           )}
                           <button
                             onClick={() => startEditingAddress(address)}
-                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-full"
+                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             title="Edit address"
                           >
-                            <Edit3 className="w-4 h-4" />
+                            <Edit3 className="w-5 h-5" />
                           </button>
                           <button
                             onClick={() => handleDeleteAddress(address.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-full"
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Delete address"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         </div>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-8 border border-dashed border-gray-300 rounded-lg">
-                    <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">No addresses saved yet</p>
+                  <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-2xl">
+                    <MapPin className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2">No addresses saved</h3>
+                    <p className="text-gray-500 mb-4">Add your first address to get started</p>
                     <button
                       onClick={() => setIsAddingAddress(true)}
-                      className="mt-4 text-primary hover:text-primary hover:bg-secondary font-medium"
+                      className="text-primary hover:text-primary/80 font-medium"
                     >
                       Add your first address
                     </button>
                   </div>
                 )}
               </div>
-            </div>
+            </section>
           </div>
         </div>
       </div>

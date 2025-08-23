@@ -1,8 +1,7 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { Eye, EyeOff, ArrowLeft, Mail, Lock, Shield, CheckCircle, Loader2 } from "lucide-react";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -18,13 +17,12 @@ export default function ResetPasswordPage() {
   const [resendDisabled, setResendDisabled] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
-  // Clear messages when step changes
+  // Your existing useEffect hooks and functions here...
   useEffect(() => {
     setErrorMsg("");
     setSuccessMsg("");
   }, [step]);
 
-  // Countdown timer effect
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (countdown > 0) {
@@ -41,14 +39,11 @@ export default function ResetPasswordPage() {
       setErrorMsg("");
       setSuccessMsg("");
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/otp/request-otp`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email.trim() }),
-        }
-      );
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/otp/request-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
 
       if (!res.ok) {
         const errorData = await res.json();
@@ -95,17 +90,14 @@ export default function ResetPasswordPage() {
     }
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/otp/verify-otp`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: email.trim(),
-            otp: otp.trim()
-          }),
-        }
-      );
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/otp/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          otp: otp.trim()
+        }),
+      });
 
       if (!res.ok) {
         const errorData = await res.json();
@@ -138,18 +130,15 @@ export default function ResetPasswordPage() {
     }
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/reset-pass`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: email.trim(),
-            otp: otp.trim(),
-            password: password.trim()
-          }),
-        }
-      );
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/reset-pass`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          otp: otp.trim(),
+          password: password.trim()
+        }),
+      });
 
       if (!res.ok) {
         const errorData = await res.json();
@@ -167,290 +156,284 @@ export default function ResetPasswordPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-accent flex items-center justify-center p-4">
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.3 }}
-        className="w-full max-w-md bg-white rounded-xl shadow-lg overflow-hidden"
-      >
-        {/* Header */}
-        <div className="bg-primary p-6 text-center">
-          <h2 className="text-2xl font-bold text-white">
-            {step === "email" && "Reset Password"}
-            {step === "otp" && "Verify OTP"}
-            {step === "password" && "New Password"}
-          </h2>
-          <p className="text-accent mt-1">
-            {step === "email" && "Enter your email to receive OTP"}
-            {step === "otp" && `Enter OTP sent to ${email}`}
-            {step === "password" && "Create a new password"}
-          </p>
-        </div>
+  const steps = [
+    { number: 1, title: "Email", active: step === "email" },
+    { number: 2, title: "Verify", active: step === "otp" },
+    { number: 3, title: "Reset", active: step === "password" },
+  ];
 
-        <div className="p-6">
-          {/* Step indicator */}
-          <div className="flex justify-center mb-6">
-            <div className="flex items-center">
-              {[1, 2, 3].map((num) => (
-                <div key={num} className="flex items-center">
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-full ${(step === "email" && num === 1) ||
-                      (step === "otp" && num <= 2) ||
-                      (step === "password" && num <= 3)
-                      ? "bg-primary text-white"
-                      : "bg-gray-200 text-gray-600"
-                    }`}>
-                    {num}
-                  </div>
-                  {num < 3 && (
-                    <div className={`w-12 h-1 ${(step === "otp" && num === 1) ||
-                        (step === "password" && num <= 2)
-                        ? "bg-primary"
-                        : "bg-gray-200"
-                      }`}></div>
-                  )}
-                </div>
-              ))}
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+          {/* Header */}
+          <div className="bg-primary px-8 py-6 text-white text-center">
+            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-8 h-8" />
             </div>
+            <h2 className="text-2xl font-bold">
+              {step === "email" && "Reset Password"}
+              {step === "otp" && "Verify OTP"}
+              {step === "password" && "New Password"}
+            </h2>
+            <p className="text-white/80 mt-2">
+              {step === "email" && "Enter your email to receive OTP"}
+              {step === "otp" && `Enter OTP sent to ${email}`}
+              {step === "password" && "Create a new secure password"}
+            </p>
           </div>
 
-          {/* Messages */}
-          {errorMsg && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-3 bg-red-50 text-red-700 rounded-lg text-sm mb-4 border border-red-100"
-            >
-              {errorMsg}
-            </motion.div>
-          )}
-
-          {successMsg && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-3 bg-green-50 text-green-700 rounded-lg text-sm mb-4 border border-green-100"
-            >
-              {successMsg}
-            </motion.div>
-          )}
-
-          {/* Email Step */}
-          {step === "email" && (
-            <motion.form
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              onSubmit={handleEmailSubmit}
-              className="space-y-4"
-            >
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setErrorMsg("");
-                  }}
-                  placeholder="your@email.com"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-transparent transition"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-primary hover:bg-blue-950 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center"
-              >
-                {loading ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Sending OTP...
-                  </>
-                ) : (
-                  "Send OTP"
-                )}
-              </button>
-            </motion.form>
-          )}
-
-          {/* OTP Step */}
-          {step === "otp" && (
-            <motion.form
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              onSubmit={handleOtpSubmit}
-              className="space-y-4"
-            >
-              <div>
-                <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-1">
-                  OTP Code
-                </label>
-                <input
-                  id="otp"
-                  type="text"
-                  value={otp}
-                  onChange={(e) => {
-                    setOtp(e.target.value);
-                    setErrorMsg("");
-                  }}
-                  placeholder="123456"
-                  className="w-full px-4 py-3 text-center text-xl border border-gray-300 rounded-lg focus:border-transparent transition"
-                  required
-                  maxLength={6}
-                  pattern="\d{6}"
-                  inputMode="numeric"
-                />
-                <div className="text-right mt-1">
-                  <button
-                    type="button"
-                    onClick={requestOTP}
-                    disabled={resendDisabled}
-                    className="text-xs text-primary hover:underline disabled:text-gray-400"
-                  >
-                    {resendDisabled ? `Resend OTP in ${countdown}s` : "Resend OTP"}
-                  </button>
-                </div>
-              </div>
-              <div className="flex justify-between">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep("email");
-                    setOtp("");
-                  }}
-                  className="px-4 py-2 text-primary font-medium rounded-lg hover:bg-accent transition"
-                >
-                  Back
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-4 py-2 bg-primary hover:bg-blue-950 text-white font-medium rounded-lg transition duration-200"
-                >
-                  {loading ? "Verifying..." : "Verify OTP"}
-                </button>
-              </div>
-            </motion.form>
-          )}
-
-          {/* Password Step */}
-          {step === "password" && (
-            <motion.form
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              onSubmit={handlePasswordSubmit}
-              className="space-y-4"
-            >
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  New Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setErrorMsg("");
-                    }}
-                    placeholder="••••••••"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-transparent pr-10 transition"
-                    required
-                    minLength={8}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                      </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
+          <div className="p-8">
+            {/* Step Progress */}
+            <div className="flex justify-center mb-8">
+              <div className="flex items-center space-x-4">
+                {steps.map((stepItem, index) => (
+                  <div key={stepItem.number} className="flex items-center">
+                    <div className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold text-sm transition-all ${stepItem.active || (step === "otp" && stepItem.number === 1) || (step === "password" && stepItem.number <= 2)
+                        ? "bg-primary text-white shadow-lg"
+                        : "bg-gray-200 text-gray-600"
+                      }`}>
+                      {(step === "otp" && stepItem.number === 1) || (step === "password" && stepItem.number <= 2) ? (
+                        <CheckCircle className="w-5 h-5" />
+                      ) : (
+                        stepItem.number
+                      )}
+                    </div>
+                    {index < steps.length - 1 && (
+                      <div className={`w-16 h-1 mx-2 rounded-full transition-all ${(step === "otp" && stepItem.number === 1) || (step === "password" && stepItem.number <= 2)
+                          ? "bg-primary"
+                          : "bg-gray-200"
+                        }`} />
                     )}
-                  </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Messages */}
+            {errorMsg && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-3">
+                <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xs">!</span>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Must be at least 8 characters
-                </p>
+                {errorMsg}
               </div>
+            )}
 
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirm Password
-                </label>
-                <input
-                  id="confirmPassword"
-                  type={showPassword ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => {
-                    setConfirmPassword(e.target.value);
-                    setErrorMsg("");
-                  }}
-                  placeholder="••••••••"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-transparent transition"
-                  required
-                />
+            {successMsg && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                {successMsg}
               </div>
+            )}
 
-              <div className="flex justify-between">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep("otp");
-                    setPassword("");
-                    setConfirmPassword("");
-                  }}
-                  className="px-4 py-2 text-primary font-medium rounded-lg hover:bg-accent transition"
-                >
-                  Back
-                </button>
+            {/* Email Step */}
+            {step === "email" && (
+              <form onSubmit={handleEmailSubmit} className="space-y-6">
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setErrorMsg("");
+                      }}
+                      placeholder="your@email.com"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                      required
+                    />
+                  </div>
+                </div>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-primary hover:bg-blue-950 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center"
+                  className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
                 >
                   {loading ? (
                     <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Resetting...
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Sending OTP...
                     </>
                   ) : (
-                    "Reset Password"
+                    <>
+                      <Mail className="w-5 h-5" />
+                      Send OTP
+                    </>
                   )}
                 </button>
-              </div>
-            </motion.form>
-          )}
+              </form>
+            )}
 
-          <div className="text-center text-sm text-gray-600 mt-6">
-            Remember your password?{" "}
-            <a
-              href="/login"
-              className="text-primary font-medium hover:underline"
-            >
-              Login
-            </a>
+            {/* OTP Step */}
+            {step === "otp" && (
+              <form onSubmit={handleOtpSubmit} className="space-y-6">
+                <div>
+                  <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-2">
+                    OTP Code
+                  </label>
+                  <input
+                    id="otp"
+                    type="text"
+                    value={otp}
+                    onChange={(e) => {
+                      setOtp(e.target.value);
+                      setErrorMsg("");
+                    }}
+                    placeholder="123456"
+                    className="w-full px-4 py-4 text-center text-2xl font-mono border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary tracking-widest transition-colors"
+                    required
+                    maxLength={6}
+                    pattern="\d{6}"
+                    inputMode="numeric"
+                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <p className="text-sm text-gray-600">Check your email for the 6-digit code</p>
+                    <button
+                      type="button"
+                      onClick={requestOTP}
+                      disabled={resendDisabled}
+                      className="text-sm text-primary hover:text-primary/80 disabled:text-gray-400 font-medium"
+                    >
+                      {resendDisabled ? `Resend in ${countdown}s` : "Resend OTP"}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep("email");
+                      setOtp("");
+                    }}
+                    className="flex items-center gap-2 px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 bg-primary hover:bg-primary/90 text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Verifying...
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="w-5 h-5" />
+                        Verify OTP
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Password Step */}
+            {step === "password" && (
+              <form onSubmit={handlePasswordSubmit} className="space-y-6">
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                    New Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setErrorMsg("");
+                      }}
+                      placeholder="Enter new password"
+                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                      required
+                      minLength={8}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters</p>
+                </div>
+
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      id="confirmPassword"
+                      type={showPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        setErrorMsg("");
+                      }}
+                      placeholder="Confirm new password"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep("otp");
+                      setPassword("");
+                      setConfirmPassword("");
+                    }}
+                    className="flex items-center gap-2 px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 bg-primary hover:bg-primary/90 text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Resetting...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-5 h-5" />
+                        Reset Password
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            <div className="text-center text-sm text-gray-600 mt-8 pt-6 border-t border-gray-200">
+              Remember your password?{" "}
+              <a href="/login" className="text-primary font-medium hover:text-primary/80 transition-colors">
+                Back to Login
+              </a>
+            </div>
           </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
