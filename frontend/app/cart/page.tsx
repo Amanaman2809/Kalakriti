@@ -454,7 +454,7 @@ const OrderSummary = ({
       </div>
 
       <Link
-        href="/checkout"
+        href="/cart/checkout"
         className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white py-4 rounded-xl font-semibold text-lg transition-colors shadow-lg hover:shadow-xl"
       >
         Proceed to Checkout
