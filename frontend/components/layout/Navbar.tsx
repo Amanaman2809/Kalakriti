@@ -257,7 +257,7 @@ export default function Navbar() {
   return (
     <nav className="bg-white shadow-sm sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-18">
           {/* Mobile menu button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -271,10 +271,10 @@ export default function Navbar() {
           <Link href="/" className="flex-shrink-0 flex items-center gap-2">
             <Image
               src="/logo_sm.png"
-              width={40}
-              height={40}
+              width={100}
+              height={100}
               alt="Kalakriti Logo"
-              className="h-10 w-10"
+              className="h-16 w-16"
               priority
             />
             <div className="hidden sm:block">
