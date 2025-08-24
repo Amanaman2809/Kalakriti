@@ -1,123 +1,227 @@
-"use client";
-import { useEffect, useState } from "react";
+'use client';
+import { useEffect, useState } from 'react';
 import {
-  ArrowLeft,
   Search,
-  Truck,
-  Loader2,
+  Filter,
+  RefreshCw,
   Package,
-  ChevronRight,
-} from "lucide-react";
-import Link from "next/link";
-import { Order, OrderStatus, PaymentStatus } from "@/utils/types";
+  Eye,
+  Calendar,
+  CreditCard,
+  User,
+  MapPin,
+  Download,
+  Loader2,
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Minus
+} from 'lucide-react';
+import Link from 'next/link';
+import { Order, OrderStatus, PaymentStatus } from '@/utils/types';
+import { toast } from 'react-hot-toast';
+
+interface OrderStats {
+  total: number;
+  placed: number;
+  shipped: number;
+  delivered: number;
+  revenue: number;
+}
 
 export default function OrdersListPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all");
-
-  const filteredOrders = orders.filter((order) => {
-    const matchesSearch =
-      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.user?.email?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus =
-      statusFilter === "all" || order.status === statusFilter;
-    return matchesSearch && matchesStatus;
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | OrderStatus>('all');
+  const [paymentFilter, setPaymentFilter] = useState<'all' | PaymentStatus>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'total-high' | 'total-low'>('newest');
+  const [stats, setStats] = useState<OrderStats>({
+    total: 0,
+    placed: 0,
+    shipped: 0,
+    delivered: 0,
+    revenue: 0
   });
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem("token");
-        if (!token) throw new Error("Authentication token missing");
+  const filteredOrders = orders
+    .filter((order) => {
+      const matchesSearch =
+        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.user?.email?.toLowerCase().includes(searchTerm.toLowerCase());
 
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/orders/admin`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          },
-        );
+      const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+      const matchesPayment = paymentFilter === 'all' || order.paymentStatus === paymentFilter;
 
-        if (!response.ok) {
-          if (response.status === 401) throw new Error("Unauthorized access");
-          throw new Error("Failed to fetch orders");
-        }
-
-        const data: Order[] = await response.json();
-        setOrders(data || []);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Something went wrong";
-        setError(msg);
-      } finally {
-        setLoading(false);
+      return matchesSearch && matchesStatus && matchesPayment;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'oldest':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'total-high':
+          return b.total - a.total;
+        case 'total-low':
+          return a.total - b.total;
+        case 'newest':
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
-    };
+    });
 
+  const fetchOrders = async (showRefreshing = false) => {
+    try {
+      if (showRefreshing) setRefreshing(true);
+      else setLoading(true);
+
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Authentication token missing');
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/orders/admin`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 401) throw new Error('Unauthorized access');
+        throw new Error('Failed to fetch orders');
+      }
+
+      const data: Order[] = await response.json();
+      setOrders(data || []);
+
+      // Calculate stats
+      const newStats = data.reduce((acc, order) => {
+        acc.total++;
+        acc.revenue += order.total;
+        switch (order.status) {
+          case 'PLACED':
+            acc.placed++;
+            break;
+          case 'SHIPPED':
+            acc.shipped++;
+            break;
+          case 'DELIVERED':
+            acc.delivered++;
+            break;
+        }
+        return acc;
+      }, { total: 0, placed: 0, shipped: 0, delivered: 0, revenue: 0 });
+
+      setStats(newStats);
+      setError(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
     fetchOrders();
   }, []);
 
-  const getStatusColor = (status: OrderStatus) => {
-    return (
-      {
-        PLACED: "bg-amber-50 text-amber-800 border-amber-200",
-        SHIPPED: "bg-blue-50 text-blue-800 border-blue-200",
-        DELIVERED: "bg-emerald-50 text-emerald-800 border-emerald-200",
-      }[status] || "bg-gray-50 text-gray-800 border-gray-200"
-    );
+  const handleRefresh = () => {
+    fetchOrders(true);
+    toast.success('Orders refreshed');
   };
 
-  const getPaymentStatusColor = (status: PaymentStatus) => {
-    return (
-      {
-        PAID: "bg-emerald-50 text-emerald-800 border-emerald-200",
-        PENDING: "bg-amber-50 text-amber-800 border-amber-200",
-        FAILED: "bg-rose-50 text-rose-800 border-rose-200",
-      }[status] || "bg-gray-50 text-gray-800 border-gray-200"
-    );
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setPaymentFilter('all');
+    setSortBy('newest');
+  };
+
+  const exportOrders = () => {
+    // Implement CSV export
+    const csvContent = [
+      ['Order ID', 'Customer', 'Date', 'Status', 'Payment', 'Total'].join(','),
+      ...filteredOrders.map(order => [
+        order.id.slice(0, 8).toUpperCase(),
+        order.user?.name || 'N/A',
+        new Date(order.createdAt).toLocaleDateString(),
+        order.status,
+        order.paymentStatus,
+        order.total.toFixed(2)
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `orders-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    toast.success('Orders exported successfully');
+  };
+
+  const getStatusConfig = (status: OrderStatus) => {
+    const configs = {
+      PLACED: {
+        color: 'bg-yellow-50 text-yellow-800 border-yellow-200',
+        icon: Package,
+        trend: 'neutral'
+      },
+      SHIPPED: {
+        color: 'bg-blue-50 text-blue-800 border-blue-200',
+        icon: Package,
+        trend: 'up'
+      },
+      DELIVERED: {
+        color: 'bg-green-50 text-green-800 border-green-200',
+        icon: Package,
+        trend: 'up'
+      }
+    };
+    return configs[status];
+  };
+
+  const getPaymentStatusConfig = (status: PaymentStatus) => {
+    const configs = {
+      PAID: { color: 'bg-green-50 text-green-800 border-green-200' },
+      PENDING: { color: 'bg-yellow-50 text-yellow-800 border-yellow-200' },
+      FAILED: { color: 'bg-red-50 text-red-800 border-red-200' }
+    };
+    return configs[status];
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-gray-600">Loading orders...</p>
+        </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error && orders.length === 0) {
     return (
-      <div className="px-6 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h2 className="text-xl font-bold text-red-500 mb-2">
-              Error Loading Orders
-            </h2>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <div className="flex justify-center space-x-3">
-              <Link
-                href="/admin"
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 flex items-center gap-1"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Dashboard
-              </Link>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 flex items-center gap-1"
-              >
-                <Loader2 className="h-4 w-4" />
-                Retry
-              </button>
-            </div>
-          </div>
+      <div className="max-w-md mx-auto mt-16">
+        <div className="bg-white rounded-2xl shadow-lg p-8 text-center border border-red-200">
+          <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-red-600 mb-2">Error Loading Orders</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={() => fetchOrders()}
+            className="bg-primary text-white px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
@@ -125,90 +229,189 @@ export default function OrdersListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Order Management</h1>
-          <p className="text-gray-500">View and manage customer orders</p>
+          <h1 className="text-3xl font-bold text-gray-900">Order Management</h1>
+          <p className="text-gray-600 mt-1">Monitor and manage all customer orders</p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm flex items-center gap-1">
-            <Package className="h-4 w-4" />
-            {filteredOrders.length}{" "}
-            {filteredOrders.length === 1 ? "order" : "orders"}
-          </span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <button
+            onClick={exportOrders}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            Export
+          </button>
         </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        {[
+          {
+            label: 'Total Orders',
+            value: stats.total,
+            icon: Package,
+            color: 'text-blue-600 bg-blue-50',
+            trend: stats.total > 0 ? 'up' : 'neutral'
+          },
+          {
+            label: 'Placed',
+            value: stats.placed,
+            icon: Package,
+            color: 'text-yellow-600 bg-yellow-50',
+            trend: 'neutral'
+          },
+          {
+            label: 'Shipped',
+            value: stats.shipped,
+            icon: Package,
+            color: 'text-blue-600 bg-blue-50',
+            trend: 'up'
+          },
+          {
+            label: 'Delivered',
+            value: stats.delivered,
+            icon: Package,
+            color: 'text-green-600 bg-green-50',
+            trend: 'up'
+          },
+          {
+            label: 'Revenue',
+            value: `₹${stats.revenue.toLocaleString()}`,
+            icon: CreditCard,
+            color: 'text-emerald-600 bg-emerald-50',
+            trend: 'up'
+          }
+        ].map((stat, index) => {
+          const Icon = stat.icon;
+          const TrendIcon = stat.trend === 'up' ? TrendingUp : stat.trend === 'down' ? TrendingDown : Minus;
+
+          return (
+            <div key={index} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between">
+                <div className={`w-12 h-12 rounded-xl ${stat.color} flex items-center justify-center`}>
+                  <Icon className="h-6 w-6" />
+                </div>
+                <TrendIcon className={`h-4 w-4 ${stat.trend === 'up' ? 'text-green-500' :
+                    stat.trend === 'down' ? 'text-red-500' : 'text-gray-400'
+                  }`} />
+              </div>
+              <div className="mt-4">
+                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                <p className="text-sm text-gray-600">{stat.label}</p>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-4 md:p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="relative mt-6">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              aria-label="Search orders"
-              placeholder="Search orders..."
-              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        <div className="flex flex-col lg:flex-row gap-4">
+          {/* Search */}
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search orders, customers, emails..."
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
-          <div className="flex flex-col ">
-            <label className="text-sm font-medium text-gray-700 mb-1">
-              Order Status
-            </label>
-            <select
-              className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(e.target.value as OrderStatus | "all")
-              }
-            >
-              <option value="all">All Statuses</option>
-              <option value="PLACED">Placed</option>
-              <option value="SHIPPED">Shipped</option>
-              <option value="DELIVERED">Delivered</option>
-            </select>
+
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="min-w-[180px]">
+              <select
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-colors appearance-none bg-white"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as OrderStatus | 'all')}
+              >
+                <option value="all">All Statuses</option>
+                <option value="PLACED">Placed</option>
+                <option value="SHIPPED">Shipped</option>
+                <option value="DELIVERED">Delivered</option>
+              </select>
+            </div>
+
+            <div className="min-w-[180px]">
+              <select
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-colors appearance-none bg-white"
+                value={paymentFilter}
+                onChange={(e) => setPaymentFilter(e.target.value as PaymentStatus | 'all')}
+              >
+                <option value="all">All Payments</option>
+                <option value="PAID">Paid</option>
+                <option value="PENDING">Pending</option>
+                <option value="FAILED">Failed</option>
+              </select>
+            </div>
+
+            <div className="min-w-[180px]">
+              <select
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-colors appearance-none bg-white"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="total-high">Highest Amount</option>
+                <option value="total-low">Lowest Amount</option>
+              </select>
+            </div>
+
+            {(searchTerm || statusFilter !== 'all' || paymentFilter !== 'all' || sortBy !== 'newest') && (
+              <button
+                onClick={clearFilters}
+                className="px-4 py-3 text-primary hover:text-primary/80 font-medium whitespace-nowrap"
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
-          <div className="flex flex-col">
-            <label className="text-sm font-medium text-gray-700 mb-1">
-              Sort By
-            </label>
-            <select
-              className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              onChange={(e) => {
-                // Add sorting logic here
-              }}
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="total-high">Total (High to Low)</option>
-              <option value="total-low">Total (Low to High)</option>
-            </select>
-          </div>
+        </div>
+
+        {/* Results Info */}
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-sm text-gray-600">
+            Showing {filteredOrders.length} of {orders.length} orders
+          </p>
         </div>
       </div>
 
-      {/* Orders List */}
-      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+      {/* Orders Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         {filteredOrders.length === 0 ? (
-          <div className="p-8 text-center">
-            <Truck className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900">
-              No orders found
-            </h3>
-            <p className="mt-1 text-gray-500">
-              Try adjusting your search or filter criteria
+          <div className="p-12 text-center">
+            <Package className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No orders found</h3>
+            <p className="text-gray-600 mb-6">
+              {searchTerm || statusFilter !== 'all' || paymentFilter !== 'all'
+                ? 'Try adjusting your search or filter criteria'
+                : 'Orders will appear here when customers make purchases'
+              }
             </p>
-            <button
-              onClick={() => {
-                setSearchTerm("");
-                setStatusFilter("all");
-              }}
-              className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
-            >
-              Reset filters
-            </button>
+            {(searchTerm || statusFilter !== 'all' || paymentFilter !== 'all') && (
+              <button
+                onClick={clearFilters}
+                className="bg-primary text-white px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors"
+              >
+                Clear All Filters
+              </button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -216,69 +419,94 @@ export default function OrdersListPage() {
               <thead className="bg-gray-50">
                 <tr>
                   {[
-                    "Order ID",
-                    "Customer",
-                    "Date",
-                    "Total",
-                    "Payment",
-                    "Status",
-                    "Actions",
-                  ].map((h) => (
+                    { label: 'Order ID', key: 'id' },
+                    { label: 'Customer', key: 'customer' },
+                    { label: 'Date', key: 'date' },
+                    { label: 'Items', key: 'items' },
+                    { label: 'Total', key: 'total' },
+                    { label: 'Payment', key: 'payment' },
+                    { label: 'Status', key: 'status' },
+                    { label: 'Actions', key: 'actions' }
+                  ].map((header) => (
                     <th
-                      key={h}
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      key={header.key}
+                      className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
                     >
-                      {h}
+                      {header.label}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap font-mono text-sm font-medium text-gray-900">
-                      #{order.id.slice(0, 8).toUpperCase()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {order.user?.name || "N/A"}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {order.user?.email || "N/A"}
+                  <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="text-sm font-mono font-semibold text-gray-900">
+                          #{order.id.slice(0, 8).toUpperCase()}
+                        </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                      {new Date(order.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
-                      ₹{order.total.toFixed(2)}
-                    </td>
+
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`px-2 py-1 text-xs rounded-full border ${getPaymentStatusColor(order.paymentStatus)}`}
-                        >
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-semibold mr-4">
+                          {order.user?.name?.charAt(0).toUpperCase() || 'U'}
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900">
+                            {order.user?.name || 'Unknown'}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {order.user?.email || 'No email'}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center text-sm text-gray-900">
+                        <Calendar className="h-4 w-4 text-gray-400 mr-2" />
+                        {new Date(order.createdAt).toLocaleDateString()}
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {order.items?.length || 0} item{(order.items?.length || 0) !== 1 ? 's' : ''}
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-semibold text-gray-900">
+                        ₹{order.total.toLocaleString()}
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPaymentStatusConfig(order.paymentStatus).color}`}>
                           {order.paymentStatus}
                         </span>
                         <span className="text-xs text-gray-500">
-                          ({order.paymentMode})
+                          {order.paymentMode}
                         </span>
                       </div>
                     </td>
+
                     <td className="px-6 py-4">
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(order.status)}`}
-                      >
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusConfig(order.status).color}`}>
                         {order.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link
                         href={`/admin/orders/${order.id}`}
-                        className="text-primary flex items-center  hover:text-primary/80"
+                        className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-medium"
                       >
+                        <Eye className="h-4 w-4" />
                         View Details
-                        <ChevronRight className="w-4" />
                       </Link>
                     </td>
                   </tr>

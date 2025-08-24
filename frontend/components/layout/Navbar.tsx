@@ -12,8 +12,6 @@ import {
   LogOut,
   Sparkles,
   ChevronDown,
-  Bell,
-  Settings,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -267,43 +265,6 @@ const SearchComponent = ({ isLoggedIn }: { isLoggedIn: boolean }) => {
   );
 };
 
-// ✅ Enhanced Select Component
-const StyledSelect = ({
-  value,
-  onChange,
-  options,
-  placeholder = "Select option...",
-  className = ""
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-  placeholder?: string;
-  className?: string;
-}) => (
-  <div className={`relative ${className}`}>
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="appearance-none bg-white border border-gray-300 rounded-xl px-4 py-3 pr-10 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 cursor-pointer hover:border-gray-400 w-full"
-    >
-      {placeholder && (
-        <option value="" disabled className="text-gray-500">
-          {placeholder}
-        </option>
-      )}
-      {options.map((option) => (
-        <option key={option.value} value={option.value} className="text-gray-900">
-          {option.label}
-        </option>
-      ))}
-    </select>
-    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-      <ChevronDown className="h-4 w-4 text-gray-500" />
-    </div>
-  </div>
-);
-
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -311,15 +272,29 @@ export default function Navbar() {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
-  // ✅ Use enhanced auth state
+  // Use enhanced auth state
   const { isLoggedIn, cartCount, user, mounted, logout, updateAuthState } = useAuthState();
 
-  // ✅ Enhanced logout handler
+  // Enhanced logout handler
   const handleLogout = useCallback(() => {
     logout();
     setIsProfileMenuOpen(false);
     router.push("/");
   }, [logout, router]);
+
+  const getCartCount = useCallback(() => {
+    try {
+      const cartData = localStorage.getItem("cart");
+      if (!cartData) return 0;
+
+      const cart = JSON.parse(cartData);
+      // Calculate total quantity of all items
+      return cart.reduce((total: number, item: any) => total + (item.quantity || 1), 0);
+    } catch (error) {
+      console.error("Error calculating cart count:", error);
+      return 0;
+    }
+  }, []);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -343,10 +318,10 @@ export default function Navbar() {
 
   // Update cart count when user logs in
   useEffect(() => {
-    if (mounted) {
+    if (mounted && isLoggedIn) {
       updateAuthState();
     }
-  }, [pathname, mounted, updateAuthState]);
+  }, [pathname, mounted, updateAuthState, isLoggedIn]);
 
   const navigationLinks = useMemo(() =>
     navLinks.map(({ name, href }) => (
@@ -450,18 +425,24 @@ export default function Navbar() {
             {/* Search */}
             <SearchComponent isLoggedIn={isLoggedIn} />
 
-            {/* Cart */}
             {isLoggedIn && (
               <Link
                 href="/cart"
-                className="p-2 rounded-xl hover:bg-gray-100 text-gray-600 hover:text-primary relative transition-all duration-200 group"
-                aria-label={`Shopping cart (${cartCount} items)`}
+                className="relative p-2 rounded-xl hover:bg-gray-100 text-gray-600 hover:text-primary transition-all duration-200 group"
+                aria-label={`Shopping cart with ${cartCount} items`}
               >
-                <ShoppingCart className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                <ShoppingCart className="h-6 w-6 group-hover:scale-110 transition-transform" />
+
+                {/* Enhanced Cart Badge */}
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold shadow-lg animate-pulse">
+                  <span className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-lg animate-pulse border-2 border-white">
                     {cartCount > 99 ? '99+' : cartCount}
                   </span>
+                )}
+
+                {/* Subtle pulsing effect when items are added */}
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full animate-ping opacity-20"></span>
                 )}
               </Link>
             )}

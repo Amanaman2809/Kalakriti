@@ -208,7 +208,7 @@ export default function Home() {
         }
       }));
 
-      toast.success(`🛒 Added "${productName}" to cart`, {
+      toast.success(`Added "${productName}" to cart`, {
         duration: 2000,
         position: 'top-center'
       });
