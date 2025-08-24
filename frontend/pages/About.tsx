@@ -128,93 +128,79 @@ export default function AboutPage() {
         </div>
 
 
-        {/* Content Sections */}
-        <div className="space-y-12 mb-16">
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* Card 1: Canvas of Stories */}
-            <div className="relative bg-background/90 backdrop-blur-sm rounded-xl p-6 border-l-4 border-primary overflow-hidden">
-              {/* Rajasthani decorative corner */}
-              <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 transform rotate-45 translate-x-8 -translate-y-8"></div>
+          <div className="grid md:grid-cols-3 gap-10 animate-fadeIn my-10">
+
+            {/* Card 1 */}
+          <article className="relative bg-white bg-opacity-95 backdrop-blur-md rounded-3xl border-1 border-orange-100 transition-shadow duration-300 overflow-hidden cursor-pointer group">
+            <div className="absolute top-0 right-0 w-24 h-24 -z-10 pointer-events-none">
+              <div className="w-full h-full bg-gradient-to-br from-silver/20 to-primary/10 rounded-bl-[6rem] rotate-[45deg] translate-x-8 -translate-y-8" />
+            </div>
+
+            <div className="relative z-10 p-10 flex flex-col items-center text-center">
+              <div className="w-20 h-20 mb-6 flex items-center justify-center rounded-full bg-gold shadow-xl text-white group-hover:scale-110 transition-transform duration-300">
+                <Palette className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-semibold text-primary">Canvas of Stories</h3>
+              <p className="mt-4 max-w-xs text-gray-700 leading-relaxed tracking-wide font-light">
+                In today&apos;s digital age, Kalakriti is a vibrant canvas of stories — showcasing artisans’ passion and tradition woven into every masterpiece.
+              </p>
+            </div>
+
+            <div className="absolute bottom-6 right-6 -z-10 pointer-events-none opacity-30">
+              <svg width={48} height={48} viewBox="0 0 40 40" className="text-silver">
+                <path d="M20 0 Q40 20 20 40 Q0 20 20 0 Z" fill="currentColor" />
+              </svg>
+            </div>
+          </article>
+            {/* Card 2 */}
+          <article className="relative bg-white bg-opacity-95 backdrop-blur-md rounded-3xl border-1 border-orange-100 transition-shadow duration-300 overflow-hidden cursor-pointer group">
+            <div className="absolute top-0 right-0 w-24 h-24 -z-10 pointer-events-none">
+              <div className="w-full h-full bg-gradient-to-br from-silver/20 to-primary/10 rounded-bl-[6rem] rotate-[45deg] translate-x-8 -translate-y-8" />
+            </div>
+
+            <div className="relative z-10 p-10 flex flex-col items-center text-center">
+              <div className="w-20 h-20 mb-6 flex items-center justify-center rounded-full bg-gold shadow-xl text-white group-hover:scale-110 transition-transform duration-300">
+                <Users className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-semibold text-primary">Supporting Artists</h3>
+              <p className="mt-4 max-w-xs text-gray-700 leading-relaxed tracking-wide font-light">
+                Empowering emerging artisans by providing a platform for their craft to reach the global audience.
+              </p>
+            </div>
+
+            <div className="absolute bottom-6 right-6 -z-10 pointer-events-none opacity-30">
+              <svg width={48} height={48} viewBox="0 0 40 40" className="text-silver">
+                <path d="M20 0 Q40 20 20 40 Q0 20 20 0 Z" fill="currentColor" />
+              </svg>
+            </div>
+          </article>
+            {/* Card 3 */}
+            <article className="relative bg-white bg-opacity-95 backdrop-blur-md rounded-3xl border-1 border-orange-100 transition-shadow duration-300 overflow-hidden cursor-pointer group">
+              <div className="absolute top-0 right-0 w-24 h-24 -z-10 pointer-events-none">
+                <div className="w-full h-full bg-gradient-to-br from-silver/20 to-primary/10 rounded-bl-[6rem] rotate-[45deg] translate-x-8 -translate-y-8" />
               </div>
 
-              <div className="relative z-10">
-                <div className="w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center mb-4 shadow-md">
-                  <Palette className="w-6 h-6 text-white" />
+              <div className="relative z-10 p-10 flex flex-col items-center text-center">
+                <div className="w-20 h-20 mb-6 flex items-center justify-center rounded-full bg-gold shadow-xl text-white group-hover:scale-110 transition-transform duration-300">
+                  <Heart className="w-10 h-10" />
                 </div>
-                <h4 className="font-bold text-text mb-3 text-lg">Canvas of Stories</h4>
-                <p className="text-text/80 leading-relaxed">
-                  In today's digital world, we envisioned Kalakriti as more than just an online art platform.
-                  It's a canvas of stories — showcasing the people, process, and passion behind every masterpiece.
+                <h3 className="text-2xl font-semibold text-primary">Cultural Identity</h3>
+                <p className="mt-4 max-w-xs text-gray-700 leading-relaxed tracking-wide font-light">
+                  Timeless handcrafted art conveying the rich cultural heritage and vibrant emotions of India.
                 </p>
               </div>
 
-              {/* Traditional pattern overlay */}
-              <div className="absolute bottom-2 right-2 opacity-10">
-                <svg width="40" height="40" viewBox="0 0 40 40" className="text-primary">
-                  <path fill="currentColor" d="M20,0 L24,16 L40,20 L24,24 L20,40 L16,24 L0,20 L16,16 Z" />
+              <div className="absolute bottom-6 right-6 -z-10 pointer-events-none opacity-30">
+                <svg width={48} height={48} viewBox="0 0 40 40" className="text-silver">
+                  <path d="M20 0 Q40 20 20 40 Q0 20 20 0 Z" fill="currentColor" />
                 </svg>
               </div>
-            </div>
-
-            {/* Card 2: Supporting Artists */}
-            <div className="relative bg-background/90 backdrop-blur-sm rounded-xl p-6 border-l-4 border-secondary overflow-hidden">
-              {/* Rajasthani decorative corner */}
-              <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-secondary/10 transform rotate-45 translate-x-8 -translate-y-8"></div>
-              </div>
-
-              <div className="relative z-10">
-                <div className="w-12 h-12 bg-gradient-to-br from-secondary to-primary rounded-full flex items-center justify-center mb-4 shadow-md">
-                  <Users className="w-6 h-6 text-white" />
-                </div>
-                <h4 className="font-bold text-text mb-3 text-lg">Supporting Artists</h4>
-                <p className="text-text/80 leading-relaxed">
-                  Having observed creative communities and their struggles closely — especially how emerging artists often lack access
-                  to recognition and reach — we felt the need for a celebrating space.
-                </p>
-              </div>
-
-              {/* Traditional pattern overlay */}
-              <div className="absolute bottom-2 right-2 opacity-10">
-                <svg width="40" height="40" viewBox="0 0 40 40" className="text-secondary">
-                  <circle cx="20" cy="20" r="8" fill="currentColor" />
-                  <circle cx="20" cy="20" r="4" fill="none" stroke="currentColor" strokeWidth="2" />
-                </svg>
-              </div>
-            </div>
-
-            {/* Card 3: Cultural Identity */}
-            <div className="relative bg-background/90 backdrop-blur-sm rounded-xl p-6 border-l-4 border-silver overflow-hidden">
-              {/* Rajasthani decorative corner */}
-              <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-silver/10 transform rotate-45 translate-x-8 -translate-y-8"></div>
-              </div>
-
-              <div className="relative z-10">
-                <div className="w-12 h-12 bg-gradient-to-br from-silver to-primary rounded-full flex items-center justify-center mb-4 shadow-md">
-                  <Heart className="w-6 h-6 text-white" />
-                </div>
-                <h4 className="font-bold text-text mb-3 text-lg">Cultural Identity</h4>
-                <p className="text-text/80 leading-relaxed">
-                  Handcrafted art has always held a timeless place in India's cultural identity — telling stories through
-                  brushstrokes, colors, and textures that we carry forward.
-                </p>
-              </div>
-
-              {/* Traditional pattern overlay */}
-              <div className="absolute bottom-2 right-2 opacity-10">
-                <svg width="40" height="40" viewBox="0 0 40 40" className="text-silver">
-                  <path fill="currentColor" d="M20,0 Q40,20 20,40 Q0,20 20,0 Z" />
-                </svg>
-              </div>
-            </div>
-          </div>
+            </article>
         </div>
 
 
         {/* Location Section */}
-        <div className="bg-gradient-to-br from-white/90 to-orange-50/90 backdrop-blur-sm rounded-3xl p-10 mb-16 border border-orange-100">
+        <div className="bg-gradient-to-br from-white/90 to-orange-50/90 backdrop-blur-sm rounded-3xl p-10 mb-16 mt-10 border border-orange-100">
           <div className="grid md:grid-cols-2 gap-8 items-center">
             <div>
               <div className="flex items-center mb-4">
