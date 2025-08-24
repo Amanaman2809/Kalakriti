@@ -39,20 +39,53 @@ function useAuthState() {
         const token = localStorage.getItem("token");
         const userData = localStorage.getItem("user");
         const cartData = localStorage.getItem("cart");
-
         setIsLoggedIn(!!token);
         setUser(userData ? JSON.parse(userData) : null);
-        setCartCount(cartData ? JSON.parse(cartData).length : 0);
+
+        if (cartData) {
+          const cart = JSON.parse(cartData);
+          const count = Array.isArray(cart)
+            ? cart.reduce((total, item) => total + (item.quantity || 1), 0)
+            : 0;
+          setCartCount(count);
+        } else {
+          setCartCount(0);
+        }
       }
     } catch (error) {
+      setCartCount(0);
       console.error("Auth state update error:", error);
     }
-  }, []);
+  }, [localStorage.getItem("cart")]);
+  
 
   useEffect(() => {
     setMounted(true);
     updateAuthState();
   }, [updateAuthState]);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'token' || e.key === 'user' || e.key === 'cart') {
+        updateAuthState();
+      }
+    };
+
+    const handleCartUpdate = () => {
+      updateAuthState();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('cartUpdated', handleCartUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('cartUpdated', handleCartUpdate);
+    };
+  }, [mounted, updateAuthState]);
+  
 
   const logout = useCallback(() => {
     try {
@@ -61,7 +94,6 @@ function useAuthState() {
         localStorage.removeItem("user");
         localStorage.removeItem("cart");
 
-        // Update state immediately for UI refresh
         setIsLoggedIn(false);
         setUser(null);
         setCartCount(0);
@@ -282,20 +314,6 @@ export default function Navbar() {
     router.push("/");
   }, [logout, router]);
 
-  const getCartCount = useCallback(() => {
-    try {
-      const cartData = localStorage.getItem("cart");
-      if (!cartData) return 0;
-
-      const cart = JSON.parse(cartData);
-      // Calculate total quantity of all items
-      return cart.reduce((total: number, item: any) => total + (item.quantity || 1), 0);
-    } catch (error) {
-      console.error("Error calculating cart count:", error);
-      return 0;
-    }
-  }, []);
-
   // Close dropdowns on outside click
   useEffect(() => {
     if (!isProfileMenuOpen) return;
@@ -432,20 +450,18 @@ export default function Navbar() {
                 aria-label={`Shopping cart with ${cartCount} items`}
               >
                 <ShoppingCart className="h-6 w-6 group-hover:scale-110 transition-transform" />
-
-                {/* Enhanced Cart Badge */}
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-lg animate-pulse border-2 border-white">
                     {cartCount > 99 ? '99+' : cartCount}
                   </span>
                 )}
-
-                {/* Subtle pulsing effect when items are added */}
+                {/* Pulsing effect for visual feedback */}
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full animate-ping opacity-20"></span>
                 )}
               </Link>
             )}
+
 
             {/* Profile/Login */}
             {isLoggedIn ? (
