@@ -7,32 +7,69 @@ import { Request, Response, NextFunction } from "express";
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Validation middleware for address data
+// Enhanced validation middleware for address data
 const validateAddress = [
-  body("street").trim().notEmpty().withMessage("Street address is required"),
-  body("city").trim().notEmpty().withMessage("City is required"),
-  body("state").trim().notEmpty().withMessage("State/Province is required"),
-  body("country").trim().notEmpty().withMessage("Country is required"),
+  body("street")
+    .trim()
+    .notEmpty()
+    .withMessage("Street address is required")
+    .isLength({ min: 5, max: 255 })
+    .withMessage("Street address must be between 5 and 255 characters"),
+  body("city")
+    .trim()
+    .notEmpty()
+    .withMessage("City is required")
+    .isLength({ min: 2, max: 100 })
+    .withMessage("City must be between 2 and 100 characters"),
+  body("state")
+    .trim()
+    .notEmpty()
+    .withMessage("State/Province is required")
+    .isLength({ min: 2, max: 100 })
+    .withMessage("State must be between 2 and 100 characters"),
+  body("country")
+    .trim()
+    .notEmpty()
+    .withMessage("Country is required")
+    .isLength({ min: 2, max: 100 })
+    .withMessage("Country must be between 2 and 100 characters"),
   body("postalCode")
     .trim()
     .notEmpty()
     .withMessage("Postal/ZIP code is required")
-    .isPostalCode("any")
-    .withMessage("Invalid postal code format"),
+    .isLength({ min: 3, max: 20 })
+    .withMessage("Postal code must be between 3 and 20 characters"),
   body("phone")
     .trim()
     .notEmpty()
     .withMessage("Phone number is required")
-    .isMobilePhone("any")
-    .withMessage("Invalid phone number format"),
+    .isLength({ min: 10, max: 20 })
+    .withMessage("Phone number must be between 10 and 20 characters"),
 ];
 
+// Error handling middleware
+const handleValidationErrors = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      error: "Validation failed",
+      errors: errors.array(),
+    });
+  }
+  next();
+};
+
 // Get all addresses for the authenticated user
-router.get("/", requireAuth, async (req, res: Response) => {
+router.get("/", requireAuth, async (req: Request, res: Response) => {
   try {
     const addresses = await prisma.address.findMany({
       where: { userId: req.user!.id },
-      orderBy: { createdAt: "desc" },
+      orderBy: { isDefault: "desc" }, // Default addresses first
       select: {
         id: true,
         street: true,
@@ -50,6 +87,7 @@ router.get("/", requireAuth, async (req, res: Response) => {
     res.json({
       success: true,
       data: addresses,
+      count: addresses.length,
     });
   } catch (err) {
     console.error("Failed to fetch addresses:", err);
@@ -65,16 +103,8 @@ router.get(
   "/:id",
   requireAuth,
   [param("id").isUUID().withMessage("Invalid address ID")],
-  async (req: Request, res:Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({
-        success: false,
-        errors: errors.array(),
-      });
-      return;
-    }
-
+  handleValidationErrors,
+  async (req: Request, res: Response) => {
     try {
       const address = await prisma.address.findFirst({
         where: {
@@ -96,11 +126,10 @@ router.get(
       });
 
       if (!address) {
-        res.status(404).json({
+        return res.status(404).json({
           success: false,
           error: "Address not found",
         });
-        return;
       }
 
       res.json({
@@ -122,18 +151,10 @@ router.post(
   "/",
   requireAuth,
   validateAddress,
-  async (req: Request, res:Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({
-        success: false,
-        errors: errors.array(),
-      });
-      return;
-    }
-
+  handleValidationErrors,
+  async (req: Request, res: Response) => {
     try {
-      // If this is the first address, set it as default
+      // Check if this is the first address for the user
       const existingAddresses = await prisma.address.count({
         where: { userId: req.user!.id },
       });
@@ -166,6 +187,7 @@ router.post(
       res.status(201).json({
         success: true,
         data: address,
+        message: "Address created successfully",
       });
     } catch (err) {
       console.error("Failed to create address:", err);
@@ -181,35 +203,23 @@ router.post(
 router.put(
   "/:id",
   requireAuth,
-  [
-    param("id").isUUID().withMessage("Invalid address ID"),
-    ...validateAddress,
-  ],
-  async (req: Request, res:Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({
-        success: false,
-        errors: errors.array(),
-      });
-      return;
-    }
-
+  [param("id").isUUID().withMessage("Invalid address ID"), ...validateAddress],
+  handleValidationErrors,
+  async (req: Request, res: Response) => {
     try {
       // Verify address exists and belongs to user
       const existingAddress = await prisma.address.findFirst({
-        where: { 
+        where: {
           id: req.params.id,
-          userId: req.user!.id 
+          userId: req.user!.id,
         },
       });
 
       if (!existingAddress) {
-        res.status(404).json({
+        return res.status(404).json({
           success: false,
           error: "Address not found",
         });
-        return;
       }
 
       const updatedAddress = await prisma.address.update({
@@ -240,6 +250,7 @@ router.put(
       res.json({
         success: true,
         data: updatedAddress,
+        message: "Address updated successfully",
       });
     } catch (err) {
       console.error("Failed to update address:", err);
@@ -256,31 +267,22 @@ router.delete(
   "/:id",
   requireAuth,
   [param("id").isUUID().withMessage("Invalid address ID")],
-  async (req: Request, res:Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({
-        success: false,
-        errors: errors.array(),
-      });
-      return;
-    }
-
+  handleValidationErrors,
+  async (req: Request, res: Response) => {
     try {
       // Verify address exists and belongs to user
       const existingAddress = await prisma.address.findFirst({
-        where: { 
+        where: {
           id: req.params.id,
-          userId: req.user!.id 
+          userId: req.user!.id,
         },
       });
 
       if (!existingAddress) {
-        res.status(404).json({
+        return res.status(404).json({
           success: false,
           error: "Address not found",
         });
-        return;
       }
 
       // If deleting the default address, set another address as default
@@ -305,6 +307,7 @@ router.delete(
         where: { id: req.params.id },
       });
 
+      // Return 204 No Content for successful deletion
       res.status(204).end();
     } catch (err) {
       console.error("Failed to delete address:", err);
@@ -321,38 +324,29 @@ router.patch(
   "/:id/set-default",
   requireAuth,
   [param("id").isUUID().withMessage("Invalid address ID")],
-  async (req: Request, res:Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({
-        success: false,
-        errors: errors.array(),
-      });
-      return;
-    }
-
+  handleValidationErrors,
+  async (req: Request, res: Response) => {
     try {
       // Verify address exists and belongs to user
       const existingAddress = await prisma.address.findFirst({
-        where: { 
+        where: {
           id: req.params.id,
-          userId: req.user!.id 
+          userId: req.user!.id,
         },
       });
 
       if (!existingAddress) {
-        res.status(404).json({
+        return res.status(404).json({
           success: false,
           error: "Address not found",
         });
-        return;
       }
 
       // Transaction to ensure atomic update
       const [_, defaultAddress] = await prisma.$transaction([
         // Reset all other addresses to non-default
         prisma.address.updateMany({
-          where: { 
+          where: {
             userId: req.user!.id,
             isDefault: true,
             id: { not: req.params.id },
@@ -381,6 +375,7 @@ router.patch(
       res.json({
         success: true,
         data: defaultAddress,
+        message: "Default address updated successfully",
       });
     } catch (err) {
       console.error("Failed to set default address:", err);
