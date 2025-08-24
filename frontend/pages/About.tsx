@@ -49,7 +49,7 @@ export default function AboutPage() {
         {/* Hero Section */}
         <div className="text-center mb-16">
 
-          <h1 className="text-4xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-primary bg-clip-text text-transparent">
             About Kalakriti
           </h1>
 
