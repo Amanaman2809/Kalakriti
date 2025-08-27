@@ -56,7 +56,7 @@ function useAuthState() {
       setCartCount(0);
       console.error("Auth state update error:", error);
     }
-  }, [localStorage.getItem("cart")]);
+  }, []);
   
 
   useEffect(() => {
