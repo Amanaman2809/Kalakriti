@@ -18,15 +18,9 @@ import {
   Star,
   Users,
   Award,
-  Heart
+  Heart,
 } from "lucide-react";
-import {
-  Instagram,
-  Facebook,
-  Twitter,
-  Youtube,
-  Linkedin
-} from "lucide-react";
+import { Instagram, Facebook, Twitter, Youtube, Linkedin } from "lucide-react";
 
 interface FormData {
   name: string;
@@ -73,7 +67,10 @@ export default function Contact() {
       newErrors.message = "Message must be at least 10 characters";
     }
 
-    if (formData.phone && !/^[\+]?[1-9][\d]{0,15}$/.test(formData.phone.replace(/\s/g, ""))) {
+    if (
+      formData.phone &&
+      !/^[\+]?[1-9][\d]{0,15}$/.test(formData.phone.replace(/\s/g, ""))
+    ) {
       newErrors.phone = "Please enter a valid phone number";
     }
 
@@ -82,17 +79,19 @@ export default function Contact() {
   };
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
 
     // Clear error when user starts typing
     if (errors[name]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
         [name]: "",
       }));
@@ -111,7 +110,7 @@ export default function Contact() {
 
     try {
       // Simulate API call - replace with your actual endpoint
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Here you would typically send the form data to your API
       console.log("Form submitted:", formData);
@@ -119,7 +118,7 @@ export default function Contact() {
       setIsSubmitted(true);
       toast.success("Message sent successfully! We'll get back to you soon.", {
         duration: 5000,
-        position: 'top-center'
+        position: "top-center",
       });
 
       // Reset form
@@ -146,11 +145,12 @@ export default function Contact() {
         <div className="relative max-w-7xl mx-auto px-6 text-center">
           <div className="max-w-3xl mx-auto">
             <h1 className="text-4xl md:text-5xl font-bold mb-6 text-text">
-              Get in Touch with <span className="text-primary">Kalakriti</span>
+              Get in Touch with <span className="text-primary">Chalava</span>
             </h1>
             <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-              Have questions about our handcrafted treasures? Need help with your order?
-              We're here to help you discover the perfect piece for your collection.
+              Have questions about our handcrafted treasures? Need help with
+              your order? We're here to help you discover the perfect piece for
+              your collection.
             </p>
             <div className="flex items-center justify-center gap-6 text-sm text-gray-600">
               <div className="flex items-center gap-2">
@@ -185,8 +185,8 @@ export default function Contact() {
                 <ContactInfo
                   icon={<Mail className="w-5 h-5 text-primary" />}
                   title="Email Us"
-                  content="kalakriti@handicrafts.com"
-                  link="mailto:kalakriti@handicrafts.com"
+                  content="Chalava@handicrafts.com"
+                  link="mailto:Chalava@handicrafts.com"
                 />
 
                 <ContactInfo
@@ -201,8 +201,10 @@ export default function Contact() {
                   title="Visit Our Store"
                   content={
                     <address className="not-italic">
-                      Shop No. 30, Abhinandan Vihar<br />
-                      Near Rukmani Garden, Bajri Mandi Road<br />
+                      Shop No. 30, Abhinandan Vihar
+                      <br />
+                      Near Rukmani Garden, Bajri Mandi Road
+                      <br />
                       Vaishali Nagar, Jaipur, Rajasthan - 302034
                     </address>
                   }
@@ -235,16 +237,17 @@ export default function Contact() {
 
             {/* Social Links */}
           </div>
-            
 
           {/* Contact Form */}
           <div className="lg:col-span-2">
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-accent">
               <div className="mb-8">
-                <h2 className="text-2xl font-bold text-text mb-2">Send Us a Message</h2>
+                <h2 className="text-2xl font-bold text-text mb-2">
+                  Send Us a Message
+                </h2>
                 <p className="text-gray-600">
-                  Whether you have questions about our products, need custom work, or want to visit our store,
-                  we'd love to hear from you.
+                  Whether you have questions about our products, need custom
+                  work, or want to visit our store, we'd love to hear from you.
                 </p>
               </div>
 
@@ -253,9 +256,12 @@ export default function Contact() {
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Check className="w-8 h-8 text-green-600" />
                   </div>
-                  <h3 className="text-xl font-semibold text-text mb-2">Message Sent Successfully!</h3>
+                  <h3 className="text-xl font-semibold text-text mb-2">
+                    Message Sent Successfully!
+                  </h3>
                   <p className="text-gray-600 mb-6">
-                    Thank you for reaching out. We'll get back to you within 24 hours.
+                    Thank you for reaching out. We'll get back to you within 24
+                    hours.
                   </p>
                   <button
                     onClick={() => setIsSubmitted(false)}
@@ -354,7 +360,8 @@ export default function Contact() {
                   </button>
 
                   <p className="text-sm text-gray-500 text-center">
-                    By sending this message, you agree to our Privacy Policy and Terms of Service.
+                    By sending this message, you agree to our Privacy Policy and
+                    Terms of Service.
                   </p>
                 </form>
               )}
@@ -365,10 +372,13 @@ export default function Contact() {
         {/* Map Section */}
         <div className="mt-16">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-text mb-4">Find Us in the Pink City</h2>
+            <h2 className="text-3xl font-bold text-text mb-4">
+              Find Us in the Pink City
+            </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Visit our beautiful store in Jaipur to experience our handcrafted collections in person.
-              Our artisans and staff are always happy to share the stories behind each piece.
+              Visit our beautiful store in Jaipur to experience our handcrafted
+              collections in person. Our artisans and staff are always happy to
+              share the stories behind each piece.
             </p>
           </div>
 
@@ -390,7 +400,9 @@ export default function Contact() {
 
         {/* Trust Indicators */}
         <div className="mt-16 bg-gradient-to-r from-primary/5 to-secondary/5 rounded-2xl p-8">
-          <h3 className="text-2xl font-bold text-text text-center mb-8">Why Choose Kalakriti?</h3>
+          <h3 className="text-2xl font-bold text-text text-center mb-8">
+            Why Choose Chalava?
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <TrustIndicator
               icon={<Users className="w-8 h-8 text-primary" />}
@@ -410,29 +422,31 @@ export default function Contact() {
           </div>
         </div>
         <div className="bg-white p-8">
-          <h3 className="text-xl text-center font-bold text-text mb-6">Follow Our Journey</h3>
+          <h3 className="text-xl text-center font-bold text-text mb-6">
+            Follow Our Journey
+          </h3>
 
           <div className="flex gap-4 justify-center">
             <SocialLink
-              href="https://instagram.com/kalakriti"
+              href="https://instagram.com/Chalava"
               icon={<Instagram className="w-5 h-5" />}
               label="Instagram"
               className="bg-pink-50 hover:bg-pink-100 text-pink-600 hover:text-pink-700"
             />
             <SocialLink
-              href="https://facebook.com/kalakriti"
+              href="https://facebook.com/Chalava"
               icon={<Facebook className="w-5 h-5" />}
               label="Facebook"
               className="bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700"
             />
             <SocialLink
-              href="https://youtube.com/@kalakriti"
+              href="https://youtube.com/@Chalava"
               icon={<Youtube className="w-5 h-5" />}
               label="YouTube"
               className="bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700"
             />
             <SocialLink
-              href="https://linkedin.com/company/kalakriti"
+              href="https://linkedin.com/company/Chalava"
               icon={<Linkedin className="w-5 h-5" />}
               label="LinkedIn"
               className="bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700"
@@ -440,7 +454,8 @@ export default function Contact() {
           </div>
 
           <p className="text-sm text-gray-600 mt-6 text-center">
-            Stay updated with our latest handcrafted collections and artisan stories
+            Stay updated with our latest handcrafted collections and artisan
+            stories
           </p>
         </div>
       </div>
@@ -453,7 +468,7 @@ const ContactInfo = ({
   icon,
   title,
   content,
-  link
+  link,
 }: {
   icon: React.ReactNode;
   title: string;
@@ -461,9 +476,7 @@ const ContactInfo = ({
   link?: string;
 }) => (
   <div className="flex items-start gap-4">
-    <div className="p-3 bg-primary/10 rounded-full flex-shrink-0">
-      {icon}
-    </div>
+    <div className="p-3 bg-primary/10 rounded-full flex-shrink-0">{icon}</div>
     <div className="flex-1">
       <h3 className="font-semibold text-gray-900 mb-1">{title}</h3>
       {link ? (
@@ -491,7 +504,7 @@ const SocialLink = ({
   href,
   icon,
   label,
-  className
+  className,
 }: {
   href: string;
   icon: React.ReactNode;
@@ -524,7 +537,9 @@ const FormField = ({
   name: string;
   type: string;
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onChange: (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => void;
   error?: string;
   placeholder?: string;
   required?: boolean;
@@ -540,8 +555,9 @@ const FormField = ({
         value={value}
         onChange={onChange}
         rows={rows || 4}
-        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none ${error ? "border-red-300" : "border-gray-300"
-          }`}
+        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none ${
+          error ? "border-red-300" : "border-gray-300"
+        }`}
         placeholder={placeholder}
         required={required}
       />
@@ -551,8 +567,9 @@ const FormField = ({
         name={name}
         value={value}
         onChange={onChange}
-        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors ${error ? "border-red-300" : "border-gray-300"
-          }`}
+        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors ${
+          error ? "border-red-300" : "border-gray-300"
+        }`}
         placeholder={placeholder}
         required={required}
       />
@@ -569,7 +586,7 @@ const FormField = ({
 const TrustIndicator = ({
   icon,
   title,
-  description
+  description,
 }: {
   icon: React.ReactNode;
   title: string;

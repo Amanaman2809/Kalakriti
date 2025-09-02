@@ -2,18 +2,21 @@ import { Metadata } from "next";
 import dynamic from "next/dynamic";
 
 export const metadata: Metadata = {
-  title: "Frequently Asked Questions - Kalakriti | FAQ",
-  description: "Find answers to common questions about Kalakriti's handmade products, shipping, returns, custom orders, and more. Get the help you need quickly.",
-  keywords: "kalakriti faq, handmade products questions, shipping policy, return policy, custom orders, artisan support, handicrafts help",
-  authors: [{ name: "Kalakriti" }],
+  title: "Frequently Asked Questions - Chalava | FAQ",
+  description:
+    "Find answers to common questions about Chalava's handmade products, shipping, returns, custom orders, and more. Get the help you need quickly.",
+  keywords:
+    "Chalava faq, handmade products questions, shipping policy, return policy, custom orders, artisan support, handicrafts help",
+  authors: [{ name: "Chalava" }],
   alternates: {
-    canonical: `${process.env.NEXT_PUBLIC_BASE_URL}/faqs`
+    canonical: `${process.env.NEXT_PUBLIC_BASE_URL}/faqs`,
   },
   openGraph: {
-    title: "Frequently Asked Questions - Kalakriti",
-    description: "Get answers to common questions about our handcrafted products, shipping, and policies",
+    title: "Frequently Asked Questions - Chalava",
+    description:
+      "Get answers to common questions about our handcrafted products, shipping, and policies",
     url: `${process.env.NEXT_PUBLIC_BASE_URL}/faqs`,
-    siteName: "Kalakriti",
+    siteName: "Chalava",
     images: [
       {
         url: `${process.env.NEXT_PUBLIC_BASE_URL}/og-faqs.jpg`,

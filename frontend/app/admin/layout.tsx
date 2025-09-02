@@ -30,32 +30,32 @@ const menuItems = [
     name: "Dashboard",
     href: "/admin",
     icon: LayoutDashboard,
-    exactMatch: true
+    exactMatch: true,
   },
   {
     name: "Products",
     href: "/admin/products",
     icon: Package,
-    exactMatch: false
+    exactMatch: false,
   },
   {
     name: "Categories",
     href: "/admin/categories",
     icon: LayoutPanelTop,
-    exactMatch: false
+    exactMatch: false,
   },
   {
     name: "Orders",
     href: "/admin/orders",
     icon: ShoppingCart,
-    exactMatch: false
+    exactMatch: false,
   },
   {
     name: "Users",
     href: "/admin/users",
     icon: Users,
-    exactMatch: false
-  }
+    exactMatch: false,
+  },
 ];
 
 interface User {
@@ -82,12 +82,16 @@ export default function AdminLayout({
 
   // Enhanced auth check
   useEffect(() => {
-    setMounted(true);
+    if (pathname?.includes("/admin/login")) {
+      setLoading(false);
+      return;
+    }
 
     const checkAuth = () => {
       try {
         const token = localStorage.getItem("token");
-        const userData = localStorage.getItem("user") || localStorage.getItem("user_details");
+        const userData =
+          localStorage.getItem("user") || localStorage.getItem("user_details");
 
         if (!token || !userData) {
           router.replace("/admin/login");
@@ -95,17 +99,15 @@ export default function AdminLayout({
         }
 
         const parsedUser = JSON.parse(userData);
-
-        // Check if user is admin
-        if (parsedUser.role !== 'ADMIN') {
+        if (parsedUser.role !== "ADMIN") {
           toast.error("Access denied: Admin privileges required");
           router.replace("/login");
           return;
         }
 
         setUser(parsedUser);
-      } catch (error) {
-        console.error("Auth check error:", error);
+      } catch (err) {
+        console.error("Auth check error:", err);
         router.replace("/admin/login");
       } finally {
         setLoading(false);
@@ -113,7 +115,11 @@ export default function AdminLayout({
     };
 
     checkAuth();
-  }, [router]);
+  }, [router, pathname]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Enhanced logout handler
   const handleLogout = useCallback(() => {
@@ -149,22 +155,31 @@ export default function AdminLayout({
     if (!mobileMenuOpen && !isProfileMenuOpen) return;
 
     const handleClickOutside = (event: MouseEvent) => {
-      const sidebar = document.getElementById('admin-sidebar');
-      const menuButton = document.getElementById('mobile-menu-button');
-      const profileMenu = document.getElementById('profile-menu');
+      const sidebar = document.getElementById("admin-sidebar");
+      const menuButton = document.getElementById("mobile-menu-button");
+      const profileMenu = document.getElementById("profile-menu");
 
-      if (mobileMenuOpen && sidebar && !sidebar.contains(event.target as Node) &&
-        menuButton && !menuButton.contains(event.target as Node)) {
+      if (
+        mobileMenuOpen &&
+        sidebar &&
+        !sidebar.contains(event.target as Node) &&
+        menuButton &&
+        !menuButton.contains(event.target as Node)
+      ) {
         setMobileMenuOpen(false);
       }
 
-      if (isProfileMenuOpen && profileMenu && !profileMenu.contains(event.target as Node)) {
+      if (
+        isProfileMenuOpen &&
+        profileMenu &&
+        !profileMenu.contains(event.target as Node)
+      ) {
         setIsProfileMenuOpen(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [mobileMenuOpen, isProfileMenuOpen]);
 
   // Check if current route is active
@@ -188,12 +203,8 @@ export default function AdminLayout({
   }
 
   // Public admin pages (login, etc.)
-  if (pathname?.includes('/admin/login') || !user) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        {children}
-      </div>
-    );
+  if (pathname?.includes("/admin/login") || !user) {
+    return <div className="min-h-screen bg-gray-50">{children}</div>;
   }
 
   return (
@@ -210,21 +221,26 @@ export default function AdminLayout({
         {/* Enhanced Sidebar */}
         <aside
           id="admin-sidebar"
-          className={`fixed inset-y-0 left-0 bg-white shadow-xl border-r border-gray-200 z-50 transition-all duration-300 ease-in-out ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-            } md:translate-x-0 ${sidebarCollapsed ? "w-20" : "w-64"
-            }`}
+          className={`fixed inset-y-0 left-0 bg-white shadow-xl border-r border-gray-200 z-50 transition-all duration-300 ease-in-out ${
+            mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          } md:translate-x-0 ${sidebarCollapsed ? "w-20" : "w-64"}`}
         >
           {/* Sidebar Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <div className={`flex items-center gap-3 transition-all duration-300 ${sidebarCollapsed ? "justify-center" : ""
-              }`}>
+            <div
+              className={`flex items-center gap-3 transition-all duration-300 ${
+                sidebarCollapsed ? "justify-center" : ""
+              }`}
+            >
               <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
                 <Home className="w-6 h-6 text-white" />
               </div>
               {!sidebarCollapsed && (
                 <div>
-                  <h1 className="text-lg font-bold text-gray-900">Admin Panel</h1>
-                  <p className="text-xs text-gray-500">Kalakriti Management</p>
+                  <h1 className="text-lg font-bold text-gray-900">
+                    Admin Panel
+                  </h1>
+                  <p className="text-xs text-gray-500">Chalava Management</p>
                 </div>
               )}
             </div>
@@ -260,10 +276,11 @@ export default function AdminLayout({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group ${isActive
+                  className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group ${
+                    isActive
                       ? "bg-primary text-white shadow-lg"
                       : "text-gray-700 hover:bg-gray-100 hover:text-primary"
-                    } ${sidebarCollapsed ? "justify-center" : ""}`}
+                  } ${sidebarCollapsed ? "justify-center" : ""}`}
                 >
                   <Icon className={`w-5 h-5 ${isActive ? "text-white" : ""}`} />
                   {!sidebarCollapsed && (
@@ -283,8 +300,9 @@ export default function AdminLayout({
           <div className="p-4 border-t border-gray-200">
             <button
               onClick={handleLogout}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200 group ${sidebarCollapsed ? "justify-center" : ""
-                }`}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200 group ${
+                sidebarCollapsed ? "justify-center" : ""
+              }`}
             >
               <LogOut className="w-5 h-5" />
               {!sidebarCollapsed && <span className="font-medium">Logout</span>}
@@ -298,8 +316,11 @@ export default function AdminLayout({
         </aside>
 
         {/* Main Content Area */}
-        <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarCollapsed ? "md:ml-20" : "md:ml-64"
-          }`}>
+        <div
+          className={`flex-1 flex flex-col transition-all duration-300 ${
+            sidebarCollapsed ? "md:ml-20" : "md:ml-64"
+          }`}
+        >
           {/* Enhanced Top Bar with User Details */}
           <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">
@@ -315,13 +336,14 @@ export default function AdminLayout({
               {/* Page Title */}
               <div className="flex-1 md:flex-none">
                 <h1 className="text-xl md:text-2xl font-bold text-gray-900">
-                  {menuItems.find(item => isActiveRoute(item.href, item.exactMatch))?.name || 'Admin Panel'}
+                  {menuItems.find((item) =>
+                    isActiveRoute(item.href, item.exactMatch),
+                  )?.name || "Admin Panel"}
                 </h1>
               </div>
 
               {/* User Profile Section in Navbar */}
               <div className="flex items-center gap-4">
-
                 {/* User Profile Dropdown */}
                 <div className="flex items-center gap-3">
                   <div className="hidden md:block text-right">
@@ -340,7 +362,7 @@ export default function AdminLayout({
                       className="flex items-center gap-2 p-2 rounded-xl hover:bg-gray-100 text-gray-600 hover:text-primary focus:outline-none transition-all group"
                     >
                       <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-semibold group-hover:scale-105 transition-transform">
-                        {user?.name?.charAt(0).toUpperCase() || 'A'}
+                        {user?.name?.charAt(0).toUpperCase() || "A"}
                       </div>
                     </button>
 
@@ -350,13 +372,15 @@ export default function AdminLayout({
                         <div className="px-4 py-3 border-b border-gray-100">
                           <div className="flex items-center gap-3">
                             <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-white font-bold">
-                              {user?.name?.charAt(0).toUpperCase() || 'A'}
+                              {user?.name?.charAt(0).toUpperCase() || "A"}
                             </div>
                             <div>
                               <p className="font-semibold text-gray-900">
                                 {user?.name || "Admin User"}
                               </p>
-                              <p className="text-xs text-gray-500">{user?.email}</p>
+                              <p className="text-xs text-gray-500">
+                                {user?.email}
+                              </p>
                               <div className="flex items-center gap-1 mt-1">
                                 <Shield className="w-3 h-3 text-primary" />
                                 <span className="text-xs text-primary font-medium">
@@ -426,9 +450,7 @@ export default function AdminLayout({
 
           {/* Page Content */}
           <main className="flex-1 overflow-auto p-6 bg-gray-50">
-            <div className="max-w-7xl mx-auto">
-              {children}
-            </div>
+            <div className="max-w-7xl mx-auto">{children}</div>
           </main>
         </div>
       </div>

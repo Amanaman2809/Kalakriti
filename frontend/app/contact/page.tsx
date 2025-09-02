@@ -2,18 +2,21 @@ import { Metadata } from "next";
 import dynamic from "next/dynamic";
 
 export const metadata: Metadata = {
-  title: "Contact Us - Kalakriti | Get in Touch",
-  description: "Get in touch with Kalakriti for questions about our handcrafted products, custom orders, or visit our store in Jaipur, Rajasthan. We're here to help!",
-  keywords: "contact kalakriti, handicrafts store jaipur, handmade products inquiry, custom orders, visit store rajasthan",
-  authors: [{ name: "Kalakriti" }],
+  title: "Contact Us - Chalava | Get in Touch",
+  description:
+    "Get in touch with Chalava for questions about our handcrafted products, custom orders, or visit our store in Jaipur, Rajasthan. We're here to help!",
+  keywords:
+    "contact Chalava, handicrafts store jaipur, handmade products inquiry, custom orders, visit store rajasthan",
+  authors: [{ name: "Chalava" }],
   alternates: {
-    canonical: `${process.env.NEXT_PUBLIC_BASE_URL}/contact`
+    canonical: `${process.env.NEXT_PUBLIC_BASE_URL}/contact`,
   },
   openGraph: {
-    title: "Contact Us - Kalakriti",
-    description: "Get in touch with Kalakriti for questions about our handcrafted products or visit our store in Jaipur",
+    title: "Contact Us - Chalava",
+    description:
+      "Get in touch with Chalava for questions about our handcrafted products or visit our store in Jaipur",
     url: `${process.env.NEXT_PUBLIC_BASE_URL}/contact`,
-    siteName: "Kalakriti",
+    siteName: "Chalava",
     images: [
       {
         url: `${process.env.NEXT_PUBLIC_BASE_URL}/og-contact.jpg`,

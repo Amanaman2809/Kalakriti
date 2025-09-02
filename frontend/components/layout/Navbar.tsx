@@ -30,12 +30,14 @@ const navLinks = [
 function useAuthState() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [cartCount, setCartCount] = useState(0);
-  const [user, setUser] = useState<{ name?: string; email?: string } | null>(null);
+  const [user, setUser] = useState<{ name?: string; email?: string } | null>(
+    null,
+  );
   const [mounted, setMounted] = useState(false);
 
   const updateAuthState = useCallback(() => {
     try {
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         const token = localStorage.getItem("token");
         const userData = localStorage.getItem("user");
         const cartData = localStorage.getItem("cart");
@@ -57,7 +59,6 @@ function useAuthState() {
       console.error("Auth state update error:", error);
     }
   }, []);
-  
 
   useEffect(() => {
     setMounted(true);
@@ -68,7 +69,7 @@ function useAuthState() {
     if (!mounted) return;
 
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'token' || e.key === 'user' || e.key === 'cart') {
+      if (e.key === "token" || e.key === "user" || e.key === "cart") {
         updateAuthState();
       }
     };
@@ -77,19 +78,18 @@ function useAuthState() {
       updateAuthState();
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('cartUpdated', handleCartUpdate);
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("cartUpdated", handleCartUpdate);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('cartUpdated', handleCartUpdate);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("cartUpdated", handleCartUpdate);
     };
   }, [mounted, updateAuthState]);
-  
 
   const logout = useCallback(() => {
     try {
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         localStorage.removeItem("cart");
@@ -109,13 +109,13 @@ function useAuthState() {
     if (!mounted) return;
 
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'token' || e.key === 'user' || e.key === 'cart') {
+      if (e.key === "token" || e.key === "user" || e.key === "cart") {
         updateAuthState();
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, [mounted, updateAuthState]);
 
   return {
@@ -124,7 +124,7 @@ function useAuthState() {
     user,
     mounted,
     logout,
-    updateAuthState
+    updateAuthState,
   };
 }
 
@@ -144,25 +144,31 @@ const SearchComponent = ({ isLoggedIn }: { isLoggedIn: boolean }) => {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const debouncedSearch = useCallback((query: string) => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    searchTimeoutRef.current = setTimeout(() => {
-      if (query.trim().length > 2) {
-        handleSearch(query);
+  const debouncedSearch = useCallback(
+    (query: string) => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
       }
-    }, 300);
-  }, [handleSearch]);
+      searchTimeoutRef.current = setTimeout(() => {
+        if (query.trim().length > 2) {
+          handleSearch(query);
+        }
+      }, 300);
+    },
+    [handleSearch],
+  );
 
-  const handleSuggestionClickMemo = useCallback((item: any) => {
-    handleSuggestionClick(item);
-    setShowMobileSearch(false);
-    setShowSuggestions(false);
-  }, [handleSuggestionClick, setShowSuggestions]);
+  const handleSuggestionClickMemo = useCallback(
+    (item: any) => {
+      handleSuggestionClick(item);
+      setShowMobileSearch(false);
+      setShowSuggestions(false);
+    },
+    [handleSuggestionClick, setShowSuggestions],
+  );
 
   const clearSearch = useCallback(() => {
-    setSearchQuery('');
+    setSearchQuery("");
     setShowSuggestions(false);
     searchInputRef.current?.focus();
   }, [setSearchQuery, setShowSuggestions]);
@@ -240,7 +246,9 @@ const SearchComponent = ({ isLoggedIn }: { isLoggedIn: boolean }) => {
             ) : searchQuery.length > 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-gray-500">
                 <SearchIcon className="h-12 w-12 text-gray-300 mb-4" />
-                <p className="text-center">No results found for "{searchQuery}"</p>
+                <p className="text-center">
+                  No results found for "{searchQuery}"
+                </p>
               </div>
             ) : (
               <div className="flex items-center justify-center h-32 text-gray-500">
@@ -305,7 +313,8 @@ export default function Navbar() {
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Use enhanced auth state
-  const { isLoggedIn, cartCount, user, mounted, logout, updateAuthState } = useAuthState();
+  const { isLoggedIn, cartCount, user, mounted, logout, updateAuthState } =
+    useAuthState();
 
   // Enhanced logout handler
   const handleLogout = useCallback(() => {
@@ -319,7 +328,10 @@ export default function Navbar() {
     if (!isProfileMenuOpen) return;
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target as Node)
+      ) {
         setIsProfileMenuOpen(false);
       }
     };
@@ -341,19 +353,22 @@ export default function Navbar() {
     }
   }, [pathname, mounted, updateAuthState, isLoggedIn]);
 
-  const navigationLinks = useMemo(() =>
-    navLinks.map(({ name, href }) => (
-      <Link
-        key={href}
-        href={href}
-        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${pathname === href
-            ? "bg-primary text-white shadow-lg scale-105"
-            : "text-gray-600 hover:text-primary hover:bg-primary/10"
+  const navigationLinks = useMemo(
+    () =>
+      navLinks.map(({ name, href }) => (
+        <Link
+          key={href}
+          href={href}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+            pathname === href
+              ? "bg-primary text-white shadow-lg scale-105"
+              : "text-gray-600 hover:text-primary hover:bg-primary/10"
           }`}
-      >
-        {name}
-      </Link>
-    )), [pathname]
+        >
+          {name}
+        </Link>
+      )),
+    [pathname],
   );
 
   // Show loading state until mounted
@@ -371,12 +386,12 @@ export default function Navbar() {
                 src="/logo_sm.png"
                 width={100}
                 height={100}
-                alt="Kalakriti Logo"
+                alt="Chalava Logo"
                 className="h-16 w-16"
                 priority
               />
               <div className="hidden sm:block">
-                <h1 className="text-xl font-bold text-gray-900">Kalakriti</h1>
+                <h1 className="text-xl font-bold text-gray-900">Chalava</h1>
                 <div className="flex items-center gap-1 text-xs text-gray-500">
                   <Sparkles className="w-3 h-3" />
                   <span>Handcrafted Excellence</span>
@@ -407,24 +422,31 @@ export default function Navbar() {
             className="md:hidden text-gray-500 hover:text-primary focus:outline-none p-2 rounded-lg hover:bg-primary/10 transition-all duration-200"
             aria-label="Toggle mobile menu"
           >
-            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {isMobileMenuOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
           </button>
 
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0 flex items-center gap-3 group">
+          <Link
+            href="/"
+            className="flex-shrink-0 flex items-center gap-3 group"
+          >
             <div className="relative">
               <Image
                 src="/logo_sm.png"
                 width={100}
                 height={100}
-                alt="Kalakriti Logo"
+                alt="Chalava Logo"
                 className="h-16 w-16 transition-transform group-hover:scale-105"
                 priority
               />
             </div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors">
-                Kalakriti
+                Chalava
               </h1>
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <Sparkles className="w-3 h-3 text-primary" />
@@ -452,7 +474,7 @@ export default function Navbar() {
                 <ShoppingCart className="h-6 w-6 group-hover:scale-110 transition-transform" />
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-lg animate-pulse border-2 border-white">
-                    {cartCount > 99 ? '99+' : cartCount}
+                    {cartCount > 99 ? "99+" : cartCount}
                   </span>
                 )}
                 {/* Pulsing effect for visual feedback */}
@@ -461,7 +483,6 @@ export default function Navbar() {
                 )}
               </Link>
             )}
-
 
             {/* Profile/Login */}
             {isLoggedIn ? (
@@ -479,19 +500,41 @@ export default function Navbar() {
                     {/* User Info */}
                     <div className="px-4 py-3 border-b border-gray-100">
                       <p className="text-sm font-semibold text-gray-900">
-                        {user?.name || 'Welcome!'}
+                        {user?.name || "Welcome!"}
                       </p>
                       {user?.email && (
-                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {user.email}
+                        </p>
                       )}
                     </div>
 
                     {/* Menu Items */}
                     {[
-                      { href: "/account", icon: CircleUser, label: "Your Profile", shortcut: "⌘P" },
-                      { href: "/orders", icon: Package, label: "Your Orders", shortcut: "⌘O" },
-                      { href: "/wishlist", icon: Heart, label: "Wishlist", shortcut: "⌘W" },
-                      { href: "/faqs", icon: HelpCircle, label: "Help & Support", shortcut: "⌘?" },
+                      {
+                        href: "/account",
+                        icon: CircleUser,
+                        label: "Your Profile",
+                        shortcut: "⌘P",
+                      },
+                      {
+                        href: "/orders",
+                        icon: Package,
+                        label: "Your Orders",
+                        shortcut: "⌘O",
+                      },
+                      {
+                        href: "/wishlist",
+                        icon: Heart,
+                        label: "Wishlist",
+                        shortcut: "⌘W",
+                      },
+                      {
+                        href: "/faqs",
+                        icon: HelpCircle,
+                        label: "Help & Support",
+                        shortcut: "⌘?",
+                      },
                     ].map(({ href, icon: Icon, label, shortcut }) => (
                       <Link
                         key={href}
@@ -503,7 +546,9 @@ export default function Navbar() {
                           <Icon className="w-4 h-4 mr-3 group-hover:scale-110 transition-transform" />
                           {label}
                         </div>
-                        <span className="text-xs text-gray-400">{shortcut}</span>
+                        <span className="text-xs text-gray-400">
+                          {shortcut}
+                        </span>
                       </Link>
                     ))}
 
@@ -541,10 +586,11 @@ export default function Navbar() {
               <Link
                 key={href}
                 href={href}
-                className={`block px-4 py-3 rounded-xl text-base font-medium transition-all duration-200 ${pathname === href
+                className={`block px-4 py-3 rounded-xl text-base font-medium transition-all duration-200 ${
+                  pathname === href
                     ? "bg-primary text-white shadow-lg"
                     : "text-gray-600 hover:text-primary hover:bg-primary/10"
-                  }`}
+                }`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 {name}

@@ -13,7 +13,7 @@ import {
   Heart,
   ArrowUp,
   Youtube,
-  Linkedin
+  Linkedin,
 } from "lucide-react";
 
 // ✅ Navigation links
@@ -35,34 +35,34 @@ const quickLinks = [
 const socialLinks = [
   {
     name: "Instagram",
-    href: "https://instagram.com/kalakriti",
+    href: "https://instagram.com/Chalava",
     icon: <Instagram className="w-5 h-5" />,
-    color: "hover:text-pink-400"
+    color: "hover:text-pink-400",
   },
   {
     name: "Facebook",
-    href: "https://facebook.com/kalakriti",
+    href: "https://facebook.com/Chalava",
     icon: <Facebook className="w-5 h-5" />,
-    color: "hover:text-blue-400"
+    color: "hover:text-blue-400",
   },
   {
     name: "Twitter",
-    href: "https://twitter.com/kalakriti",
+    href: "https://twitter.com/Chalava",
     icon: <Twitter className="w-5 h-5" />,
-    color: "hover:text-sky-400"
+    color: "hover:text-sky-400",
   },
   {
     name: "YouTube",
-    href: "https://youtube.com/@kalakriti",
+    href: "https://youtube.com/@Chalava",
     icon: <Youtube className="w-5 h-5" />,
-    color: "hover:text-red-400"
+    color: "hover:text-red-400",
   },
   {
     name: "LinkedIn",
-    href: "https://linkedin.com/company/kalakriti",
+    href: "https://linkedin.com/company/Chalava",
     icon: <Linkedin className="w-5 h-5" />,
-    color: "hover:text-blue-500"
-  }
+    color: "hover:text-blue-500",
+  },
 ];
 
 function Footer() {
@@ -71,7 +71,7 @@ function Footer() {
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
-      behavior: 'smooth'
+      behavior: "smooth",
     });
   };
 
@@ -89,12 +89,12 @@ function Footer() {
                   src="/logo_sm.png"
                   width={60}
                   height={60}
-                  alt="Kalakriti Logo"
+                  alt="Chalava Logo"
                   className="relative rounded-xl border-2 border-white/20"
                 />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-white">Kalakriti</h3>
+                <h3 className="text-2xl font-bold text-white">Chalava</h3>
                 <div className="flex items-center gap-1 text-sm text-secondary">
                   <Heart className="w-3 h-3 fill-current" />
                   <span>Handcrafted Excellence</span>
@@ -103,20 +103,23 @@ function Footer() {
             </div>
 
             <p className="text-white/80 mb-6 leading-relaxed text-sm">
-              Celebrating India's rich heritage through authentic handcrafted products.
-              Each piece tells a story of tradition, skill, and artistry passed down through generations.
+              Celebrating India's rich heritage through authentic handcrafted
+              products. Each piece tells a story of tradition, skill, and
+              artistry passed down through generations.
             </p>
 
             {/* Contact Info */}
             <div className="space-y-3">
               <a
-                href="mailto:kalakriti@handicrafts.com"
+                href="mailto:Chalava@handicrafts.com"
                 className="flex items-center gap-3 text-white/80 hover:text-secondary transition-all duration-300 group"
               >
                 <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center group-hover:bg-secondary/20 group-hover:scale-110 transition-all duration-300">
                   <Mail className="w-4 h-4" />
                 </div>
-                <span className="text-sm font-medium">kalakriti@handicrafts.com</span>
+                <span className="text-sm font-medium">
+                  Chalava@handicrafts.com
+                </span>
               </a>
 
               <a
@@ -134,8 +137,10 @@ function Footer() {
                   <MapPin className="w-4 h-4" />
                 </div>
                 <address className="not-italic text-sm leading-relaxed">
-                  Shop No. 30, Abhinandan Vihar<br />
-                  Vaishali Nagar, Jaipur<br />
+                  Shop No. 30, Abhinandan Vihar
+                  <br />
+                  Vaishali Nagar, Jaipur
+                  <br />
                   Rajasthan - 302034, India
                 </address>
               </div>
@@ -153,13 +158,19 @@ function Footer() {
                 <li key={href}>
                   <Link
                     href={href}
-                    className={`text-sm transition-all duration-300 flex items-center group ${pathname === href
+                    className={`text-sm transition-all duration-300 flex items-center group ${
+                      pathname === href
                         ? "text-secondary font-semibold translate-x-2"
                         : "text-white/80 hover:text-secondary hover:translate-x-2"
-                      }`}
+                    }`}
                   >
-                    <span className={`w-1.5 h-1.5 bg-secondary rounded-full mr-3 transition-all duration-300 ${pathname === href ? "opacity-100 scale-125" : "opacity-0 group-hover:opacity-100"
-                      }`}></span>
+                    <span
+                      className={`w-1.5 h-1.5 bg-secondary rounded-full mr-3 transition-all duration-300 ${
+                        pathname === href
+                          ? "opacity-100 scale-125"
+                          : "opacity-0 group-hover:opacity-100"
+                      }`}
+                    ></span>
                     {name}
                   </Link>
                 </li>
@@ -197,7 +208,7 @@ function Footer() {
             {/* Copyright */}
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="flex items-center gap-2 text-sm text-white/80">
-                <span>© 2025 Kalakriti.</span>
+                <span>© 2025 Chalava.</span>
                 <Heart className="w-4 h-4 text-red-400 fill-current animate-pulse" />
                 <span>Handmade with love in India</span>
               </div>
@@ -205,7 +216,9 @@ function Footer() {
 
             {/* Social Links */}
             <div className="flex items-center gap-4">
-              <span className="text-sm text-white/60 hidden sm:block font-medium">Follow us:</span>
+              <span className="text-sm text-white/60 hidden sm:block font-medium">
+                Follow us:
+              </span>
               <div className="flex items-center gap-2">
                 {socialLinks.map(({ name, href, icon, color }) => (
                   <a

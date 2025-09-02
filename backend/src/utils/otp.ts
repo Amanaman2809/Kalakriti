@@ -13,7 +13,7 @@ export function hashOTP(otp: string): string {
 
 export const sendOTPByEmail = async (
   email: string,
-  otp: string
+  otp: string,
 ): Promise<boolean> => {
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -29,7 +29,7 @@ export const sendOTPByEmail = async (
 
   return await sendMail({
     to: email,
-    subject: `Kalakriti Account Verification for Password reset`,
+    subject: `Chalava Account Verification for Password reset`,
     html,
   });
 };

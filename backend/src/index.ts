@@ -16,6 +16,7 @@ import createAdminRoute from "./routes/auth/create-admin";
 import cloudinaryRoute from "./routes/cloudinary";
 import addressRoute from "./routes/address";
 import adminStats from "./routes/admin/dashboard";
+import orderFilters from "./routes/admin/orderFilters";
 
 dotenv.config();
 const app = express();
@@ -37,6 +38,7 @@ app.use("/api/products", productRoute);
 app.use("/api/cart", cartRoute);
 app.use("/api/wishlist", wishlistRoute);
 app.use("/api/orders", orderRoute);
+app.use("/api/orders", orderFilters);
 app.use("/api", feedbackRoute);
 app.use("/api/search", searchRoute);
 app.use("/api/cloudinary", cloudinaryRoute);
@@ -44,7 +46,7 @@ app.use("/api/addresses", addressRoute);
 app.use("/api", adminStats);
 
 app.get("/", (_req, res) => {
-  res.send("Hello from Kalakriti backend!");
+  res.send("Hello from Chalava backend!");
 });
 
 const PORT = process.env.PORT || 8000;

@@ -3,17 +3,20 @@ import dynamic from "next/dynamic";
 
 export const metadata: Metadata = {
   title: "Shop Unique Handicrafts | Product Collection",
-  description: "Browse our exclusive collection of handcrafted products made in India. Each piece reflects the rich cultural heritage and artistry of Indian craftsmanship.",
-  keywords: "handicrafts, Indian crafts, handmade products, traditional art, unique gifts, artisan goods, handcrafted items, Indian heritage, cultural artifacts",
-  authors: [{ name: "Kalakriti" }],
+  description:
+    "Browse our exclusive collection of handcrafted products made in India. Each piece reflects the rich cultural heritage and artistry of Indian craftsmanship.",
+  keywords:
+    "handicrafts, Indian crafts, handmade products, traditional art, unique gifts, artisan goods, handcrafted items, Indian heritage, cultural artifacts",
+  authors: [{ name: "Chalava" }],
   alternates: {
-    canonical: `${process.env.NEXT_PUBLIC_BASE_URL}/products`
+    canonical: `${process.env.NEXT_PUBLIC_BASE_URL}/products`,
   },
   openGraph: {
     title: "Shop Unique Handicrafts | Product Collection",
-    description: "Discover authentic Indian handicrafts - each piece tells a story of tradition and craftsmanship",
+    description:
+      "Discover authentic Indian handicrafts - each piece tells a story of tradition and craftsmanship",
     url: `${process.env.NEXT_PUBLIC_BASE_URL}/products`,
-    siteName: "Kalakriti",
+    siteName: "Chalava",
     images: [
       {
         url: `${process.env.NEXT_PUBLIC_BASE_URL}/og-products.jpg`,

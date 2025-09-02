@@ -18,7 +18,7 @@ interface SendMailOptions {
 export const sendMail = async (options: SendMailOptions) => {
   try {
     const mailOptions = {
-      from: `"Kalakriti" <${process.env.EMAIL_USER}>`,
+      from: `"Chalava" <${process.env.EMAIL_USER}>`,
       ...options,
     };
 

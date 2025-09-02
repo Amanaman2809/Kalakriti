@@ -1,18 +1,26 @@
 "use client";
 
 import HeroSection from "@/components/ui/HeroSection";
-import { MoveRight, Star, ShoppingCart, Heart, Check, Loader2 } from "lucide-react";
+import {
+  MoveRight,
+  Star,
+  ShoppingCart,
+  Heart,
+  Check,
+  Loader2,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState, useCallback } from "react";
-import { Category, Product, ProductsResponse } from '@/utils/types';
+import { Category, Product, ProductsResponse } from "@/utils/types";
 import toast from "react-hot-toast";
 import {
   addToCart as addToCartAPI,
   addToWishlist,
   removeFromWishlist,
-  getWishlist
+  getWishlist,
 } from "@/utils/product";
+import CharitySection from "@/components/ui/CharitySection";
 
 interface InteractionState {
   wishlist: Record<string, boolean>;
@@ -27,7 +35,7 @@ export default function Home() {
   const [interactions, setInteractions] = useState<InteractionState>({
     wishlist: {},
     cart: {},
-    loading: {}
+    loading: {},
   });
   const [mounted, setMounted] = useState(false);
 
@@ -46,13 +54,13 @@ export default function Home() {
 
         const wishlistItems = await getWishlist();
         const wishlistMap: Record<string, boolean> = {};
-        wishlistItems.forEach(item => {
+        wishlistItems.forEach((item) => {
           wishlistMap[item.product.id] = true;
         });
 
-        setInteractions(prev => ({
+        setInteractions((prev) => ({
           ...prev,
-          wishlist: wishlistMap
+          wishlist: wishlistMap,
         }));
       } catch (error) {
         console.error("Error loading wishlist:", error);
@@ -75,7 +83,7 @@ export default function Home() {
       try {
         const [categoriesRes, productsRes] = await Promise.all([
           fetch(`${url}/api/categories`),
-          fetch(`${url}/api/products`)
+          fetch(`${url}/api/products`),
         ]);
 
         if (!categoriesRes.ok || !productsRes.ok) {
@@ -86,14 +94,11 @@ export default function Home() {
         const productsData: ProductsResponse = await productsRes.json();
 
         // Filter out categories without images and limit to 5
-        setCategories(categoriesData.filter((cat: Category) => cat.image).slice(0, 5));
+        setCategories(
+          categoriesData.filter((cat: Category) => cat.image).slice(0, 5),
+        );
 
-        const productsWithRatings = productsData.products
-          .slice(0, 20)
-          .map((product) => ({
-            ...product,
-            rating: 4.5, // Fixed rating to avoid hydration issues
-          }));
+        const productsWithRatings = productsData.products.slice(0, 8);
 
         setProducts(productsWithRatings);
       } catch (error) {
@@ -106,127 +111,133 @@ export default function Home() {
     fetchData();
   }, [mounted]);
 
-  const toggleWishlist = useCallback(async (productId: string, productName: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      toast.error("Please login to manage wishlist", {
-        duration: 3000,
-        position: 'top-center'
-      });
-      return;
-    }
-
-    const isInWishlist = interactions.wishlist[productId] || false;
-
-    // Optimistic update
-    setInteractions(prev => ({
-      ...prev,
-      wishlist: {
-        ...prev.wishlist,
-        [productId]: !isInWishlist
-      },
-      loading: {
-        ...prev.loading,
-        [`wishlist-${productId}`]: true
-      }
-    }));
-
-    try {
-      if (isInWishlist) {
-        await removeFromWishlist(productId);
-        toast.success(`Removed "${productName}" from wishlist`, {
-          duration: 2000,
-          position: 'top-center'
+  const toggleWishlist = useCallback(
+    async (productId: string, productName: string) => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Please login to manage wishlist", {
+          duration: 3000,
+          position: "top-center",
         });
-      } else {
-        await addToWishlist(productId);
-        toast.success(`❤️ Added "${productName}" to wishlist`, {
-          duration: 2000,
-          position: 'top-center'
-        });
+        return;
       }
-    } catch (error: any) {
-      // Revert optimistic update on error
-      setInteractions(prev => ({
+
+      const isInWishlist = interactions.wishlist[productId] || false;
+
+      // Optimistic update
+      setInteractions((prev) => ({
         ...prev,
         wishlist: {
           ...prev.wishlist,
-          [productId]: isInWishlist
-        }
-      }));
-
-      toast.error(error.message || "Failed to update wishlist", {
-        duration: 3000,
-        position: 'top-center'
-      });
-    } finally {
-      setInteractions(prev => ({
-        ...prev,
+          [productId]: !isInWishlist,
+        },
         loading: {
           ...prev.loading,
-          [`wishlist-${productId}`]: false
-        }
+          [`wishlist-${productId}`]: true,
+        },
       }));
-    }
-  }, [interactions.wishlist]);
 
-  const addToCartHandler = useCallback(async (productId: string, productName: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      toast.error("Please login to add items to cart", {
-        duration: 3000,
-        position: 'top-center'
-      });
-      return;
-    }
+      try {
+        if (isInWishlist) {
+          await removeFromWishlist(productId);
+          toast.success(`Removed "${productName}" from wishlist`, {
+            duration: 2000,
+            position: "top-center",
+          });
+        } else {
+          await addToWishlist(productId);
+          toast.success(`❤️ Added "${productName}" to wishlist`, {
+            duration: 2000,
+            position: "top-center",
+          });
+        }
+      } catch (error: any) {
+        // Revert optimistic update on error
+        setInteractions((prev) => ({
+          ...prev,
+          wishlist: {
+            ...prev.wishlist,
+            [productId]: isInWishlist,
+          },
+        }));
 
-    if (interactions.cart[productId]) {
-      toast.success(`"${productName}" is already in cart`, {
-        duration: 2000,
-        position: 'top-center'
-      });
-      return;
-    }
-
-    // Optimistic update
-    setInteractions(prev => ({
-      ...prev,
-      loading: {
-        ...prev.loading,
-        [`cart-${productId}`]: true
+        toast.error(error.message || "Failed to update wishlist", {
+          duration: 3000,
+          position: "top-center",
+        });
+      } finally {
+        setInteractions((prev) => ({
+          ...prev,
+          loading: {
+            ...prev.loading,
+            [`wishlist-${productId}`]: false,
+          },
+        }));
       }
-    }));
+    },
+    [interactions.wishlist],
+  );
 
-    try {
-      await addToCartAPI({ productId, quantity: 1 });
+  const addToCartHandler = useCallback(
+    async (productId: string, productName: string) => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Please login to add items to cart", {
+          duration: 3000,
+          position: "top-center",
+        });
+        return;
+      }
 
-      setInteractions(prev => ({
-        ...prev,
-        cart: {
-          ...prev.cart,
-          [productId]: true
-        }
-      }));
+      if (interactions.cart[productId]) {
+        toast.success(`"${productName}" is already in cart`, {
+          duration: 2000,
+          position: "top-center",
+        });
+        return;
+      }
 
-      toast.success(`Added "${productName}" to cart`, {
-        duration: 2000,
-        position: 'top-center'
-      });
-    } catch (error: any) {
-      toast.error(error.message || "Failed to add to cart", {
-        duration: 3000,
-        position: 'top-center'
-      });
-    } finally {
-      setInteractions(prev => ({
+      // Optimistic update
+      setInteractions((prev) => ({
         ...prev,
         loading: {
           ...prev.loading,
-          [`cart-${productId}`]: false
-        }
+          [`cart-${productId}`]: true,
+        },
       }));
-    }
-  }, [interactions.cart]);
+
+      try {
+        await addToCartAPI({ productId, quantity: 1 });
+
+        setInteractions((prev) => ({
+          ...prev,
+          cart: {
+            ...prev.cart,
+            [productId]: true,
+          },
+        }));
+
+        toast.success(`Added "${productName}" to cart`, {
+          duration: 2000,
+          position: "top-center",
+        });
+      } catch (error: any) {
+        toast.error(error.message || "Failed to add to cart", {
+          duration: 3000,
+          position: "top-center",
+        });
+      } finally {
+        setInteractions((prev) => ({
+          ...prev,
+          loading: {
+            ...prev.loading,
+            [`cart-${productId}`]: false,
+          },
+        }));
+      }
+    },
+    [interactions.cart],
+  );
 
   if (!mounted || loading) {
     return (
@@ -323,6 +334,8 @@ export default function Home() {
         </div>
       </section>
 
+      <CharitySection />
+
       {/* Products Section */}
       <section className="px-4 sm:px-6 py-16 bg-white">
         <div className="max-w-7xl mx-auto">
@@ -340,8 +353,10 @@ export default function Home() {
             {products.map((product) => {
               const isInWishlist = interactions.wishlist[product.id] || false;
               const isInCart = interactions.cart[product.id] || false;
-              const isWishlistLoading = interactions.loading[`wishlist-${product.id}`] || false;
-              const isCartLoading = interactions.loading[`cart-${product.id}`] || false;
+              const isWishlistLoading =
+                interactions.loading[`wishlist-${product.id}`] || false;
+              const isCartLoading =
+                interactions.loading[`cart-${product.id}`] || false;
 
               return (
                 <div
@@ -373,18 +388,24 @@ export default function Home() {
                             toggleWishlist(product.id, product.name);
                           }}
                           disabled={isWishlistLoading}
-                          className={`p-3 rounded-full transition-all duration-200 shadow-lg ${isInWishlist
-                              ? 'bg-red-500 text-white scale-110'
-                              : 'bg-white/90 text-gray-700 hover:bg-white hover:scale-110'
-                            } disabled:opacity-70`}
-                          title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+                          className={`p-3 rounded-full transition-all duration-200 shadow-lg ${
+                            isInWishlist
+                              ? "bg-red-500 text-white scale-110"
+                              : "bg-white/90 text-gray-700 hover:bg-white hover:scale-110"
+                          } disabled:opacity-70`}
+                          title={
+                            isInWishlist
+                              ? "Remove from wishlist"
+                              : "Add to wishlist"
+                          }
                         >
                           {isWishlistLoading ? (
                             <Loader2 className="w-5 h-5 animate-spin" />
                           ) : (
                             <Heart
-                              className={`w-5 h-5 transition-all duration-200 ${isInWishlist ? 'fill-current' : ''
-                                }`}
+                              className={`w-5 h-5 transition-all duration-200 ${
+                                isInWishlist ? "fill-current" : ""
+                              }`}
                             />
                           )}
                         </button>
@@ -396,11 +417,12 @@ export default function Home() {
                             addToCartHandler(product.id, product.name);
                           }}
                           disabled={isCartLoading || isInCart}
-                          className={`p-3 rounded-full transition-all duration-200 shadow-lg ${isInCart
-                              ? 'bg-green-500 text-white'
-                              : 'bg-white/90 text-gray-700 hover:bg-white hover:scale-110'
-                            } disabled:opacity-70`}
-                          title={isInCart ? 'Added to cart' : 'Add to cart'}
+                          className={`p-3 rounded-full transition-all duration-200 shadow-lg ${
+                            isInCart
+                              ? "bg-green-500 text-white"
+                              : "bg-white/90 text-gray-700 hover:bg-white hover:scale-110"
+                          } disabled:opacity-70`}
+                          title={isInCart ? "Added to cart" : "Add to cart"}
                         >
                           {isCartLoading ? (
                             <Loader2 className="w-5 h-5 animate-spin" />
@@ -427,7 +449,9 @@ export default function Home() {
                         </h3>
                         <div className="flex items-center gap-1 text-silver">
                           <Star className="w-4 h-4 fill-current" />
-                          <span className="text-sm font-medium text-gray-600">4.5</span>
+                          <span className="text-sm font-medium text-gray-600">
+                            4.5
+                          </span>
                         </div>
                       </div>
 
@@ -440,14 +464,17 @@ export default function Home() {
                           <span className="text-xl font-bold text-text">
                             ₹{product.price.toLocaleString()}
                           </span>
-                          <span className="text-sm text-gray-500">Free shipping</span>
+                          <span className="text-sm text-gray-500">
+                            Free shipping
+                          </span>
                         </div>
 
                         <button
-                          className={`flex items-center gap-2 font-medium px-4 py-2 rounded-lg transition-all duration-200 ${isInCart
-                              ? 'bg-green-100 text-green-700 border border-green-200'
-                              : 'bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl'
-                            } disabled:opacity-70`}
+                          className={`flex items-center gap-2 font-medium px-4 py-2 rounded-lg transition-all duration-200 ${
+                            isInCart
+                              ? "bg-green-100 text-green-700 border border-green-200"
+                              : "bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl"
+                          } disabled:opacity-70`}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();

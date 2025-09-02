@@ -1,5 +1,5 @@
-import OrdersManagement from "@/pages/OrderManagement";
+import OrdersListPage from "@/pages/OrderManagement";
 
 export default function AdminOrdersPage() {
-  return <OrdersManagement />;
+  return <OrdersListPage />;
 }

@@ -10,27 +10,23 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 // for admin
-router.get(
-  "/admin",
-  requireAuth,
-  requireAdmin,
-  async (req, res) => {
-    try {
-      const orders = await prisma.order.findMany({
-        orderBy: { createdAt: "desc" },
-        include: {
-          user: { select: { id: true, name: true, email: true } },
-          items: { include: { product: true } },
-          address: true,
-        },
-      });
-      res.json(orders);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Failed to fetch orders" });
-    }
+router.get("/admin", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const orders = await prisma.order.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        items: { include: { product: true } },
+        address: true,
+      },
+    });
+    // console.log(orders);
+    res.json({ orders: orders });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch orders" });
   }
-);
+});
 
 // Fetch Orders
 router.get("/", requireAuth, async (req, res) => {
@@ -68,17 +64,17 @@ router.post("/", requireAuth, async (req, res) => {
 
   if (!["COD", "ONLINE"].includes(paymentMode)) {
     res.status(400).json({ error: "Invalid payment mode" });
-    return; 
+    return;
   }
 
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
-    return; 
+    return;
   }
 
   if (!addressId || typeof addressId !== "string") {
     res.status(400).json({ error: "Invalid address ID" });
-    return; 
+    return;
   }
 
   // Verify address belongs to user
@@ -101,7 +97,7 @@ router.post("/", requireAuth, async (req, res) => {
 
   const total = cartItems.reduce(
     (acc, item) => acc + item.product.price * item.quantity,
-    0
+    0,
   );
 
   if (!total) {
@@ -140,8 +136,8 @@ router.post("/", requireAuth, async (req, res) => {
             tx.product.update({
               where: { id: item.productId },
               data: { stock: { decrement: item.quantity } },
-            })
-          )
+            }),
+          ),
         );
 
         // Clear cart
@@ -201,115 +197,104 @@ router.get("/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.patch(
-  "/:id",
-  requireAuth,
-  requireAdmin,
-  async (req, res) => {
-    const { id } = req.params;
-    const {
+router.patch("/:id", requireAuth, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const {
+    status,
+    paymentStatus,
+    carrierName,
+    trackingNumber,
+    estimatedDelivery,
+  } = req.body;
+
+  try {
+    // First get the current order
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    const updateData: any = {
+      statusUpdatedAt: new Date(),
+    };
+
+    if (status) updateData.status = status;
+    if (paymentStatus) updateData.paymentStatus = paymentStatus;
+    if (carrierName) updateData.carrierName = carrierName;
+    if (trackingNumber) updateData.trackingNumber = trackingNumber;
+    if (estimatedDelivery) {
+      updateData.estimatedDelivery = new Date(estimatedDelivery);
+    }
+
+    // Set timestamps based on status
+    if (status === "SHIPPED" && !order.shippedAt) {
+      updateData.shippedAt = new Date();
+    } else if (status === "DELIVERED" && !order.deliveredAt) {
+      updateData.deliveredAt = new Date();
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id },
+      data: updateData,
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        items: { include: { product: true } },
+        address: true,
+      },
+    });
+
+    res.json(updatedOrder);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update order" });
+  }
+});
+
+router.patch("/:id/status", requireAuth, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const validStatuses: OrderStatus[] = ["PLACED", "SHIPPED", "DELIVERED"];
+
+  try {
+    // Validate input
+    if (!validStatuses.includes(status)) {
+      res.status(400).json({ error: "Invalid status value" });
+    }
+
+    // Get current order
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order) res.status(404).json({ error: "Order not found" });
+
+    // Prepare update data
+    const updateData: any = {
       status,
-      paymentStatus,
-      carrierName,
-      trackingNumber,
-      estimatedDelivery,
-    } = req.body;
+      statusUpdatedAt: new Date(),
+    };
 
-    try {
-      // First get the current order
-      const order = await prisma.order.findUnique({ where: { id } });
-      if (!order) {
-        res.status(404).json({ error: "Order not found" });
-        return;
-      }
-
-      const updateData: any = {
-        statusUpdatedAt: new Date(),
-      };
-
-      if (status) updateData.status = status;
-      if (paymentStatus) updateData.paymentStatus = paymentStatus;
-      if (carrierName) updateData.carrierName = carrierName;
-      if (trackingNumber) updateData.trackingNumber = trackingNumber;
-      if (estimatedDelivery) {
-        updateData.estimatedDelivery = new Date(estimatedDelivery);
-      }
-
-      // Set timestamps based on status
-      if (status === "SHIPPED" && !order.shippedAt) {
-        updateData.shippedAt = new Date();
-      } else if (status === "DELIVERED" && !order.deliveredAt) {
-        updateData.deliveredAt = new Date();
-      }
-
-      const updatedOrder = await prisma.order.update({
-        where: { id },
-        data: updateData,
-        include: {
-          user: { select: { id: true, name: true, email: true } },
-          items: { include: { product: true } },
-          address: true,
-        },
-      });
-
-      res.json(updatedOrder);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Failed to update order" });
+    // Set timestamps based on status
+    if (status === "SHIPPED" && !order?.shippedAt) {
+      updateData.shippedAt = new Date();
+    } else if (status === "DELIVERED" && !order?.deliveredAt) {
+      updateData.deliveredAt = new Date();
     }
+
+    // Update order
+    const updatedOrder = await prisma.order.update({
+      where: { id },
+      data: updateData,
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        items: { include: { product: true } },
+        address: true,
+      },
+    });
+
+    res.json(updatedOrder);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update order status" });
   }
-);
-
-router.patch(
-  "/:id/status",
-  requireAuth,
-  requireAdmin,
-  async (req, res) => {
-    const { id } = req.params;
-    const { status } = req.body;
-    const validStatuses: OrderStatus[] = ["PLACED", "SHIPPED", "DELIVERED"];
-
-    try {
-      // Validate input
-      if (!validStatuses.includes(status)) {
-        res.status(400).json({ error: "Invalid status value" });
-      }
-
-      // Get current order
-      const order = await prisma.order.findUnique({ where: { id } });
-      if (!order) res.status(404).json({ error: "Order not found" });
-
-      // Prepare update data
-      const updateData: any = {
-        status,
-        statusUpdatedAt: new Date(),
-      };
-
-      // Set timestamps based on status
-      if (status === "SHIPPED" && !order?.shippedAt) {
-        updateData.shippedAt = new Date();
-      } else if (status === "DELIVERED" && !order?.deliveredAt) {
-        updateData.deliveredAt = new Date();
-      }
-
-      // Update order
-      const updatedOrder = await prisma.order.update({
-        where: { id },
-        data: updateData,
-        include: {
-          user: { select: { id: true, name: true, email: true } },
-          items: { include: { product: true } },
-          address: true,
-        },
-      });
-
-      res.json(updatedOrder);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Failed to update order status" });
-    }
-  }
-);
-
+});
 
 export default router;
