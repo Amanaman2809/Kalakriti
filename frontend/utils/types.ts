@@ -100,6 +100,22 @@ export interface WishlistItem {
   product: Product;
   user: User;
 }
+export interface InteractionState {
+  wishlist: Record<string, boolean>;
+  cart: Record<string, boolean>;
+  loading: Record<string, boolean>;
+}
+
+export interface ProductCardProps {
+  product: Product;
+  interactions?: {
+    wishlist?: Record<string, boolean>;
+    cart?: Record<string, boolean>;
+    loading?: Record<string, boolean>;
+  };
+  toggleWishlist?: (productId: string, productName: string) => Promise<void>;
+  addToCartHandler?: (productId: string, productName: string) => Promise<void>;
+}
 
 export interface Address {
   id: string;

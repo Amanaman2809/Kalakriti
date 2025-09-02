@@ -12,6 +12,7 @@ import {
   LogOut,
   Sparkles,
   ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -528,6 +529,12 @@ export default function Navbar() {
                         icon: Heart,
                         label: "Wishlist",
                         shortcut: "⌘W",
+                      },
+                      {
+                        href: "/return-policy",
+                        icon: RotateCcw,
+                        label: "Return Policy",
+                        shortcut: "⌘R",
                       },
                       {
                         href: "/faqs",

@@ -15,6 +15,11 @@ import {
   Heart,
   Star,
   Palette,
+  RotateCcw,
+  AlertCircle,
+  CreditCard,
+  Clock,
+  XCircle,
 } from "lucide-react";
 
 interface FAQ {
@@ -26,6 +31,7 @@ interface FAQ {
 }
 
 const faqData: FAQ[] = [
+  // Your existing FAQs...
   {
     id: "handmade-products",
     question: "Are all products on Chalava handmade?",
@@ -96,20 +102,74 @@ const faqData: FAQ[] = [
     category: "Orders",
     keywords: ["tracking", "order status", "dashboard", "updates", "shipment"],
   },
+
+  // **NEW: Comprehensive Return Policy FAQs**
   {
-    id: "return-policy",
+    id: "return-policy-overview",
     question: "What is your return policy?",
     answer:
-      "We offer a 7-day return window for damaged or incorrect items. Since most of our products are handmade, minor variations are expected and celebrated as part of their authentic charm. For detailed information, please refer to our Return Policy page.",
+      "We offer a 7-day return window from the date of delivery. Returns are only accepted for unused, unopened items in original condition. Please note that we do not provide refunds - all eligible returns are processed as store credit valid for one year. Items must be pre-approved by our customer service team before returning.",
     category: "Returns",
-    keywords: [
-      "return",
-      "policy",
-      "damaged",
-      "exchange",
-      "handmade variations",
-    ],
+    keywords: ["return", "policy", "7 days", "store credit", "unused", "original condition"],
   },
+  {
+    id: "return-eligibility",
+    question: "What items are eligible for returns?",
+    answer:
+      "Items must be unused, unopened, and in original condition within 7 days of delivery. We do not accept returns on sale items, clearance products, customized items, gift cards, or digital downloads. Items returned without original packaging may incur a restocking fee of up to 50%.",
+    category: "Returns",
+    keywords: ["eligible", "unused", "unopened", "original packaging", "exclusions"],
+  },
+  {
+    id: "return-process",
+    question: "How do I initiate a return?",
+    answer:
+      "Contact our customer service team within 7 days of receiving your order. Provide your order number and reason for return. All returns must be pre-approved - unauthorized returns will be rejected. Once approved, you'll receive return instructions. Return shipping is at your expense.",
+    category: "Returns",
+    keywords: ["initiate", "customer service", "pre-approved", "order number", "instructions"],
+  },
+  {
+    id: "restocking-fees",
+    question: "Are there any restocking fees?",
+    answer:
+      "Yes, a restocking fee of 20%-50% may apply depending on the product's condition and packaging. Items returned without original packaging or in unsellable condition may incur up to 50% restocking fee. Returns of opened or used items may incur higher fees.",
+    category: "Returns",
+    keywords: ["restocking fee", "20%-50%", "condition", "packaging", "opened items"],
+  },
+  {
+    id: "store-credit-policy",
+    question: "Do you offer refunds or store credit?",
+    answer:
+      "We do not provide cash refunds. All eligible returns are issued as store credit valid for one year from the date of issue. Store credit will be for the full purchase price minus any applicable restocking fees or shipping charges. Credits are non-transferable and can only be used for future purchases.",
+    category: "Returns",
+    keywords: ["store credit", "no refunds", "one year", "non-transferable", "future purchases"],
+  },
+  {
+    id: "return-shipping",
+    question: "Who pays for return shipping?",
+    answer:
+      "Return shipping is the customer's responsibility. We recommend using a trackable shipping service as we are not liable for lost or damaged returns. Shipping fees from the original order are non-refundable and will be deducted from any store credit issued.",
+    category: "Returns",
+    keywords: ["return shipping", "customer responsibility", "trackable", "non-refundable"],
+  },
+  {
+    id: "sale-items-returns",
+    question: "Can I return items purchased on sale?",
+    answer:
+      "No, products purchased during promotional sales, flash sales, or special discount events are final sale and cannot be returned, exchanged, or refunded. These items are clearly marked as 'Final Sale' at the time of purchase.",
+    category: "Returns",
+    keywords: ["sale items", "final sale", "promotional", "no returns", "discount events"],
+  },
+  {
+    id: "return-processing-time",
+    question: "How long does it take to process returns?",
+    answer:
+      "Once we receive your returned item and it passes inspection, store credit will be issued within 7 business days. You'll receive the store credit coupon via email at your registered address. Processing may take longer during peak seasons.",
+    category: "Returns",
+    keywords: ["processing time", "7 business days", "inspection", "email coupon"],
+  },
+
+  // Keep your existing FAQs...
   {
     id: "gift-packaging",
     question: "Is gift packaging available?",
@@ -180,8 +240,8 @@ const categories = [
     color: "text-yellow-600",
   },
   {
-    name: "Returns",
-    icon: <Users className="w-4 h-4" />,
+    name: "Returns", // Updated with comprehensive return FAQs
+    icon: <RotateCcw className="w-4 h-4" />,
     color: "text-red-600",
   },
   {
@@ -225,7 +285,7 @@ export default function FAQsPage() {
           </div>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
             Find answers to common questions about our handmade products,
-            shipping, artist partnerships, and more. We're here to help you
+            shipping, artist partnerships, returns, and more. We're here to help you
             discover the perfect handcrafted treasures.
           </p>
 
@@ -233,7 +293,7 @@ export default function FAQsPage() {
           <div className="flex items-center justify-center gap-8 text-sm text-gray-600">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
-              <span>12 Categories</span>
+              <span>8 Categories</span>
             </div>
             <div className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5 text-blue-600" />
@@ -248,6 +308,27 @@ export default function FAQsPage() {
       </section>
 
       <div className="max-w-6xl mx-auto px-6">
+        {/* Important Notice for Returns */}
+        <div className="mb-8 bg-amber-50 border border-amber-200 rounded-2xl p-6">
+          <div className="flex items-start gap-4">
+            <AlertCircle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
+            <div>
+              <h3 className="font-semibold text-amber-800 mb-2">Important Return Policy Notice</h3>
+              <p className="text-amber-700 text-sm">
+                Please note: We offer <strong>store credit only</strong> (no cash refunds) within 7 days of delivery.
+                Items must be unused and in original packaging. See our Returns section below for full details.
+              </p>
+              <Link
+                href="/return-policy"
+                className="inline-flex items-center gap-2 text-amber-800 hover:text-amber-900 font-medium text-sm mt-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                View Full Return Policy
+              </Link>
+            </div>
+          </div>
+        </div>
+
         <div className="mb-12">
           {/* Category Filters */}
           <div className="flex flex-wrap justify-center gap-3">
@@ -255,11 +336,10 @@ export default function FAQsPage() {
               <button
                 key={category.name}
                 onClick={() => setSelectedCategory(category.name)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all duration-200 ${
-                  selectedCategory === category.name
+                className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all duration-200 ${selectedCategory === category.name
                     ? "bg-primary text-white shadow-lg scale-105"
                     : "bg-white text-gray-600 border border-gray-200 hover:border-primary hover:text-primary"
-                }`}
+                  }`}
               >
                 <span
                   className={
@@ -320,6 +400,13 @@ export default function FAQsPage() {
                 <MessageCircle className="w-5 h-5" />
                 Contact Support
               </Link>
+              <Link
+                href="/return-policy"
+                className="inline-flex items-center gap-2 bg-white border border-primary text-primary hover:bg-primary/5 font-semibold py-3 px-6 rounded-xl transition-all"
+              >
+                <RotateCcw className="w-5 h-5" />
+                Full Return Policy
+              </Link>
             </div>
           </div>
         </div>
@@ -328,7 +415,7 @@ export default function FAQsPage() {
   );
 }
 
-// FAQ Item Component
+// FAQ Item Component (keep exactly as is)
 const FAQItem = ({
   faq,
   isActive,
@@ -345,9 +432,8 @@ const FAQItem = ({
   return (
     <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-all duration-300">
       <button
-        className={`w-full flex justify-between items-center p-6 text-left focus:outline-none transition-all duration-200 ${
-          isActive ? "bg-primary/5" : "hover:bg-gray-50"
-        }`}
+        className={`w-full flex justify-between items-center p-6 text-left focus:outline-none transition-all duration-200 ${isActive ? "bg-primary/5" : "hover:bg-gray-50"
+          }`}
         onClick={onClick}
       >
         <div className="flex-1 pr-4">
@@ -366,17 +452,15 @@ const FAQItem = ({
           </h2>
         </div>
         <ChevronDown
-          className={`w-6 h-6 text-primary transform transition-transform duration-300 flex-shrink-0 ${
-            isActive ? "rotate-180" : ""
-          }`}
+          className={`w-6 h-6 text-primary transform transition-transform duration-300 flex-shrink-0 ${isActive ? "rotate-180" : ""
+            }`}
         />
       </button>
 
       <div
         ref={contentRef}
-        className={`transition-all duration-300 ease-in-out overflow-hidden ${
-          isActive ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-        }`}
+        className={`transition-all duration-300 ease-in-out overflow-hidden ${isActive ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          }`}
       >
         <div className="px-6 pb-6">
           <div className="pt-2 border-t border-gray-100">

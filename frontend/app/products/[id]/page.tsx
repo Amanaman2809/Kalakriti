@@ -803,7 +803,9 @@ export default function ProductDetailPage() {
                 </div>
 
                 {/* Action buttons */}
+                {/* Action buttons */}
                 <div className="flex gap-4">
+                  {/* Your existing Add to Cart and Wishlist buttons */}
                   <button
                     onClick={handleAddToCart}
                     disabled={actionLoading.cart || isInCart}
@@ -848,6 +850,26 @@ export default function ProductDetailPage() {
                     )}
                   </button>
                 </div>
+
+                {/* NEW: Return Policy Notice */}
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4">
+                  <div className="flex items-start gap-3">
+                    <RotateCcw className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-amber-800 text-sm">
+                        <strong>Return Policy:</strong> Items can be returned within 7 days for store credit only.
+                        No cash refunds. Items must be unused and in original packaging.
+                      </p>
+                      <Link
+                        href="/return-policy"
+                        className="text-amber-700 text-sm font-medium hover:text-amber-900 underline mt-1 inline-block"
+                      >
+                        Read full return policy →
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             )}
 
@@ -871,11 +893,11 @@ export default function ProductDetailPage() {
                   <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
                     <RotateCcw className="h-4 w-4 text-primary" />
                   </div>
-                  <span>30-day return policy</span>
+                  <span>7-day return policy</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-silver/20 rounded-full flex items-center justify-center">
-                    <Package className="h-4 w-4 text-silver" />
+                  <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                    <Package className="h-4 w-4 text-yellow-600" />
                   </div>
                   <span>Handcrafted with care</span>
                 </div>

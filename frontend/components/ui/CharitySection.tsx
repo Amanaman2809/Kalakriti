@@ -1,17 +1,61 @@
-// components/CharitySection.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { Product } from "@/utils/types";
+import { useEffect, useState, useCallback } from "react";
+import { InteractionState, Product } from "@/utils/types";
 import Link from "next/link";
 import { Heart, MoveRight } from "lucide-react";
 import ProductCard from "../product/ProductCard";
+import toast from "react-hot-toast";
+import {
+  addToCart as addToCartAPI,
+  addToWishlist,
+  removeFromWishlist,
+  getWishlist,
+} from "@/utils/product";
+
 
 const CHARITY_CATEGORY_ID = "f95d41b4-9a43-4f03-a675-1311a205c72e";
 
 export default function CharitySection() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  const [interactions, setInteractions] = useState<InteractionState>({
+    wishlist: {},
+    cart: {},
+    loading: {},
+  });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Load wishlist on mount
+  useEffect(() => {
+    if (!mounted) return;
+
+    const loadWishlist = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const wishlistItems = await getWishlist();
+        const wishlistMap: Record<string, boolean> = {};
+        wishlistItems.forEach((item) => {
+          wishlistMap[item.product.id] = true;
+        });
+
+        setInteractions((prev) => ({
+          ...prev,
+          wishlist: wishlistMap,
+        }));
+      } catch (error) {
+        console.error("Error loading wishlist:", error);
+      }
+    };
+
+    loadWishlist();
+  }, [mounted]);
 
   useEffect(() => {
     const fetchCharityProducts = async () => {
@@ -25,7 +69,7 @@ export default function CharitySection() {
         if (!res.ok) throw new Error("Failed to fetch charity products");
 
         const data = await res.json();
-        setProducts(data.slice(0, 3)); // Show only 3 charity products
+        setProducts(data.slice(0, 4)); // Show 4 charity products to match grid
       } catch (err) {
         console.error(err);
       } finally {
@@ -36,19 +80,151 @@ export default function CharitySection() {
     fetchCharityProducts();
   }, []);
 
-  if (loading) {
+  // Wishlist toggle handler
+  const toggleWishlist = useCallback(
+    async (productId: string, productName: string) => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Please login to manage wishlist", {
+          duration: 3000,
+          position: "top-center",
+        });
+        return;
+      }
+
+      const isInWishlist = interactions.wishlist[productId] || false;
+
+      // Optimistic update
+      setInteractions((prev) => ({
+        ...prev,
+        wishlist: {
+          ...prev.wishlist,
+          [productId]: !isInWishlist,
+        },
+        loading: {
+          ...prev.loading,
+          [`wishlist-${productId}`]: true,
+        },
+      }));
+
+      try {
+        if (isInWishlist) {
+          await removeFromWishlist(productId);
+          toast.success(`💔 Removed "${productName}" from wishlist`, {
+            duration: 2000,
+            position: "top-center",
+          });
+        } else {
+          await addToWishlist(productId);
+          toast.success(`❤️ Added "${productName}" to wishlist - Supporting charity!`, {
+            duration: 2000,
+            position: "top-center",
+          });
+        }
+      } catch (error: any) {
+        // Revert optimistic update on error
+        setInteractions((prev) => ({
+          ...prev,
+          wishlist: {
+            ...prev.wishlist,
+            [productId]: isInWishlist,
+          },
+        }));
+
+        toast.error(error.message || "Failed to update wishlist", {
+          duration: 3000,
+          position: "top-center",
+        });
+      } finally {
+        setInteractions((prev) => ({
+          ...prev,
+          loading: {
+            ...prev.loading,
+            [`wishlist-${productId}`]: false,
+          },
+        }));
+      }
+    },
+    [interactions.wishlist],
+  );
+
+  // Add to cart handler
+  const addToCartHandler = useCallback(
+    async (productId: string, productName: string) => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Please login to add items to cart", {
+          duration: 3000,
+          position: "top-center",
+        });
+        return;
+      }
+
+      if (interactions.cart[productId]) {
+        toast.success(`"${productName}" is already in cart - Thank you for supporting charity!`, {
+          duration: 2000,
+          position: "top-center",
+        });
+        return;
+      }
+
+      // Optimistic update
+      setInteractions((prev) => ({
+        ...prev,
+        loading: {
+          ...prev.loading,
+          [`cart-${productId}`]: true,
+        },
+      }));
+
+      try {
+        await addToCartAPI({ productId, quantity: 1 });
+
+        setInteractions((prev) => ({
+          ...prev,
+          cart: {
+            ...prev.cart,
+            [productId]: true,
+          },
+        }));
+
+        toast.success(`🎉 Added "${productName}" to cart - Making a difference!`, {
+          duration: 2000,
+          position: "top-center",
+        });
+      } catch (error: any) {
+        toast.error(error.message || "Failed to add to cart", {
+          duration: 3000,
+          position: "top-center",
+        });
+      } finally {
+        setInteractions((prev) => ({
+          ...prev,
+          loading: {
+            ...prev.loading,
+            [`cart-${productId}`]: false,
+          },
+        }));
+      }
+    },
+    [interactions.cart],
+  );
+
+  if (!mounted || loading) {
     return (
       <section className="px-4 sm:px-6 py-20 bg-gradient-to-br from-primary/5 via-secondary/10 to-primary/5 relative overflow-hidden">
         <div className="max-w-7xl mx-auto text-center">
-          <div className="h-8 bg-accent rounded w-48 mb-8 mx-auto"></div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl p-6 shadow-lg">
-                <div className="aspect-square bg-accent rounded-lg mb-4"></div>
-                <div className="h-6 bg-accent rounded mb-2"></div>
-                <div className="h-4 w-3/4 bg-accent rounded"></div>
-              </div>
-            ))}
+          <div className="animate-pulse">
+            <div className="h-8 bg-accent rounded w-48 mb-8 mx-auto"></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="bg-white rounded-2xl p-6 shadow-lg">
+                  <div className="aspect-square bg-accent rounded-lg mb-4"></div>
+                  <div className="h-6 bg-accent rounded mb-2"></div>
+                  <div className="h-4 w-3/4 bg-accent rounded"></div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -85,25 +261,26 @@ export default function CharitySection() {
           <div className="bg-primary/10 p-6 rounded-2xl max-w-2xl mx-auto mb-8">
             <h3 className="text-xl font-bold text-primary mb-3">Your Impact</h3>
             <p className="text-gray-700">
-              {
-                " By choosing these products, you're not just acquiring beautiful"
-              }
-              {
-                "handicrafts - you're providing education for children, healthcare"
-              }
-              {
-                "for families, and sustainable livelihoods for communities across"
-              }
-              {"India."}
+              By choosing these products, you're not just acquiring beautiful
+              handicrafts - you're providing education for children, healthcare
+              for families, and sustainable livelihoods for communities across
+              India.
             </p>
           </div>
 
           <div className="w-24 h-1 bg-primary mx-auto rounded-full"></div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        {/* Products Grid with Full Functionality */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-12">
           {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard
+              key={product.id}
+              product={product}
+              interactions={interactions}
+              toggleWishlist={toggleWishlist}
+              addToCartHandler={addToCartHandler}
+            />
           ))}
         </div>
 

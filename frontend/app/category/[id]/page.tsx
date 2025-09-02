@@ -1,10 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
-import { Category, Product } from "@/utils/types";
+import { Category, InteractionState, Product } from "@/utils/types";
 import Link from "next/link";
+import ProductCard from "@/components/product/ProductCard";
+import toast from "react-hot-toast";
+import {
+  addToCart as addToCartAPI,
+  addToWishlist,
+  removeFromWishlist,
+  getWishlist,
+} from "@/utils/product";
 
 export default function CategoryDetailPage() {
   const params = useParams();
@@ -13,6 +21,43 @@ export default function CategoryDetailPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [interactions, setInteractions] = useState<InteractionState>({
+    wishlist: {},
+    cart: {},
+    loading: {},
+  });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Load wishlist on mount
+  useEffect(() => {
+    if (!mounted) return;
+
+    const loadWishlist = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const wishlistItems = await getWishlist();
+        const wishlistMap: Record<string, boolean> = {};
+        wishlistItems.forEach((item) => {
+          wishlistMap[item.product.id] = true;
+        });
+
+        setInteractions((prev) => ({
+          ...prev,
+          wishlist: wishlistMap,
+        }));
+      } catch (error) {
+        console.error("Error loading wishlist:", error);
+      }
+    };
+
+    loadWishlist();
+  }, [mounted]);
 
   useEffect(() => {
     if (!id) return;
@@ -54,7 +99,137 @@ export default function CategoryDetailPage() {
     fetchCategoryAndProducts();
   }, [id]);
 
-  if (loading) return <LoadingSkeleton />;
+  // Wishlist toggle handler
+  const toggleWishlist = useCallback(
+    async (productId: string, productName: string) => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Please login to manage wishlist", {
+          duration: 3000,
+          position: "top-center",
+        });
+        return;
+      }
+
+      const isInWishlist = interactions.wishlist[productId] || false;
+
+      // Optimistic update
+      setInteractions((prev) => ({
+        ...prev,
+        wishlist: {
+          ...prev.wishlist,
+          [productId]: !isInWishlist,
+        },
+        loading: {
+          ...prev.loading,
+          [`wishlist-${productId}`]: true,
+        },
+      }));
+
+      try {
+        if (isInWishlist) {
+          await removeFromWishlist(productId);
+          toast.success(`Removed "${productName}" from wishlist`, {
+            duration: 2000,
+            position: "top-center",
+          });
+        } else {
+          await addToWishlist(productId);
+          toast.success(`❤️ Added "${productName}" to wishlist`, {
+            duration: 2000,
+            position: "top-center",
+          });
+        }
+      } catch (error: any) {
+        // Revert optimistic update on error
+        setInteractions((prev) => ({
+          ...prev,
+          wishlist: {
+            ...prev.wishlist,
+            [productId]: isInWishlist,
+          },
+        }));
+
+        toast.error(error.message || "Failed to update wishlist", {
+          duration: 3000,
+          position: "top-center",
+        });
+      } finally {
+        setInteractions((prev) => ({
+          ...prev,
+          loading: {
+            ...prev.loading,
+            [`wishlist-${productId}`]: false,
+          },
+        }));
+      }
+    },
+    [interactions.wishlist],
+  );
+
+  // Add to cart handler
+  const addToCartHandler = useCallback(
+    async (productId: string, productName: string) => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Please login to add items to cart", {
+          duration: 3000,
+          position: "top-center",
+        });
+        return;
+      }
+
+      if (interactions.cart[productId]) {
+        toast.success(`"${productName}" is already in cart`, {
+          duration: 2000,
+          position: "top-center",
+        });
+        return;
+      }
+
+      // Optimistic update
+      setInteractions((prev) => ({
+        ...prev,
+        loading: {
+          ...prev.loading,
+          [`cart-${productId}`]: true,
+        },
+      }));
+
+      try {
+        await addToCartAPI({ productId, quantity: 1 });
+
+        setInteractions((prev) => ({
+          ...prev,
+          cart: {
+            ...prev.cart,
+            [productId]: true,
+          },
+        }));
+
+        toast.success(`Added "${productName}" to cart`, {
+          duration: 2000,
+          position: "top-center",
+        });
+      } catch (error: any) {
+        toast.error(error.message || "Failed to add to cart", {
+          duration: 3000,
+          position: "top-center",
+        });
+      } finally {
+        setInteractions((prev) => ({
+          ...prev,
+          loading: {
+            ...prev.loading,
+            [`cart-${productId}`]: false,
+          },
+        }));
+      }
+    },
+    [interactions.cart],
+  );
+
+  if (!mounted || loading) return <LoadingSkeleton />;
   if (error) return <ErrorDisplay message={error} />;
   if (!category) return <ErrorDisplay message="No category found" />;
 
@@ -119,49 +294,18 @@ export default function CategoryDetailPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  interactions={interactions}
+                  toggleWishlist={toggleWishlist}
+                  addToCartHandler={addToCartHandler}
+                />
               ))}
             </div>
           )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProductCard({ product }: { product: Product }) {
-  return (
-    <div className="group relative bg-background rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 border border-secondary">
-      <Link href={`/products/${product.id}`} className="block">
-        <div className="aspect-square relative hover:cursor-pointer">
-          <Image
-            src={product.images?.[0] ?? "/fallback.jpg"}
-            alt={product.name}
-            fill
-            className="object-cover group-hover:opacity-90 transition-opacity"
-            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
-      </Link>
-      <div className="p-4">
-        <Link href={`/products/${product.id}`}>
-          <h3 className="font-semibold mb-1 line-clamp-1 hover:cursor-pointer">
-            {product.name}
-          </h3>
-        </Link>
-        <p className="text-sm text-text/80 mb-3 line-clamp-2">
-          {product.description}
-        </p>
-        <div className="flex justify-between items-center">
-          <span className="text-lg font-bold text-primary">
-            ₹{product.price.toLocaleString()}
-          </span>
-          <button className="text-sm font-medium text-white bg-primary hover:bg-primary/90 px-3 py-1 rounded-full transition-colors">
-            Add to Cart
-          </button>
         </div>
       </div>
     </div>
@@ -172,30 +316,30 @@ function LoadingSkeleton() {
   return (
     <div className="bg-background text-text min-h-screen">
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-10">
-          <div className="flex flex-col md:flex-row gap-6 items-center bg-accent p-6 rounded-xl">
-            <div className="w-full md:w-1/3 h-64 rounded-xl bg-secondary/20 animate-pulse"></div>
-            <div className="flex-1 space-y-4">
-              <div className="h-10 w-3/4 rounded bg-secondary/20 animate-pulse"></div>
-              <div className="h-6 w-1/2 rounded bg-secondary/20 animate-pulse"></div>
+        <div className="animate-pulse">
+          <div className="mb-10">
+            <div className="flex flex-col md:flex-row gap-6 items-center bg-accent p-6 rounded-xl">
+              <div className="w-full md:w-1/3 h-64 rounded-xl bg-secondary/20"></div>
+              <div className="flex-1 space-y-4">
+                <div className="h-10 w-3/4 rounded bg-secondary/20"></div>
+                <div className="h-6 w-1/2 rounded bg-secondary/20"></div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <h2 className="text-2xl font-semibold mb-6 border-b border-secondary pb-2">
-          <div className="h-8 w-1/3 rounded bg-secondary/20 animate-pulse"></div>
-        </h2>
+          <div className="h-8 w-1/3 rounded bg-secondary/20 mb-6"></div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="space-y-4">
-              <div className="aspect-square rounded-xl bg-secondary/20 animate-pulse"></div>
-              <div className="h-6 w-3/4 rounded bg-secondary/20 animate-pulse"></div>
-              <div className="h-4 w-full rounded bg-secondary/20 animate-pulse"></div>
-              <div className="h-4 w-full rounded bg-secondary/20 animate-pulse"></div>
-              <div className="h-8 w-1/2 rounded bg-secondary/20 animate-pulse"></div>
-            </div>
-          ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl p-4 shadow-sm">
+                <div className="aspect-square rounded-xl bg-secondary/20 mb-4"></div>
+                <div className="h-6 w-3/4 rounded bg-secondary/20 mb-2"></div>
+                <div className="h-4 w-full rounded bg-secondary/20 mb-2"></div>
+                <div className="h-4 w-full rounded bg-secondary/20 mb-4"></div>
+                <div className="h-8 w-1/2 rounded bg-secondary/20"></div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
