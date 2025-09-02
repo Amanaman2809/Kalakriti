@@ -40,8 +40,16 @@ export default function AdminLoginPage() {
             localStorage.setItem("user", JSON.stringify(data.user));
 
             router.push("/admin");
-        } catch (err: any) {
-            setErrorMsg(err.message || "Unexpected error");
+        } catch (error: unknown) {
+            let errorMessage = "Unexpected error";
+
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+
+            setErrorMsg(errorMessage);
         } finally {
             setLoading(false);
         }

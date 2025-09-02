@@ -130,7 +130,7 @@ export default function WishlistPage() {
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertCircle className="w-8 h-8 text-red-500" />
               </div>
-              <h3 className="text-xl font-semibold text-red-800 mb-2">Couldn't load wishlist</h3>
+              <h3 className="text-xl font-semibold text-red-800 mb-2">Couldn&quot;t load wishlist</h3>
               <p className="text-red-600 mb-6">{error}</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
@@ -385,7 +385,7 @@ const EmptyWishlist = ({ router }: { router: any }) => (
     <h2 className="text-3xl font-bold text-text mb-4">Your wishlist is empty</h2>
     <p className="text-gray-600 max-w-md mb-8 leading-relaxed">
       Save products you love by clicking the heart icon.
-      They'll appear here so you can easily find them later!
+      They&quot;ll appear here so you can easily find them later!
     </p>
     <div className="flex flex-col sm:flex-row gap-4">
       <button

@@ -11,7 +11,6 @@ import {
   HelpCircle,
   LogOut,
   Sparkles,
-  ChevronDown,
   RotateCcw,
 } from "lucide-react";
 import Image from "next/image";
@@ -248,7 +247,7 @@ const SearchComponent = ({ isLoggedIn }: { isLoggedIn: boolean }) => {
               <div className="flex flex-col items-center justify-center h-64 text-gray-500">
                 <SearchIcon className="h-12 w-12 text-gray-300 mb-4" />
                 <p className="text-center">
-                  No results found for "{searchQuery}"
+                      No results found for &quot;{searchQuery}&quot;
                 </p>
               </div>
             ) : (

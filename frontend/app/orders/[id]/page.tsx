@@ -17,8 +17,6 @@ import {
   MapPin,
   Phone,
   Copy,
-  ExternalLink,
-  Star,
   Share2,
 } from "lucide-react";
 import Link from "next/link";
@@ -233,7 +231,7 @@ export default function OrderConfirmationPage() {
           <div className="text-center py-12">
             <h2 className="text-xl font-semibold">Order not found</h2>
             <p className="mt-2 text-gray-600">
-              We couldn't find the order you're looking for
+              We couldn&apos;t find the order you&apos;re looking for
             </p>
             <Link
               href="/orders"

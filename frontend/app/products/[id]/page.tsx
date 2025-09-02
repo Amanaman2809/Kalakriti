@@ -254,7 +254,7 @@ const ReviewItem = ({ review, index }: { review: Review; index: number }) => (
       </div>
     </div>
     <blockquote className="text-text/90 leading-relaxed italic border-l-4 border-primary/30 pl-4">
-      "{review.comment}"
+      &quot;{review.comment}&quot;
     </blockquote>
   </div>
 );

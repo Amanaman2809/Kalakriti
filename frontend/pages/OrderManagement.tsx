@@ -18,9 +18,6 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  MoreVertical,
-  BarChart3,
-  Users,
   ShoppingBag,
   CheckCircle,
   Clock,
@@ -484,7 +481,8 @@ export default function OrdersListPage() {
       a.click();
       window.URL.revokeObjectURL(url);
       toast.success("Orders exported successfully");
-    } catch (error) {
+    } catch (e) {
+      console.log(e);
       toast.error("Failed to export orders");
     }
   };

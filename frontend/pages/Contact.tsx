@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import toast from "react-hot-toast";
 import {
   Mail,
@@ -15,12 +13,11 @@ import {
   Check,
   AlertCircle,
   ArrowRight,
-  Star,
   Users,
   Award,
   Heart,
 } from "lucide-react";
-import { Instagram, Facebook, Twitter, Youtube, Linkedin } from "lucide-react";
+import { Instagram, Facebook, Youtube, Linkedin } from "lucide-react";
 
 interface FormData {
   name: string;
@@ -149,7 +146,7 @@ export default function Contact() {
             </h1>
             <p className="text-xl text-gray-600 mb-8 leading-relaxed">
               Have questions about our handcrafted treasures? Need help with
-              your order? We're here to help you discover the perfect piece for
+              your order? We&apos;re here to help you discover the perfect piece for
               your collection.
             </p>
             <div className="flex items-center justify-center gap-6 text-sm text-gray-600">
@@ -247,7 +244,7 @@ export default function Contact() {
                 </h2>
                 <p className="text-gray-600">
                   Whether you have questions about our products, need custom
-                  work, or want to visit our store, we'd love to hear from you.
+                  work, or want to visit our store, we&apos;d love to hear from you.
                 </p>
               </div>
 
@@ -260,7 +257,7 @@ export default function Contact() {
                     Message Sent Successfully!
                   </h3>
                   <p className="text-gray-600 mb-6">
-                    Thank you for reaching out. We'll get back to you within 24
+                    Thank you for reaching out. We&apos;ll get back to you within 24
                     hours.
                   </p>
                   <button

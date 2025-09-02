@@ -103,7 +103,7 @@ function Footer() {
             </div>
 
             <p className="text-white/80 mb-6 leading-relaxed text-sm">
-              Celebrating India's rich heritage through authentic handcrafted
+              Celebrating India&apos;s rich heritage through authentic handcrafted
               products. Each piece tells a story of tradition, skill, and
               artistry passed down through generations.
             </p>

@@ -1,5 +1,4 @@
 "use client"
-import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
 export default function Filters({ 
@@ -10,8 +9,6 @@ export default function Filters({
   onFilterChange: (filters: any) => void;
 }) {
   const [localFilters, setLocalFilters] = useState(filters);
-  const router = useRouter();
-
   useEffect(() => {
     setLocalFilters(filters);
   }, [filters]);

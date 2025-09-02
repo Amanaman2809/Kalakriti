@@ -7,13 +7,9 @@ import {
   Package,
   Truck,
   ChevronRight,
-  Users,
   Eye,
   RefreshCw,
-  ArrowUp,
-  ArrowDown,
   Loader2,
-  AlertTriangle,
   Clock,
   CheckCircle,
 } from "lucide-react";
@@ -84,6 +80,7 @@ export default function AdminDashboard() {
         },
       });
     } catch (error) {
+      console.log(error);
       toast.error("Could not load dashboard data");
     } finally {
       setLoading(false);
@@ -189,7 +186,7 @@ export default function AdminDashboard() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600 mt-2">Here's how your store is doing</p>
+            <p className="text-gray-600 mt-2">Here&apos;s how your store is doing</p>
           </div>
           <button
             onClick={handleRefresh}

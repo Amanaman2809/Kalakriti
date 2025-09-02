@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Check, Truck, Clock, X } from 'lucide-react';
+import { Check, Truck, Clock, X, MapPin, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { Order, OrderStatus } from '@/utils/types';
 
@@ -135,7 +135,30 @@ export default function OrderConfirmation() {
 
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h2 className="text-lg font-medium text-gray-900 mb-4">Shipping Address</h2>
-                    <p className="whitespace-pre-line">{order.address}</p>
+                    {order.address ? (
+                        <div className="space-y-2">
+                            <div className="flex items-start gap-3">
+                                <MapPin className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                                <div>
+                                    <p className="font-medium text-text">
+                                        {order.address.street}
+                                    </p>
+                                    <p className="text-gray-600">
+                                        {order.address.city}, {order.address.state}
+                                    </p>
+                                    <p className="text-gray-600">
+                                        {order.address.country} - {order.address.postalCode}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Phone className="h-5 w-5 text-primary" />
+                                <p className="text-gray-600">{order.address.phone}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="text-gray-500">No shipping address available</p>
+                    )}
                 </div>
             </div>
 
@@ -147,7 +170,7 @@ export default function OrderConfirmation() {
                             <div className="flex items-center">
                                 <div className="h-16 w-16 rounded-md overflow-hidden border border-gray-200 mr-4">
                                     <img
-                                        src={item.product.image || '/placeholder-product.png'}
+                                        src={item.product.images[0] || '/placeholder-product.png'}
                                         alt={item.product.name}
                                         className="h-full w-full object-cover"
                                     />

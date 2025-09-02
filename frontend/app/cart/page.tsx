@@ -372,7 +372,7 @@ const EmptyCart = () => (
     </div>
     <h2 className="text-2xl font-bold text-text mb-2">Your cart is empty</h2>
     <p className="text-gray-600 mb-8 max-w-md">
-      Looks like you haven't added anything to your cart yet.
+      Looks like you haven&apos;t added anything to your cart yet.
       Start exploring our amazing collection!
     </p>
     <div className="flex flex-col sm:flex-row gap-4">

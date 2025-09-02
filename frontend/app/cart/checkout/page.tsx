@@ -85,15 +85,17 @@ export default function CheckoutPage() {
         } else {
           setAddressForm({ show: true, mode: "add", editingId: null });
         }
-      } catch (err: any) {
-        console.error("Fetch error:", err);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to load data";
+        console.error("Fetch error:", error);
         setErrors(prev => ({
           ...prev,
-          cart: err.message || "Failed to load cart",
-          address: err.message || "Failed to load addresses"
+          cart: error instanceof Error ? error.message : "Failed to load cart",
+          address: error instanceof Error ? error.message : "Failed to load addresses"
         }));
-        toast.error(err.message || "Failed to load data");
-      } finally {
+        toast.error(errorMessage);
+      }
+     finally {
         setIsLoading(prev => ({
           ...prev,
           cart: false,
@@ -208,7 +210,6 @@ export default function CheckoutPage() {
       if (selectedAddress === id) {
         setSelectedAddress(updatedAddresses[0]?.id || null);
       }
-
       toast.success("Address deleted successfully");
     } catch (err: any) {
       toast.error(err.message || "Failed to delete address");

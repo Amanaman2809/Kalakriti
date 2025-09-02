@@ -41,6 +41,7 @@ export default function VerifyOTPPage() {
       setResendDisabled(true);
       setCountdown(60);
     } catch (err) {
+      console.log(err)
       setErrorMsg("Failed to send OTP. Please try again.");
     }
   };
@@ -95,7 +96,7 @@ export default function VerifyOTPPage() {
         <div className="bg-primary p-6 text-center">
           <h2 className="text-2xl font-bold text-white">Verify Your Phone</h2>
           <p className="text-secondary mt-1">
-            We've sent a 6-digit code to {phone}
+            We&quot;ve sent a 6-digit code to {phone}
           </p>
         </div>
 
@@ -153,7 +154,7 @@ export default function VerifyOTPPage() {
           </button>
 
           <div className="text-center text-sm text-text">
-            Didn't receive the code?{" "}
+            Didn&quot;t receive the code?{" "}
             <button
               type="button"
               onClick={requestOTP}

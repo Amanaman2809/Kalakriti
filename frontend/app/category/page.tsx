@@ -5,7 +5,6 @@ import { Category } from "@/utils/types";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import toast from "react-hot-toast";
 
 export default function CategoryPage() {
   const [categoryData, setCategoryData] = useState<Category[]>([]);
@@ -68,7 +67,7 @@ export default function CategoryPage() {
             Explore Our <span className="text-primary">Collections</span>
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Discover handcrafted treasures from Rajasthan's finest artisans,
+            Discover handcrafted treasures from Rajasthan&apos;s finest artisans,
             where each piece tells a story of tradition and craftsmanship
           </p>
 
@@ -198,7 +197,7 @@ const CallToAction = () => (
     </h3>
     <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
       Our artisans create custom pieces tailored to your preferences. Share your
-      vision with us and we'll craft something truly unique for you.
+      vision with us and we&apos;ll craft something truly unique for you.
     </p>
     <Link
       href="/contact"

@@ -4,7 +4,6 @@ import {
   CartParams,
   FeedbackSubmission,
   FeedbackSummary,
-  PFeedback,
   WishlistItem,
 } from "./types";
 

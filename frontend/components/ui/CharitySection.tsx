@@ -261,8 +261,8 @@ export default function CharitySection() {
           <div className="bg-primary/10 p-6 rounded-2xl max-w-2xl mx-auto mb-8">
             <h3 className="text-xl font-bold text-primary mb-3">Your Impact</h3>
             <p className="text-gray-700">
-              By choosing these products, you're not just acquiring beautiful
-              handicrafts - you're providing education for children, healthcare
+              By choosing these products, you&apos;re not just acquiring beautiful
+              handicrafts - you&apos;re providing education for children, healthcare
               for families, and sustainable livelihoods for communities across
               India.
             </p>

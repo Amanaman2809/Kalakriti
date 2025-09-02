@@ -107,7 +107,7 @@ export default function AboutPage() {
                 <h3 className="text-xl font-bold text-primary">Our Heritage</h3>
               </div>
               <p className="leading-relaxed text-gray-700">
-                <strong>Chalava</strong> isn't just a business — it's a legacy
+                <strong>Chalava</strong> isn&quot;t just a business — it&quot;s a legacy
                 that began decades ago in the vibrant lanes of Jaipur, the Pink
                 City of India, where every street whispers a story, every wall
                 reflects a culture, and every home nurtures creativity.
@@ -155,10 +155,10 @@ export default function AboutPage() {
             <div className="relative max-w-4xl mx-auto">
               {/* Decorative quote marks */}
               <div className="absolute -top-6 -left-6 text-6xl text-primary/10 font-serif">
-                "
+                &quot;
               </div>
               <div className="absolute -bottom-6 -right-6 text-6xl text-primary/10 font-serif">
-                "
+                &quot;
               </div>
 
               <p className="text-xl text-primary/95 leading-relaxed font-light">

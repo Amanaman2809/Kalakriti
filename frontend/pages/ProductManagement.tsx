@@ -10,7 +10,6 @@ import {
   ArrowLeft,
   Check,
   Search,
-  Filter,
   Eye,
   Package,
   AlertTriangle,
@@ -19,7 +18,6 @@ import {
   RefreshCw,
   Grid3X3,
   List,
-  Star,
   TrendingUp
 } from "lucide-react";
 import { Product, Category } from "@/utils/types";

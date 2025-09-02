@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { Category, InteractionState, Product } from "@/utils/types";
-import Link from "next/link";
 import ProductCard from "@/components/product/ProductCard";
 import toast from "react-hot-toast";
 import {

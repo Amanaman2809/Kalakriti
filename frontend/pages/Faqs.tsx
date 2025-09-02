@@ -5,8 +5,6 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   ChevronDown,
   MessageCircle,
-  Phone,
-  Mail,
   HelpCircle,
   CheckCircle,
   Users,
@@ -17,9 +15,6 @@ import {
   Palette,
   RotateCcw,
   AlertCircle,
-  CreditCard,
-  Clock,
-  XCircle,
 } from "lucide-react";
 
 interface FAQ {
@@ -285,7 +280,7 @@ export default function FAQsPage() {
           </div>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
             Find answers to common questions about our handmade products,
-            shipping, artist partnerships, returns, and more. We're here to help you
+            shipping, artist partnerships, returns, and more. We&apos;re here to help you
             discover the perfect handcrafted treasures.
           </p>
 
@@ -388,8 +383,8 @@ export default function FAQsPage() {
               Still have questions?
             </h3>
             <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-              Can't find what you're looking for? Our friendly support team is
-              here to help! Reach out and we'll get back to you within 24 hours.
+              Can&apos;t find what you&apos;re looking for? Our friendly support team is
+              here to help! Reach out and we&apos;ll get back to you within 24 hours.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

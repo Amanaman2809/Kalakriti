@@ -11,18 +11,14 @@ import {
     X,
     Phone,
     Mail,
-    Calendar,
-    CreditCard,
     Truck,
-    CheckCircle,
     Copy,
-    ExternalLink,
     AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { Order, OrderStatus, PaymentStatus, OrderStatusValues, PaymentStatusValues } from '@/utils/types';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams} from 'next/navigation';
 
 export default function OrderDetailPage() {
     const [order, setOrder] = useState<Order | null>(null);
@@ -31,7 +27,6 @@ export default function OrderDetailPage() {
     const [updating, setUpdating] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState<Partial<Order>>({});
-    const router = useRouter();
     const param = useParams();
     const id = param?.id;
 
@@ -88,7 +83,7 @@ export default function OrderDetailPage() {
         }
     };
 
-    const handleEditChange = (field: keyof Order, value: any) => {
+    const handleEditChange = (field: keyof Order, value: unknown) => {
         setEditData(prev => ({ ...prev, [field]: value }));
     };
 

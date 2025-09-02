@@ -10,7 +10,6 @@ import {
   Menu,
   LayoutPanelTop,
   Users,
-  Key,
   Lock,
   X,
   ChevronLeft,
