@@ -2,6 +2,7 @@ import { Star, StarHalf } from "lucide-react";
 import {
   CartItem,
   CartParams,
+  FeedbackSubmission,
   FeedbackSummary,
   PFeedback,
   WishlistItem,
@@ -113,7 +114,7 @@ export const similarCatProd = async (categoryId: string) => {
   }
 };
 
-export const addFeedback = async (feedback: PFeedback) => {
+export const addFeedback = async (feedback: FeedbackSubmission) => {
   const token = localStorage.getItem("token");
 
   if (!token) {

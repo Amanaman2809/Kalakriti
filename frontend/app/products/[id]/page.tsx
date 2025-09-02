@@ -11,6 +11,7 @@ import {
   ShoppingCart,
   Share2,
   Star,
+  StarHalf,
   Check,
   Loader2,
   ChevronLeft,
@@ -18,16 +19,281 @@ import {
   Package,
   Truck,
   Shield,
-  RotateCcw
+  RotateCcw,
+  MessageCircle,
+  Calendar,
+  User,
+  Send,
+  CheckCircle
 } from 'lucide-react';
-import { Product } from '@/utils/types';
-import { addToCart, addToWishlist, removeFromWishlist, getWishlist } from '@/utils/product';
+import { FeedbackSubmission, Product } from '@/utils/types';
+import { addToCart, addToWishlist, removeFromWishlist, getWishlist, addFeedback, fetchAllFeedbacks, feedbackSummary } from '@/utils/product';
+
+// Reviews Types
+interface Review {
+  id: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  user: {
+    name: string;
+  };
+}
+
+interface FeedbackSummary {
+  avg_rating: number;
+  total_reviews: number;
+}
+
+// Beautiful StarRating component for reviews
+const StarRating = ({
+  rating,
+  interactive = false,
+  onRatingChange,
+  size = 'md'
+}: {
+  rating: number;
+  interactive?: boolean;
+  onRatingChange?: (rating: number) => void;
+  size?: 'sm' | 'md' | 'lg';
+}) => {
+  const sizes = {
+    sm: 'w-4 h-4',
+    md: 'w-5 h-5',
+    lg: 'w-6 h-6'
+  };
+
+  const [hoveredStar, setHoveredStar] = useState(0);
+
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => {
+        const filled = star <= Math.floor(rating);
+        const halfFilled = star === Math.ceil(rating) && rating % 1 >= 0.5;
+        const isHovered = interactive && hoveredStar >= star;
+
+        return (
+          <button
+            key={star}
+            type="button"
+            onClick={() => interactive && onRatingChange?.(star)}
+            onMouseEnter={() => interactive && setHoveredStar(star)}
+            onMouseLeave={() => interactive && setHoveredStar(0)}
+            className={`focus:outline-none transition-all duration-200 ${interactive ? 'hover:scale-110 cursor-pointer transform' : 'cursor-default'
+              }`}
+            aria-label={`${star} star${star !== 1 ? 's' : ''}`}
+            disabled={!interactive}
+          >
+            {filled || isHovered ? (
+              <Star className={`${sizes[size]} fill-yellow-400 text-yellow-400 drop-shadow-sm`} />
+            ) : halfFilled ? (
+              <StarHalf className={`${sizes[size]} fill-yellow-400 text-yellow-400 drop-shadow-sm`} />
+            ) : (
+              <Star className={`${sizes[size]} text-gray-300 hover:text-yellow-400 transition-colors`} />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+// Review Form Component
+const ReviewForm = ({
+  onSubmit,
+  loading,
+  error,
+}: {
+  onSubmit: (review: { rating: number; comment: string }) => void;
+  loading: boolean;
+  error: string | null;
+}) => {
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [focused, setFocused] = useState(false);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rating === 0) {
+      toast.error('Please select a rating');
+      return;
+    }
+    if (comment.trim().length < 10) {
+      toast.error('Review must be at least 10 characters long');
+      return;
+    }
+    onSubmit({ rating, comment });
+    setComment('');
+    setRating(0);
+  };
+  return (
+    <div className="bg-accent/20 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-accent shadow-sm hover:shadow-md transition-all duration-300">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-lg">
+          <MessageCircle className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <h3 className="text-xl font-bold text-text">Share Your Experience</h3>
+          <p className="text-text/70 text-sm">Help others make informed decisions</p>
+        </div>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-3">
+          <label className="block text-sm font-semibold text-text">
+            How would you rate this product?
+          </label>
+          <div className="flex items-center gap-4">
+            <StarRating
+              rating={rating}
+              interactive
+              onRatingChange={setRating}
+              size="lg"
+            />
+            {rating > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full">
+                <CheckCircle className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-primary">
+                  {rating === 1 ? 'Poor' : rating === 2 ? 'Fair' : rating === 3 ? 'Good' : rating === 4 ? 'Very Good' : 'Excellent'}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="space-y-3">
+          <label htmlFor="comment" className="block text-sm font-semibold text-text">
+            Tell us more about your experience
+          </label>
+          <div className="relative">
+            <textarea
+              id="comment"
+              rows={4}
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none bg-background transition-all duration-300 resize-none ${focused
+                ? 'border-primary shadow-md shadow-primary/10'
+                : 'border-gray-300 hover:border-gray-400'
+                }`}
+              placeholder="Share details about your experience with this product..."
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              required
+              minLength={10}
+              maxLength={500}
+            />
+            <div className="absolute bottom-3 right-3">
+              <span className={`text-xs transition-colors ${comment.length < 10 ? 'text-gray-400' : 'text-primary'
+                }`}>
+                {comment.length}/500
+              </span>
+            </div>
+          </div>
+          <p className="text-xs text-text/60">Minimum 10 characters required</p>
+        </div>
+        <button
+          type="submit"
+          disabled={loading || rating === 0 || comment.trim().length < 10}
+          className={`w-full flex items-center justify-center gap-3 px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300 ${loading || rating === 0 || comment.trim().length < 10
+            ? 'opacity-50 cursor-not-allowed'
+            : 'hover:shadow-lg'
+            }`}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Submitting...
+            </>
+          ) : (
+            <>
+              <Send className="w-5 h-5" />
+              Submit Review
+            </>
+          )}
+        </button>
+        {error && (
+          <div className="p-3 bg-red-50 border-l-4 border-red-400 rounded-lg">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+      </form>
+    </div>
+  );
+};
+
+// Review Item Component
+const ReviewItem = ({ review, index }: { review: Review; index: number }) => (
+  <div
+    className="bg-background rounded-2xl p-6 border border-accent shadow-sm hover:shadow-md transition-all duration-300"
+    style={{ animationDelay: `${index * 100}ms` }}
+  >
+    <div className="flex items-start gap-4 mb-4">
+      <div className="relative">
+        <div className="w-12 h-12 bg-primary  rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
+          {review.user.name.charAt(0).toUpperCase()}
+        </div>
+        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+          <CheckCircle className="w-3 h-3 text-white" />
+        </div>
+      </div>
+      <div className="flex-1">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="font-semibold text-text">{review.user.name}</h4>
+          <div className="flex items-center gap-1 text-xs text-gray-500">
+            <Calendar className="w-3 h-3" />
+            {new Date(review.createdAt).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}
+          </div>
+        </div>
+        <div className="flex items-center gap-3 mb-3">
+          <StarRating rating={review.rating} size="sm" />
+          <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">
+            {review.rating}/5 Stars
+          </span>
+        </div>
+      </div>
+    </div>
+    <blockquote className="text-text/90 leading-relaxed italic border-l-4 border-primary/30 pl-4">
+      "{review.comment}"
+    </blockquote>
+  </div>
+);
+
+// Reviews Summary Component
+const ReviewsSummary = ({ summary }: { summary: FeedbackSummary | null }) => {
+  if (!summary || summary.total_reviews === 0) return null;
+
+  return (
+    <div className="text-center mb-8">
+      <div className="inline-flex items-center gap-6 bg-background rounded-2xl p-6 border border-accent shadow-sm">
+        <div className="text-center">
+          <div className="text-4xl font-bold text-primary mb-2">
+            {summary.avg_rating.toFixed(1)}
+          </div>
+          <StarRating rating={summary.avg_rating} size="lg" />
+          <p className="text-text/70 text-sm mt-1">Average Rating</p>
+        </div>
+        <div className="h-16 w-px bg-gray-300"></div>
+        <div className="text-center">
+          <div className="text-2xl font-bold text-secondary mb-1">
+            {summary.total_reviews}
+          </div>
+          <p className="text-text font-medium">
+            Review{summary.total_reviews !== 1 ? 's' : ''}
+          </p>
+          <p className="text-text/60 text-xs">Verified purchases</p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const productId = params?.id as string;
 
+  // Existing state
   const [product, setProduct] = useState<Product | null>(null);
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +308,12 @@ export default function ProductDetailPage() {
   });
   const [mounted, setMounted] = useState(false);
 
+  // New review state
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewSummary, setReviewSummary] = useState<FeedbackSummary | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -52,6 +324,8 @@ export default function ProductDetailPage() {
     const fetchProductDetails = async () => {
       try {
         setLoading(true);
+
+        // Fetch product details
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/products/${productId}`
         );
@@ -88,6 +362,9 @@ export default function ProductDetailPage() {
         } catch (error) {
           console.error("Failed to check wishlist:", error);
         }
+
+        // Fetch reviews and summary
+        await loadReviews();
       } catch (error: any) {
         setError(error.message || "Failed to fetch product details");
         console.error("Fetch error:", error);
@@ -99,6 +376,58 @@ export default function ProductDetailPage() {
     fetchProductDetails();
   }, [productId, mounted]);
 
+  // Load reviews function
+  const loadReviews = async () => {
+    try {
+      const [reviewsData, summaryData] = await Promise.all([
+        fetchAllFeedbacks(productId),
+        feedbackSummary(productId)
+      ]);
+      setReviews(reviewsData);
+      setReviewSummary(summaryData);
+    } catch (error) {
+      console.error("Failed to load reviews:", error);
+    }
+  };
+
+  // Submit review handler
+  const handleSubmitReview = async ({ rating, comment }: { rating: number; comment: string }) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Please login to write a review");
+      router.push("/login");
+      return;
+    }
+
+    try {
+      setReviewLoading(true);
+      setReviewError(null);
+
+      const feedbackSubmission: FeedbackSubmission = {
+        productId,
+        rating,
+        comment 
+      };
+
+      await addFeedback(feedbackSubmission);
+      toast.success('Thank you for your review!', {
+        icon: '🎉',
+        duration: 3000,
+      });
+
+      // Reload reviews
+      await loadReviews();
+    } catch (err: any) {
+      setReviewError(err.message);
+      toast.error('Failed to submit review');
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+  
+  
+
+  // All your existing handlers remain the same...
   const handleAddToCart = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -168,7 +497,6 @@ export default function ProductDetailPage() {
         console.error("Error sharing:", error);
       }
     } else {
-      // Fallback to copying URL
       navigator.clipboard.writeText(window.location.href);
       toast.success("Product link copied to clipboard!");
     }
@@ -200,6 +528,7 @@ export default function ProductDetailPage() {
     }
   };
 
+  // Your existing loading and error states remain the same...
   if (!mounted || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -260,6 +589,7 @@ export default function ProductDetailPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Keep all your existing breadcrumb, back button, and product content exactly as is */}
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-600 mb-6">
           <Link href="/" className="hover:text-primary transition-colors">Home</Link>
@@ -291,9 +621,9 @@ export default function ProductDetailPage() {
           </button>
         </div>
 
-        {/* Product content */}
+        {/* Product content - keep exactly as is */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Image gallery */}
+          {/* Keep your entire existing image gallery section */}
           <div className="space-y-4">
             {/* Main image */}
             <div className="relative aspect-square bg-white rounded-2xl overflow-hidden shadow-sm border border-accent">
@@ -345,8 +675,8 @@ export default function ProductDetailPage() {
                     key={index}
                     onClick={() => setCurrentImageIndex(index)}
                     className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${currentImageIndex === index
-                        ? "border-primary scale-95 shadow-md"
-                        : "border-transparent hover:border-gray-200"
+                      ? "border-primary scale-95 shadow-md"
+                      : "border-transparent hover:border-gray-200"
                       }`}
                   >
                     <Image
@@ -362,7 +692,7 @@ export default function ProductDetailPage() {
             )}
           </div>
 
-          {/* Product info */}
+          {/* Keep your entire existing product info section */}
           <div className="space-y-6">
             {/* Category */}
             {product.category && (
@@ -381,14 +711,10 @@ export default function ProductDetailPage() {
               </h1>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`h-5 w-5 ${i < 4 ? 'text-silver fill-current' : 'text-gray-300'
-                        }`}
-                    />
-                  ))}
-                  <span className="text-sm text-gray-600 ml-2">(4.5)</span>
+                  <StarRating rating={reviewSummary?.avg_rating || 0} size="md" />
+                  <span className="text-sm text-gray-600 ml-2">
+                    ({reviewSummary?.avg_rating?.toFixed(1) || '0'}) • {reviewSummary?.total_reviews || 0} reviews
+                  </span>
                 </div>
                 <button
                   onClick={handleShare}
@@ -400,6 +726,7 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
+            {/* Keep all your existing price, description, tags, quantity, and action buttons sections exactly as they are */}
             {/* Price */}
             <div className="space-y-2">
               <div className="flex items-center gap-4">
@@ -481,8 +808,8 @@ export default function ProductDetailPage() {
                     onClick={handleAddToCart}
                     disabled={actionLoading.cart || isInCart}
                     className={`flex-1 py-4 px-6 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 transition-all ${isInCart
-                        ? 'bg-green-100 text-green-700 border border-green-200'
-                        : 'bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl'
+                      ? 'bg-green-100 text-green-700 border border-green-200'
+                      : 'bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl'
                       } disabled:opacity-70`}
                   >
                     {actionLoading.cart ? (
@@ -507,8 +834,8 @@ export default function ProductDetailPage() {
                     onClick={handleToggleWishlist}
                     disabled={actionLoading.wishlist}
                     className={`p-4 rounded-xl border transition-all ${isInWishlist
-                        ? 'bg-red-50 border-red-200 text-red-600'
-                        : 'bg-gray-50 border-gray-300 text-gray-600 hover:bg-gray-100'
+                      ? 'bg-red-50 border-red-200 text-red-600'
+                      : 'bg-gray-50 border-gray-300 text-gray-600 hover:bg-gray-100'
                       } disabled:opacity-70`}
                     title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
                   >
@@ -557,7 +884,68 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        {/* Similar products */}
+        {/* NEW: Reviews Section */}
+        <div className="mt-16 border-t border-accent pt-16">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-12">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-lg">
+                  <MessageCircle className="w-6 h-6 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold text-text">Customer Reviews</h2>
+              </div>
+              <p className="text-text/70">What our customers are saying about this product</p>
+            </div>
+
+            <ReviewsSummary summary={reviewSummary} />
+
+            <ReviewForm
+              onSubmit={handleSubmitReview}
+              loading={reviewLoading}
+              error={reviewError}
+            />
+
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 mb-6">
+                <User className="w-5 h-5 text-primary" />
+                <h3 className="text-xl font-bold text-text">
+                  All Reviews ({reviews.length})
+                </h3>
+                <div className="flex-1 h-px bg-gray-300"></div>
+              </div>
+
+              {reviews.length > 0 ? (
+                <div className="space-y-6">
+                  {reviews.map((review, index) => (
+                    <div
+                      key={review.id}
+                      className="animate-fadeInUp"
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <ReviewItem review={review} index={index} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 bg-accent/20 rounded-2xl border border-accent">
+                  <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <MessageCircle className="w-10 h-10 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-text mb-4">No Reviews Yet</h3>
+                  <p className="text-text/70 mb-6 max-w-md mx-auto">
+                    Be the first to share your experience and help others make informed decisions!
+                  </p>
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary font-medium">
+                    <Star className="w-4 h-4" />
+                    Write the first review
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Keep your existing similar products section exactly as is */}
         {similarProducts.length > 0 && (
           <div className="mt-16">
             <div className="flex items-center justify-between mb-8">
@@ -577,11 +965,27 @@ export default function ProductDetailPage() {
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeInUp {
+          animation: fadeInUp 0.6s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 }
 
-// Similar product card component
+// Keep your existing SimilarProductCard component exactly as is
 const SimilarProductCard = ({ product }: { product: Product }) => (
   <Link href={`/products/${product.id}`} className="group">
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-accent">
@@ -603,7 +1007,7 @@ const SimilarProductCard = ({ product }: { product: Product }) => (
             ₹{product.price.toLocaleString()}
           </span>
           <div className="flex items-center gap-1">
-            <Star className="h-4 w-4 text-silver fill-current" />
+            <Star className="h-4 w-4 text-yellow-400 fill-current" />
             <span className="text-sm text-gray-600">4.5</span>
           </div>
         </div>

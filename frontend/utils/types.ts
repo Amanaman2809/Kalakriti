@@ -34,6 +34,11 @@ export interface Review {
     name: string;
   };
 }
+export interface FeedbackSubmission {
+  productId: string;
+  rating: number;
+  comment: string | null;
+}
 
 export interface PFeedback {
   id: string;
