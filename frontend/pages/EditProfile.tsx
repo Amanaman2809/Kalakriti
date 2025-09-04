@@ -25,10 +25,10 @@ export default function EditProfileModal({
   onUpdate,
 }: EditProfileModalProps) {
   const [form, setForm] = useState<UserProfile>({
-    name: userData.name || "",
-    email: userData.email || "",
-    phone: userData.phone || "",
-    role: userData.role || "",
+    name: userData?.name || "",
+    email: userData?.email || "",
+    phone: userData?.phone || "",
+    role: userData?.role || "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<UserProfile>>({});
@@ -37,21 +37,21 @@ export default function EditProfileModal({
   useEffect(() => {
     if (userData) {
       setForm({
-        name: userData.name || "",
-        email: userData.email || "",
-        phone: userData.phone || "",
-        role: userData.role || "",
+        name: userData?.name || "",
+        email: userData?.email || "",
+        phone: userData?.phone || "",
+        role: userData?.role || "",
       });
     }
   }, [userData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: value }));
 
     // Clear error when user starts typing
     if (errors[name as keyof UserProfile]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
@@ -111,13 +111,18 @@ export default function EditProfileModal({
             email: form.email.trim(),
             phone: form.phone.trim(),
           }),
-        }
+        },
       );
 
       const data = await response.json();
 
       if (response.ok) {
-        onUpdate({ ...form, name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim() });
+        onUpdate({
+          ...form,
+          name: form.name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+        });
         toast.success("Profile updated successfully!");
         setTimeout(() => onClose(), 1000);
       } else {
@@ -125,7 +130,11 @@ export default function EditProfileModal({
       }
     } catch (error) {
       console.error("Profile update error:", error);
-      toast.error(error instanceof Error ? error.message : "Network error. Please try again.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Network error. Please try again.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -152,7 +161,9 @@ export default function EditProfileModal({
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">Edit Profile</h2>
-              <p className="text-sm text-gray-600">Update your account information</p>
+              <p className="text-sm text-gray-600">
+                Update your account information
+              </p>
             </div>
           </div>
           <button
@@ -178,8 +189,9 @@ export default function EditProfileModal({
                 placeholder="Enter your full name"
                 value={form.name}
                 onChange={handleChange}
-                className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors ${errors.name ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
+                className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors ${
+                  errors.name ? "border-red-300 bg-red-50" : "border-gray-300"
+                }`}
                 required
                 disabled={isLoading}
               />
@@ -205,8 +217,9 @@ export default function EditProfileModal({
                 placeholder="Enter your email address"
                 value={form.email}
                 onChange={handleChange}
-                className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors ${errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
+                className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors ${
+                  errors.email ? "border-red-300 bg-red-50" : "border-gray-300"
+                }`}
                 required
                 disabled={isLoading}
               />
@@ -232,8 +245,9 @@ export default function EditProfileModal({
                 placeholder="Enter your phone number"
                 value={form.phone}
                 onChange={handleChange}
-                className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors ${errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
+                className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors ${
+                  errors.phone ? "border-red-300 bg-red-50" : "border-gray-300"
+                }`}
                 required
                 disabled={isLoading}
               />
