@@ -191,6 +191,7 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
               id: true,
               name: true,
               email: true,
+              phone: true,
             },
           },
           items: {
@@ -406,6 +407,7 @@ router.get("/admin/orders-v2", requireAuth, requireAdmin, async (req, res) => {
               id: true,
               name: true,
               email: true,
+              phone: true,
             },
           },
           items: {

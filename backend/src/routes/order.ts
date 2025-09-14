@@ -15,7 +15,7 @@ router.get("/admin", requireAuth, requireAdmin, async (req, res) => {
     const orders = await prisma.order.findMany({
       orderBy: { createdAt: "desc" },
       include: {
-        user: { select: { id: true, name: true, email: true } },
+        user: { select: { id: true, name: true, email: true, phone: true } },
         items: { include: { product: true } },
         address: true,
       },
@@ -176,7 +176,7 @@ router.get("/:id", requireAuth, async (req, res) => {
           },
         },
         address: true,
-        user: { select: { id: true, name: true, email: true } },
+        user: { select: { id: true, name: true, email: true, phone: true } },
       },
     });
 
@@ -238,7 +238,7 @@ router.patch("/:id", requireAuth, requireAdmin, async (req, res) => {
       where: { id },
       data: updateData,
       include: {
-        user: { select: { id: true, name: true, email: true } },
+        user: { select: { id: true, name: true, email: true, phone: true } },
         items: { include: { product: true } },
         address: true,
       },
@@ -284,7 +284,7 @@ router.patch("/:id/status", requireAuth, requireAdmin, async (req, res) => {
       where: { id },
       data: updateData,
       include: {
-        user: { select: { id: true, name: true, email: true } },
+        user: { select: { id: true, name: true, email: true, phone: true } },
         items: { include: { product: true } },
         address: true,
       },

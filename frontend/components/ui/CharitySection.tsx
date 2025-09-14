@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { InteractionState, Product } from "@/utils/types";
 import Link from "next/link";
-import { Heart, MoveRight } from "lucide-react";
+import { Heart, MoveRight, Sparkles } from "lucide-react";
 import ProductCard from "../product/ProductCard";
 import toast from "react-hot-toast";
 import {
@@ -12,7 +12,6 @@ import {
   removeFromWishlist,
   getWishlist,
 } from "@/utils/product";
-
 
 const CHARITY_CATEGORY_ID = "f95d41b4-9a43-4f03-a675-1311a205c72e";
 
@@ -116,10 +115,13 @@ export default function CharitySection() {
           });
         } else {
           await addToWishlist(productId);
-          toast.success(`❤️ Added "${productName}" to wishlist - Supporting charity!`, {
-            duration: 2000,
-            position: "top-center",
-          });
+          toast.success(
+            `❤️ Added "${productName}" to wishlist - Supporting charity!`,
+            {
+              duration: 2000,
+              position: "top-center",
+            },
+          );
         }
       } catch (error: any) {
         // Revert optimistic update on error
@@ -161,10 +163,13 @@ export default function CharitySection() {
       }
 
       if (interactions.cart[productId]) {
-        toast.success(`"${productName}" is already in cart - Thank you for supporting charity!`, {
-          duration: 2000,
-          position: "top-center",
-        });
+        toast.success(
+          `"${productName}" is already in cart - Thank you for supporting charity!`,
+          {
+            duration: 2000,
+            position: "top-center",
+          },
+        );
         return;
       }
 
@@ -188,10 +193,13 @@ export default function CharitySection() {
           },
         }));
 
-        toast.success(`🎉 Added "${productName}" to cart - Making a difference!`, {
-          duration: 2000,
-          position: "top-center",
-        });
+        toast.success(
+          `🎉 Added "${productName}" to cart - Making a difference!`,
+          {
+            duration: 2000,
+            position: "top-center",
+          },
+        );
       } catch (error: any) {
         toast.error(error.message || "Failed to add to cart", {
           duration: 3000,
@@ -213,7 +221,11 @@ export default function CharitySection() {
   if (!mounted || loading) {
     return (
       <section className="px-4 sm:px-6 py-20 bg-gradient-to-br from-primary/5 via-secondary/10 to-primary/5 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto text-center">
+        {/* Animated decorative elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full -translate-y-32 translate-x-32 animate-pulse-slow"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-secondary/10 rounded-full translate-y-24 -translate-x-24 animate-ping-slow"></div>
+
+        <div className="max-w-7xl mx-auto text-center relative z-10">
           <div className="animate-pulse">
             <div className="h-8 bg-accent rounded w-48 mb-8 mx-auto"></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -235,65 +247,97 @@ export default function CharitySection() {
 
   return (
     <section className="px-4 sm:px-6 py-20 bg-gradient-to-br from-primary/5 via-secondary/10 to-primary/5 relative overflow-hidden">
-      {/* Decorative elements */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full -translate-y-32 translate-x-32"></div>
-      <div className="absolute bottom-0 left-0 w-48 h-48 bg-secondary/10 rounded-full translate-y-24 -translate-x-24"></div>
+      {/* Animated decorative elements */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full -translate-y-32 translate-x-32 animate-pulse-slow"></div>
+      <div className="absolute bottom-0 left-0 w-48 h-48 bg-secondary/10 rounded-full translate-y-24 -translate-x-24 animate-ping-slow"></div>
+
+      {/* Floating particles */}
+      <div className="absolute inset-0 opacity-10">
+        {[...Array(12)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full bg-primary animate-float"
+            style={{
+              width: Math.random() * 15 + 5 + "px",
+              height: Math.random() * 15 + 5 + "px",
+              top: Math.random() * 100 + "%",
+              left: Math.random() * 100 + "%",
+              animationDelay: Math.random() * 5 + "s",
+              animationDuration: Math.random() * 10 + 10 + "s",
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Animated sparkles */}
+      <div className="absolute top-20 left-10 text-primary/20 hidden lg:block animate-pulse-slow">
+        <Sparkles size={60} />
+      </div>
+      <div className="absolute bottom-32 right-32 text-secondary/20 hidden lg:block animate-ping-slow">
+        <Sparkles size={50} />
+      </div>
 
       <div className="max-w-7xl mx-auto relative z-10">
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-6 py-2 rounded-full mb-6">
-            <Heart className="w-5 h-5 fill-current" />
+        <div className="text-center mb-16 animate-fade-in-up">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-6 py-2 rounded-full mb-6 animate-fade-in-up delay-100">
+            <Heart className="w-5 h-5 fill-current animate-pulse" />
             <span className="font-semibold">Making a Difference</span>
           </div>
 
-          <h2 className="text-4xl md:text-5xl font-bold text-text mb-6">
+          <h2 className="text-4xl md:text-5xl font-bold text-text mb-6 animate-fade-in-up delay-200">
             Shop with Purpose,
             <span className="text-primary"> Create Change</span>
           </h2>
 
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-8 leading-relaxed">
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-8 leading-relaxed animate-fade-in-up delay-300">
             Every purchase from our charity collection directly supports
             artisans in need and contributes to community development
             initiatives. 100% of the proceeds from these specially curated items
             go directly to our partner charities.
           </p>
 
-          <div className="bg-primary/10 p-6 rounded-2xl max-w-2xl mx-auto mb-8">
+          <div className="bg-primary/10 p-6 rounded-2xl max-w-2xl mx-auto mb-8 animate-fade-in-up delay-400 border border-primary/20 backdrop-blur-sm">
             <h3 className="text-xl font-bold text-primary mb-3">Your Impact</h3>
             <p className="text-gray-700">
-              By choosing these products, you&apos;re not just acquiring beautiful
-              handicrafts - you&apos;re providing education for children, healthcare
-              for families, and sustainable livelihoods for communities across
-              India.
+              By choosing these products, you&apos;re not just acquiring
+              beautiful handicrafts - you&apos;re providing education for
+              children, healthcare for families, and sustainable livelihoods for
+              communities across India.
             </p>
           </div>
 
-          <div className="w-24 h-1 bg-primary mx-auto rounded-full"></div>
+          <div className="w-24 h-1 bg-primary mx-auto rounded-full animate-scale-in delay-500"></div>
         </div>
 
         {/* Products Grid with Full Functionality */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-12">
-          {products.map((product) => (
-            <ProductCard
+          {products.map((product, index) => (
+            <div
               key={product.id}
-              product={product}
-              interactions={interactions}
-              toggleWishlist={toggleWishlist}
-              addToCartHandler={addToCartHandler}
-            />
+              className="animate-fade-in-up"
+              style={{ animationDelay: `${index * 100 + 600}ms` }}
+            >
+              <ProductCard
+                product={product}
+                interactions={interactions}
+                toggleWishlist={toggleWishlist}
+                addToCartHandler={addToCartHandler}
+              />
+            </div>
           ))}
         </div>
 
-        <div className="text-center">
+        <div className="text-center animate-fade-in-up delay-1000">
           <Link
             href={`/category/${CHARITY_CATEGORY_ID}`}
-            className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-xl group"
+            className="group inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02] relative overflow-hidden"
           >
-            Explore All Charity Products
-            <MoveRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            <span className="relative z-10">Explore All Charity Products</span>
+            <MoveRight className="w-5 h-5 group-hover:translate-x-1 transition-transform relative z-10" />
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-white/10 to-primary/0 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
           </Link>
 
-          <p className="text-gray-600 mt-6 text-sm max-w-2xl mx-auto">
+          <p className="text-gray-600 mt-6 text-sm max-w-2xl mx-auto animate-fade-in-up delay-1100">
             Your purchase makes a real difference. We transparently donate all
             proceeds from these products to verified charitable organizations
             supporting artisan communities across India.

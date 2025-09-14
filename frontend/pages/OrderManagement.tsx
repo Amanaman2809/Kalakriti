@@ -41,6 +41,7 @@ interface Order {
   user?: {
     name?: string;
     email?: string;
+    phone?: string;
   };
   createdAt: string;
   updatedAt?: string;
@@ -218,6 +219,7 @@ export default function OrdersListPage() {
               i % 4
             ],
             email: `user${i + 1}@example.com`,
+            phone: `+91${Math.floor(Math.random() * 1000000000)}`,
           },
           createdAt: new Date(
             Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000,
@@ -283,6 +285,7 @@ export default function OrdersListPage() {
 
       const data: ApiResponse = await response.json();
       setOrders(data.orders || []);
+      // console.log(data.orders);
       setPagination(data.pagination);
 
       // Calculate stats from API response
@@ -396,6 +399,7 @@ export default function OrdersListPage() {
             "Order ID",
             "Customer",
             "Email",
+            "Phone",
             "Date",
             "Status",
             "Payment Status",
@@ -408,6 +412,7 @@ export default function OrdersListPage() {
               order.id.slice(0, 8).toUpperCase(),
               `"${order.user?.name || "N/A"}"`,
               order.user?.email || "N/A",
+              order.user?.phone || "N/A",
               new Date(order.createdAt).toLocaleDateString(),
               order.status,
               order.paymentStatus,
@@ -444,13 +449,14 @@ export default function OrdersListPage() {
       if (!response.ok) throw new Error("Failed to fetch orders for export");
 
       const data: ApiResponse = await response.json();
-      console.log(data);
+      // console.log(data);
 
       const csvContent = [
         [
           "Order ID",
           "Customer",
           "Email",
+          "Phone",
           "Date",
           "Status",
           "Payment Status",
@@ -463,6 +469,7 @@ export default function OrdersListPage() {
             order.id.slice(0, 8).toUpperCase(),
             `"${order.user?.name || "N/A"}"`,
             order.user?.email || "N/A",
+            order.user?.phone || "N/A",
             new Date(order.createdAt).toLocaleDateString(),
             order.status,
             order.paymentStatus,

@@ -277,35 +277,54 @@ export default function Home() {
 
       {/* Categories Section */}
       <section className="px-4 sm:px-6 py-16 bg-secondary/30 relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -translate-y-32 translate-x-32"></div>
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-primary/3 rounded-full translate-y-24 -translate-x-24"></div>
+        {/* Animated decorative elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -translate-y-32 translate-x-32 animate-pulse-slow"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-primary/3 rounded-full translate-y-24 -translate-x-24 animate-ping-slow"></div>
+
+        {/* Floating particles */}
+        <div className="absolute inset-0 opacity-10">
+          {[...Array(8)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute rounded-full bg-primary animate-float"
+              style={{
+                width: Math.random() * 15 + 5 + "px",
+                height: Math.random() * 15 + 5 + "px",
+                top: Math.random() * 100 + "%",
+                left: Math.random() * 100 + "%",
+                animationDelay: Math.random() * 5 + "s",
+                animationDuration: Math.random() * 10 + 10 + "s",
+              }}
+            />
+          ))}
+        </div>
 
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-text mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-text mb-4 animate-fade-in-up">
               Shop by Category
             </h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto mb-8">
+            <p className="text-gray-600 text-lg max-w-2xl mx-auto mb-8 animate-fade-in-up delay-100">
               Explore our curated collection of traditional Indian handicrafts
             </p>
-            <div className="w-24 h-1 bg-silver mx-auto rounded-full"></div>
+            <div className="w-24 h-1 bg-silver mx-auto rounded-full animate-scale-in"></div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 mb-8">
-            {categories.map(({ id, name, image }) => (
+            {categories.map(({ id, name, image }, index) => (
               <Link
                 key={id}
                 href={`/category/${id}`}
-                className="group flex flex-col items-center text-center"
+                className="group flex flex-col items-center text-center animate-fade-in-up"
+                style={{ animationDelay: `${index * 100 + 200}ms` }}
               >
-                <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-3 border-white shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-3 border-white shadow-lg group-hover:shadow-xl transition-all duration-500 group-hover:scale-110 group-hover:-translate-y-2">
                   {image ? (
                     <Image
                       src={image}
                       fill
                       alt={name}
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
                       sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 20vw"
                     />
                   ) : (
@@ -313,22 +332,25 @@ export default function Home() {
                       <span className="text-gray-400 text-xs">No Image</span>
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/10 transition-colors duration-300"></div>
+                  <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/20 transition-colors duration-500 rounded-full"></div>
+                  <div className="absolute inset-0 rounded-full border-2 border-transparent group-hover:border-primary/30 transition-all duration-500"></div>
                 </div>
-                <h3 className="mt-4 font-semibold text-text group-hover:text-primary transition-colors text-sm sm:text-base">
+                <h3 className="mt-4 font-semibold text-text group-hover:text-primary transition-colors text-sm sm:text-base relative">
                   {name}
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-500"></span>
                 </h3>
               </Link>
             ))}
           </div>
 
-          <div className="text-center">
+          <div className="text-center animate-fade-in-up delay-700">
             <Link
               href="/category"
-              className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors font-semibold text-lg group"
+              className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors font-semibold text-lg group relative overflow-hidden py-2 px-4 rounded-lg"
             >
-              View All Categories
-              <MoveRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              <span className="relative z-10">View All Categories</span>
+              <MoveRight className="w-5 h-5 group-hover:translate-x-1 transition-transform relative z-10" />
+              <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors duration-300 rounded-lg"></div>
             </Link>
           </div>
         </div>
