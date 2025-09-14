@@ -153,7 +153,13 @@ function HeroSection() {
 }
 
 // Counter component for animated numbers
-const Counter = ({ target, duration }) => {
+const Counter = ({
+  target,
+  duration,
+}: {
+  target: number;
+  duration: number;
+}) => {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
