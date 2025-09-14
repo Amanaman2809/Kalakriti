@@ -12,7 +12,8 @@ import {
   Calendar,
   Filter,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import { Order, OrderStatus } from '@/utils/types';
@@ -54,6 +55,7 @@ export default function OrderHistory() {
     fetchOrders();
   }, []);
 
+
   const getStatusConfig = (status: OrderStatus) => {
     const configs = {
       'PLACED': {
@@ -70,6 +72,11 @@ export default function OrderHistory() {
         color: 'bg-green-50 text-green-800 border-green-200',
         icon: <Check className="w-4 h-4" />,
         label: 'Delivered'
+      },
+      'CANCELLED': {
+        color: 'bg-red-50 text-red-800 border-red-200',
+        icon: <X className="w-4 h-4" />,
+        label: 'Cancelled'
       }
     };
     return configs[status] || {
@@ -78,6 +85,7 @@ export default function OrderHistory() {
       label: status
     };
   };
+
 
   // Filter orders based on search term and status
   const filteredOrders = orders.filter(order => {
@@ -181,6 +189,7 @@ export default function OrderHistory() {
                 <option value="PLACED">Placed</option>
                 <option value="SHIPPED">Shipped</option>
                 <option value="DELIVERED">Delivered</option>
+                <option value="CANCELLED">Cancelled</option>
               </select>
               <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
             </div>
@@ -198,7 +207,6 @@ export default function OrderHistory() {
         {filteredOrders.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-accent p-12 text-center">
             {orders.length === 0 ? (
-              // No orders at all
               <>
                 <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Package className="h-12 w-12 text-gray-400" />
@@ -214,7 +222,6 @@ export default function OrderHistory() {
                 </Link>
               </>
             ) : (
-              // No results for current filter/search
               <>
                 <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Search className="h-12 w-12 text-gray-400" />
@@ -264,13 +271,16 @@ export default function OrderHistory() {
                           </div>
                         </div>
                       </div>
-                      <Link
-                        href={`/orders/${order.id}`}
-                        className="flex items-center gap-2 text-primary hover:text-primary/80 font-medium group"
-                      >
-                        View Details
-                        <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        
+                        <Link
+                          href={`/orders/${order.id}`}
+                          className="flex items-center gap-2 text-primary hover:text-primary/80 font-medium group"
+                        >
+                          View Details
+                          <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                      </div>
                     </div>
                   </div>
 
@@ -322,7 +332,7 @@ export default function OrderHistory() {
                             Buy Again
                           </Link>
                         )}
-                        {order.status !== 'DELIVERED' && (
+                        {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
                           <Link
                             href={`/orders/${order.id}`}
                             className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"

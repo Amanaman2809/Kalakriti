@@ -8,13 +8,14 @@ export const OrderStatusValues: OrderStatus[] = [
   "PLACED",
   "SHIPPED",
   "DELIVERED",
+  "CANCELLED",
 ];
 export const AddressTypeValues: AddressType[] = ["HOME", "WORK", "OTHER"];
 export const RoleValues: Role[] = ["USER", "ADMIN"];
 
 export type PaymentMode = "COD" | "ONLINE";
 export type PaymentStatus = "PENDING" | "PAID" | "FAILED";
-export type OrderStatus = "PLACED" | "SHIPPED" | "DELIVERED";
+export type OrderStatus = "PLACED" | "SHIPPED" | "DELIVERED" | "CANCELLED";
 export type AddressType = "HOME" | "WORK" | "OTHER";
 export type Role = "USER" | "ADMIN";
 

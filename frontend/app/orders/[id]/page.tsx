@@ -18,6 +18,9 @@ import {
   Phone,
   Copy,
   Share2,
+  X,
+  AlertTriangle,
+  CircleX,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
@@ -28,6 +31,166 @@ if (!url) throw new Error("API base URL is not set");
 
 const ORDER_STATUS_FLOW: OrderStatus[] = ["PLACED", "SHIPPED", "DELIVERED"];
 
+// Cancel Order Dialog Component
+interface CancelOrderDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (reason: string) => void;
+  loading: boolean;
+  orderId: string;
+  orderTotal: number;
+}
+
+const CancelOrderDialog: React.FC<CancelOrderDialogProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  loading,
+  orderId,
+  orderTotal,
+}) => {
+  const [selectedReason, setSelectedReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
+
+  const cancellationReasons = [
+    "Changed my mind",
+    "Found better price elsewhere",
+    "Ordered by mistake",
+    "No longer needed",
+    "Delivery taking too long"
+  ];
+
+  const handleConfirm = () => {
+    const reason = selectedReason === "Other" ? customReason.trim() : selectedReason;
+    if (!reason) {
+      toast.error("Please select a cancellation reason");
+      return;
+    }
+    onConfirm(reason);
+  };
+
+  const resetForm = () => {
+    setSelectedReason("");
+    setCustomReason("");
+  };
+
+  useEffect(() => {
+    if (!isOpen) {
+      resetForm();
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full transform transition-all animate-in zoom-in-95 duration-300">
+        <div className="p-6">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <CircleX className="h-6 w-6 text-red-600" />
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Cancel Order</h2>
+            <p className="text-gray-600 text-sm">
+              Are you sure you want to cancel order{" "}
+              <span className="font-mono font-medium text-gray-800 bg-gray-200 p-1 rounded-md">
+                #{orderId.slice(0, 8).toUpperCase()}
+              </span>
+              ?
+            </p>
+            <p className="text-sm text-gray-500 mt-2">
+              This action cannot be undone and refund will be processed in 3-5 business days.
+            </p>
+          </div>
+
+          {/* Order Details */}
+          <div className="rounded-lg p-4 mb-4 bg-gray-100">
+            <div className="flex justify-between items-center ">
+              <span className="text-gray-600">Order Total:</span>
+              <span className="font-semibold text-gray-900">₹{orderTotal.toLocaleString()}</span>
+            </div>
+          </div>
+
+          {/* Reason Selection */}
+          <div className="mb-6">
+            <h3 className="text-sm font-bold text-gray-700 mb-3">Reason for cancellation:</h3>
+            <div className="space-y-2">
+              {cancellationReasons.map((reason) => (
+                <label key={reason} className="flex items-center">
+                  <input
+                    type="radio"
+                    name="cancellationReason"
+                    value={reason}
+                    checked={selectedReason === reason}
+                    onChange={(e) => setSelectedReason(e.target.value)}
+                    className="mr-3 text-red-600 focus:ring-red-500"
+                    disabled={loading}
+                  />
+                  <span className="text-sm text-gray-700">{reason}</span>
+                </label>
+              ))}
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="cancellationReason"
+                  value="Other"
+                  checked={selectedReason === "Other"}
+                  onChange={(e) => setSelectedReason(e.target.value)}
+                  className="mr-3 text-red-600 focus:ring-red-500"
+                  disabled={loading}
+                />
+                <span className="text-sm text-gray-700">Other</span>
+              </label>
+            </div>
+
+            {/* Custom reason input */}
+            {selectedReason === "Other" && (
+              <div className="mt-3">
+                <textarea
+                  placeholder="Please specify your reason..."
+                  value={customReason}
+                  onChange={(e) => setCustomReason(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors resize-none text-sm"
+                  rows={3}
+                  disabled={loading}
+                  maxLength={500}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {customReason.length}/500 characters
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              Keep Order
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={loading || !selectedReason || (selectedReason === "Other" && !customReason.trim())}
+              className="flex-1 px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg font-medium hover:bg-red-100 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CircleX className="h-4 w-4" />
+              )}
+              {loading ? "Cancelling..." : "Cancel Order"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function OrderConfirmationPage() {
   const params = useParams();
   const orderId = params?.id;
@@ -37,6 +200,8 @@ export default function OrderConfirmationPage() {
   const [error, setError] = useState<string | null>(null);
   const [isTrackingExpanded, setIsTrackingExpanded] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [cancellingOrder, setCancellingOrder] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   useEffect(() => {
     if (!orderId) return;
@@ -76,18 +241,49 @@ export default function OrderConfirmationPage() {
 
     fetchOrder();
 
-    if (!order || order.status !== "DELIVERED") {
+    if (!order || (order.status !== "DELIVERED" && order.status !== "CANCELLED")) {
       const intervalId = setInterval(fetchOrder, 100000);
       return () => clearInterval(intervalId);
     }
   }, [orderId, router, order?.status]);
 
+  const handleCancelOrder = async (reason: string) => {
+    if (!order) return;
+
+    try {
+      setCancellingOrder(true);
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(`${url}/api/orders/${orderId}/cancel`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reason }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to cancel order");
+      }
+
+      const updatedOrder = await response.json();
+      setOrder({ ...updatedOrder.order, status: "CANCELLED" as OrderStatus });
+      setShowCancelDialog(false);
+      toast.success("Order cancelled successfully! Refund will be processed shortly.");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to cancel order");
+    } finally {
+      setCancellingOrder(false);
+    }
+  };
+
   const getStatusDetails = (status: OrderStatus) => {
     const statusConfig = {
       PLACED: {
         title: "Order Placed",
-        description:
-          "We've received your order and are preparing it for shipment.",
+        description: "We've received your order and are preparing it for shipment.",
         icon: <ShoppingBag className="h-6 w-6" />,
         color: "text-yellow-600",
         bgColor: "bg-yellow-100",
@@ -96,8 +292,7 @@ export default function OrderConfirmationPage() {
       },
       SHIPPED: {
         title: "Shipped",
-        description:
-          "Your order has left our fulfillment center and is on its way.",
+        description: "Your order has left our fulfillment center and is on its way.",
         icon: <Truck className="h-6 w-6" />,
         color: "text-blue-600",
         bgColor: "bg-blue-100",
@@ -106,12 +301,20 @@ export default function OrderConfirmationPage() {
       },
       DELIVERED: {
         title: "Delivered",
-        description:
-          "Your order has been delivered successfully. Enjoy your purchase!",
+        description: "Your order has been delivered successfully. Enjoy your purchase!",
         icon: <PackageCheck className="h-6 w-6" />,
         color: "text-green-600",
         bgColor: "bg-green-100",
         progress: 100,
+        nextStep: null,
+      },
+      CANCELLED: {
+        title: "Order Cancelled",
+        description: "This order has been cancelled. Refund will be processed within 3-5 business days.",
+        icon: <X className="h-6 w-6" />,
+        color: "text-red-600",
+        bgColor: "bg-red-100",
+        progress: 0,
         nextStep: null,
       },
     };
@@ -152,6 +355,15 @@ export default function OrderConfirmationPage() {
     }
   };
 
+  const canCancelOrder = (order: Order) => {
+    if (order.status !== 'PLACED') return false;
+    const orderTime = new Date(order.createdAt).getTime();
+    const currentTime = Date.now();
+    const timeDiff = currentTime - orderTime;
+    const hoursDiff = timeDiff / (1000 * 60 * 60);
+    return hoursDiff <= 24;
+  };
+
   const copyOrderId = () => {
     navigator.clipboard.writeText(order?.id || "");
     setCopied(true);
@@ -176,10 +388,9 @@ export default function OrderConfirmationPage() {
     }
   };
 
-  const currentStatusIndex = ORDER_STATUS_FLOW.indexOf(
-    order?.status || "PLACED",
-  );
+  const currentStatusIndex = ORDER_STATUS_FLOW.indexOf(order?.status || "PLACED");
   const isOrderComplete = order?.status === "DELIVERED";
+  const isOrderCancelled = order?.status === "CANCELLED";
 
   if (loading) {
     return (
@@ -200,9 +411,7 @@ export default function OrderConfirmationPage() {
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-2xl text-red-500">⚠️</span>
             </div>
-            <h3 className="text-xl font-semibold text-text mb-2">
-              Unable to Load Order
-            </h3>
+            <h3 className="text-xl font-semibold text-text mb-2">Unable to Load Order</h3>
             <p className="text-gray-600 mb-6">{error}</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
@@ -278,18 +487,24 @@ export default function OrderConfirmationPage() {
           </div>
         </div>
 
-        {/* Success Header */}
+        {/* Success/Status Header */}
         <div className="text-center mb-12">
-          <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="h-12 w-12 text-green-600" />
+          <div className={`w-24 h-24 ${isOrderCancelled ? 'bg-red-100' : 'bg-green-100'} rounded-full flex items-center justify-center mx-auto mb-6`}>
+            {isOrderCancelled ? (
+              <X className="h-12 w-12 text-red-600" />
+            ) : (
+              <CheckCircle className="h-12 w-12 text-green-600" />
+            )}
           </div>
           <h1 className="text-4xl font-bold text-text mb-4">
-            {isOrderComplete ? "Order Delivered!" : "Order Confirmed!"}
+            {isOrderCancelled ? "Order Cancelled" : isOrderComplete ? "Order Delivered!" : "Order Confirmed!"}
           </h1>
           <p className="text-xl text-gray-600 mb-4">
-            {isOrderComplete
-              ? "Your order has been successfully delivered. Thank you for shopping with us!"
-              : "Thank you for your purchase! Your order has been received and is being processed."}
+            {isOrderCancelled
+              ? "Your order has been cancelled successfully. Refund will be processed within 3-5 business days."
+              : isOrderComplete
+                ? "Your order has been successfully delivered. Thank you for shopping with us!"
+                : "Thank you for your purchase! Your order has been received and is being processed."}
           </p>
           <div className="flex items-center justify-center gap-4">
             <div className="flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-xl">
@@ -323,14 +538,10 @@ export default function OrderConfirmationPage() {
               >
                 <div className="flex items-center gap-4">
                   <div className={`rounded-full p-3 ${statusDetails.bgColor}`}>
-                    <div className={statusDetails.color}>
-                      {statusDetails.icon}
-                    </div>
+                    <div className={statusDetails.color}>{statusDetails.icon}</div>
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-text">
-                      {statusDetails.title}
-                    </h2>
+                    <h2 className="text-2xl font-bold text-text">{statusDetails.title}</h2>
                     <p className="text-gray-600">{statusDetails.description}</p>
                   </div>
                 </div>
@@ -339,7 +550,7 @@ export default function OrderConfirmationPage() {
                 />
               </button>
 
-              {isTrackingExpanded && (
+              {isTrackingExpanded && !isOrderCancelled && (
                 <div className="px-6 pb-6 border-t border-accent">
                   {/* Progress Bar */}
                   <div className="mb-8">
@@ -363,18 +574,14 @@ export default function OrderConfirmationPage() {
                       if (isOrderComplete && isFuture) return null;
 
                       return (
-                        <div
-                          key={status}
-                          className="relative flex items-center gap-6"
-                        >
+                        <div key={status} className="relative flex items-center gap-6">
                           <div
-                            className={`relative z-10 w-12 h-12 rounded-full border-4 flex items-center justify-center ${
-                              isCurrent
+                            className={`relative z-10 w-12 h-12 rounded-full border-4 flex items-center justify-center ${isCurrent
                                 ? `${statusInfo.bgColor} ${statusInfo.color} border-white shadow-lg`
                                 : isCompleted
                                   ? "bg-green-100 text-green-600 border-white"
                                   : "bg-gray-100 text-gray-400 border-white"
-                            }`}
+                              }`}
                           >
                             {isCompleted ? (
                               <CheckCircle className="h-6 w-6" />
@@ -405,26 +612,18 @@ export default function OrderConfirmationPage() {
                   </div>
 
                   {/* Shipping Details */}
-                  {(order.status === "SHIPPED" ||
-                    order.status === "DELIVERED") && (
+                  {(order.status === "SHIPPED" || order.status === "DELIVERED") && (
                     <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl">
-                      <h4 className="font-semibold text-blue-800 mb-4">
-                        Shipping Information
-                      </h4>
+                      <h4 className="font-semibold text-blue-800 mb-4">Shipping Information</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="text-blue-600 font-medium">Carrier</p>
-                          <p className="text-blue-800">
-                            {order.carrierName || "Standard Shipping"}
-                          </p>
+                          <p className="text-blue-800">{order.carrierName || "Standard Shipping"}</p>
                         </div>
                         <div>
-                          <p className="text-blue-600 font-medium">
-                            Tracking Number
-                          </p>
+                          <p className="text-blue-600 font-medium">Tracking Number</p>
                           <p className="font-mono text-blue-800">
-                            {order.trackingNumber ||
-                              order.id.slice(0, 12).toUpperCase()}
+                            {order.trackingNumber || order.id.slice(0, 12).toUpperCase()}
                           </p>
                         </div>
                       </div>
@@ -436,14 +635,10 @@ export default function OrderConfirmationPage() {
 
             {/* Order Summary */}
             <div className="bg-white rounded-2xl shadow-sm border border-accent p-6">
-              <h2 className="text-xl font-bold text-text mb-6">
-                Order Summary
-              </h2>
+              <h2 className="text-xl font-bold text-text mb-6">Order Summary</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">
-                    Order Date
-                  </h3>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Order Date</h3>
                   <p className="text-text font-medium">
                     {new Date(order.createdAt).toLocaleDateString("en-US", {
                       year: "numeric",
@@ -453,18 +648,12 @@ export default function OrderConfirmationPage() {
                   </p>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">
-                    Payment Method
-                  </h3>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Payment Method</h3>
                   <div className="flex items-center gap-2">
                     {paymentMethodDetails.icon}
                     <div>
-                      <p className="text-text font-medium">
-                        {paymentMethodDetails.name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {paymentMethodDetails.description}
-                      </p>
+                      <p className="text-text font-medium">{paymentMethodDetails.name}</p>
+                      <p className="text-xs text-gray-500">{paymentMethodDetails.description}</p>
                     </div>
                   </div>
                 </div>
@@ -473,17 +662,13 @@ export default function OrderConfirmationPage() {
 
             {/* Shipping Address */}
             <div className="bg-white rounded-2xl shadow-sm border border-accent p-6">
-              <h2 className="text-xl font-bold text-text mb-4">
-                Shipping Address
-              </h2>
+              <h2 className="text-xl font-bold text-text mb-4">Shipping Address</h2>
               {order.address ? (
                 <div className="space-y-2">
                   <div className="flex items-start gap-3">
                     <MapPin className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="font-medium text-text">
-                        {order.address.street}
-                      </p>
+                      <p className="font-medium text-text">{order.address.street}</p>
                       <p className="text-gray-600">
                         {order.address.city}, {order.address.state}
                       </p>
@@ -510,27 +695,18 @@ export default function OrderConfirmationPage() {
               <h2 className="text-xl font-bold text-text mb-6">Order Items</h2>
               <div className="space-y-4">
                 {order.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex gap-4 p-4 border border-gray-100 rounded-xl"
-                  >
+                  <div key={item.id} className="flex gap-4 p-4 border border-gray-100 rounded-xl">
                     <div className="w-16 h-16 rounded-lg border overflow-hidden flex-shrink-0">
                       <img
-                        src={
-                          item.product.images[0] || "/placeholder-product.png"
-                        }
+                        src={item.product.images[0] || "/placeholder-product.png"}
                         alt={item.product.name}
                         className="w-full h-full object-cover"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-text line-clamp-2">
-                        {item.product.name}
-                      </h3>
+                      <h3 className="font-semibold text-text line-clamp-2">{item.product.name}</h3>
                       <div className="flex justify-between items-center mt-2">
-                        <p className="text-sm text-gray-600">
-                          Qty: {item.quantity}
-                        </p>
+                        <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
                         <p className="font-semibold text-text">
                           ₹{(item.price * item.quantity).toLocaleString()}
                         </p>
@@ -555,22 +731,41 @@ export default function OrderConfirmationPage() {
                 {/* Order Total */}
                 <div className="border-t border-gray-200 pt-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-lg font-semibold text-text">
-                      Total
-                    </span>
-                    <span className="text-xl font-bold text-primary">
+                    <span className="text-lg font-semibold text-text">Total</span>
+                    <span className={`text-xl font-bold ${isOrderCancelled ? 'text-red-600 line-through' : 'text-primary'}`}>
                       ₹{order.total.toLocaleString()}
                     </span>
                   </div>
+                  {isOrderCancelled && (
+                    <p className="text-sm text-red-600 mt-1 text-right">
+                      Refund will be processed
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
 
+            {/* Continue Shopping */}
+            <Link
+              href="/products"
+              className="block w-full py-4 bg-primary text-white text-center rounded-2xl hover:shadow-lg transition-all font-semibold"
+            >
+              Continue Shopping
+            </Link>
+
+            {/* Cancellation Available Notice */}
+            {canCancelOrder(order) && !isOrderCancelled && (
+              <button
+                onClick={() => setShowCancelDialog(true)}
+                className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-700 border border-red-200 px-4 py-3 rounded-xl hover:bg-red-100 transition-colors font-medium"
+              >
+                Cancel Order
+              </button>
+            )}
+
             {/* Quick Actions */}
             <div className="bg-white rounded-2xl shadow-sm border border-accent p-6">
-              <h2 className="text-xl font-bold text-text mb-4">
-                Quick Actions
-              </h2>
+              <h2 className="text-xl font-bold text-text mb-4">Quick Actions</h2>
               <div className="space-y-3">
                 <Link
                   href="/contact"
@@ -592,17 +787,19 @@ export default function OrderConfirmationPage() {
                 </Link>
               </div>
             </div>
-
-            {/* Continue Shopping */}
-            <Link
-              href="/products"
-              className="block w-full py-4 bg-primary text-white text-center rounded-2xl hover:shadow-lg transition-all font-semibold"
-            >
-              Continue Shopping
-            </Link>
           </div>
         </div>
       </div>
+
+      {/* Cancel Order Dialog */}
+      <CancelOrderDialog
+        isOpen={showCancelDialog}
+        onClose={() => setShowCancelDialog(false)}
+        onConfirm={handleCancelOrder}
+        loading={cancellingOrder}
+        orderId={order.id}
+        orderTotal={order.total}
+      />
     </div>
   );
 }

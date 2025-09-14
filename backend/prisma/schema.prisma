@@ -127,6 +127,7 @@ enum OrderStatus {
   PLACED
   SHIPPED
   DELIVERED
+  CANCELLED
 }
 
 model Order {
@@ -147,6 +148,8 @@ model Order {
   trackingNumber    String?
   statusUpdatedAt   DateTime    @default(now())
   
+  cancelledAt       DateTime?
+  cancellationReason String?
   user              User        @relation(fields: [userId], references: [id])
   address           Address     @relation("OrderAddress", fields: [addressId], references: [id])
   items             OrderItem[]
