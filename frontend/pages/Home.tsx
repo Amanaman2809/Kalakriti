@@ -298,7 +298,13 @@ export default function Home() {
             />
           ))}
         </div>
-
+        <img
+          src="./tree_left.gif"
+          alt=""
+          width={400}
+          height={400}
+          className="absolute left-0 z-0 pointer-events-none hidden md:block"
+        />
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-text mb-4 animate-fade-in-up">
@@ -354,23 +360,42 @@ export default function Home() {
             </Link>
           </div>
         </div>
+        <img
+          src="./tree_right.gif"
+          alt=""
+          width={400}
+          height={400}
+          className="absolute right-0 top-20 z-0 pointer-events-none hidden md:block"
+        />
       </section>
+
 
       <CharitySection />
 
+
       {/* Products Section */}
-      <section className="px-4 sm:px-6 py-16 bg-white">
-        <div className="max-w-7xl mx-auto">
+      <section className="px-4 sm:px-6 py-16 bg-white relative overflow-hidden">
+        <img
+          src="./woman_dancing.gif"
+          alt="Dancing woman"
+          width={180}
+          height={180}
+          className="absolute right-10 bottom-0 z-0 pointer-events-none hidden md:block opacity-80"
+        />
+        <div className="max-w-7xl mx-auto relative z-10">
+          {/* Header */}
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-text mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-text mb-4 animate-fade-in-up">
               Featured Products
             </h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto mb-8">
+            <p className="text-gray-600 text-lg max-w-2xl mx-auto mb-8 animate-fade-in-up delay-100">
               Handpicked masterpieces showcasing the finest Indian craftsmanship
             </p>
-            <div className="w-24 h-1 bg-silver mx-auto rounded-full"></div>
+            <div className="w-24 h-1 bg-silver mx-auto rounded-full animate-scale-in"></div>
           </div>
 
+
+          {/* Products Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
             {products.map((product) => {
               const isInWishlist = interactions.wishlist[product.id] || false;
@@ -383,16 +408,17 @@ export default function Home() {
               return (
                 <div
                   key={product.id}
-                  className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-accent hover:border-secondary/30"
+                  className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-accent/30"
                 >
                   <Link href={`/products/${product.id}`}>
+                    {/* Image */}
                     <div className="relative aspect-square overflow-hidden">
                       {product.images && product.images.length > 0 ? (
                         <Image
                           src={product.images[0]}
                           fill
                           alt={product.name}
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
                           sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
                         />
                       ) : (
@@ -402,7 +428,8 @@ export default function Home() {
                       )}
 
                       {/* Action buttons */}
-                      <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        {/* Wishlist */}
                         <button
                           onClick={(e) => {
                             e.preventDefault();
@@ -410,11 +437,10 @@ export default function Home() {
                             toggleWishlist(product.id, product.name);
                           }}
                           disabled={isWishlistLoading}
-                          className={`p-3 rounded-full transition-all duration-200 shadow-lg ${
-                            isInWishlist
-                              ? "bg-red-500 text-white scale-110"
-                              : "bg-white/90 text-gray-700 hover:bg-white hover:scale-110"
-                          } disabled:opacity-70`}
+                          className={`p-3 rounded-full shadow-md transition-all duration-200 ${isInWishlist
+                            ? "bg-red-500 text-white scale-110"
+                            : "bg-white/90 text-gray-700 hover:bg-white hover:scale-110"
+                            } disabled:opacity-70`}
                           title={
                             isInWishlist
                               ? "Remove from wishlist"
@@ -425,13 +451,13 @@ export default function Home() {
                             <Loader2 className="w-5 h-5 animate-spin" />
                           ) : (
                             <Heart
-                              className={`w-5 h-5 transition-all duration-200 ${
-                                isInWishlist ? "fill-current" : ""
-                              }`}
+                              className={`w-5 h-5 transition-all duration-200 ${isInWishlist ? "fill-current" : ""
+                                }`}
                             />
                           )}
                         </button>
 
+                        {/* Cart */}
                         <button
                           onClick={(e) => {
                             e.preventDefault();
@@ -439,11 +465,10 @@ export default function Home() {
                             addToCartHandler(product.id, product.name);
                           }}
                           disabled={isCartLoading || isInCart}
-                          className={`p-3 rounded-full transition-all duration-200 shadow-lg ${
-                            isInCart
-                              ? "bg-green-500 text-white"
-                              : "bg-white/90 text-gray-700 hover:bg-white hover:scale-110"
-                          } disabled:opacity-70`}
+                          className={`p-3 rounded-full shadow-md transition-all duration-200 ${isInCart
+                            ? "bg-green-500 text-white"
+                            : "bg-white/90 text-gray-700 hover:bg-white hover:scale-110"
+                            } disabled:opacity-70`}
                           title={isInCart ? "Added to cart" : "Add to cart"}
                         >
                           {isCartLoading ? (
@@ -458,18 +483,19 @@ export default function Home() {
 
                       {/* Price badge */}
                       <div className="absolute top-4 left-4">
-                        <span className="bg-primary text-white px-3 py-1 rounded-full text-sm font-semibold">
+                        <span className="bg-primary text-white px-3 py-1 rounded-full text-sm font-semibold shadow">
                           ₹{product.price.toLocaleString()}
                         </span>
                       </div>
                     </div>
 
+                    {/* Details */}
                     <div className="p-5">
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="font-semibold text-text line-clamp-1 text-lg group-hover:text-primary transition-colors">
                           {product.name}
                         </h3>
-                        <div className="flex items-center gap-1 text-silver">
+                        <div className="flex items-center gap-1 text-yellow-500">
                           <Star className="w-4 h-4 fill-current" />
                           <span className="text-sm font-medium text-gray-600">
                             4.5
@@ -492,11 +518,10 @@ export default function Home() {
                         </div>
 
                         <button
-                          className={`flex items-center gap-2 font-medium px-4 py-2 rounded-lg transition-all duration-200 ${
-                            isInCart
-                              ? "bg-green-100 text-green-700 border border-green-200"
-                              : "bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl"
-                          } disabled:opacity-70`}
+                          className={`flex items-center gap-2 font-medium px-4 py-2 rounded-lg transition-all duration-300 ${isInCart
+                            ? "bg-green-100 text-green-700 border border-green-200"
+                            : "bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl hover:scale-105"
+                            } disabled:opacity-70`}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -529,10 +554,11 @@ export default function Home() {
             })}
           </div>
 
-          <div className="text-center">
+          {/* CTA */}
+          <div className="text-center animate-fade-in-up delay-300">
             <Link
               href="/products"
-              className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-xl group"
+              className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
             >
               View All Products
               <MoveRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -540,6 +566,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+
     </main>
   );
 }

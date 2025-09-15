@@ -344,6 +344,20 @@ export default function CharitySection() {
           </p>
         </div>
       </div>
+        <img
+        src="./p-unscreen.gif"
+          alt="Dancing woman"
+          width={380}
+          height={380}
+          className="absolute left-10 bottom-0 z-0 pointer-events-none hidden md:block opacity-80"
+      />
+      <img
+        src="./p-unscreen.gif"
+        alt="Dancing woman"
+        width={350}
+        height={350}
+        className="absolute right-10 bottom-0 z-0 pointer-events-none hidden md:block opacity-80"
+      />
     </section>
   );
 }
