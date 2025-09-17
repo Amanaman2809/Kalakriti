@@ -250,21 +250,129 @@ router.patch("/:id", requireAuth, requireAdmin, async (req, res) => {
     res.status(500).json({ error: "Failed to update order" });
   }
 });
+// Cancel Order - User can cancel their own order
+router.patch("/:id/cancel", requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user?.id;
+  const { reason } = req.body;
 
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    // Get the order first
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    // Check if user owns the order
+    if (order.userId !== userId) {
+      res.status(403).json({ error: "Unauthorized to cancel this order" });
+      return;
+    }
+
+    // Check if order can be cancelled
+    if (order.status !== "PLACED") {
+      res.status(400).json({ 
+        error: "Order cannot be cancelled. Only orders with 'PLACED' status can be cancelled." 
+      });
+      return;
+    }
+
+    // Check if order is within 24 hours
+    const orderTime = new Date(order.createdAt).getTime();
+    const currentTime = Date.now();
+    const timeDiff = currentTime - orderTime;
+    const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+    if (hoursDiff > 24) {
+      res.status(400).json({ 
+        error: "Order cancellation window has expired. Orders can only be cancelled within 24 hours of placement." 
+      });
+      return;
+    }
+
+    // Cancel the order in a transaction
+    const cancelledOrder = await prisma.$transaction(async (tx) => {
+      // Update order status to cancelled
+      const updatedOrder = await tx.order.update({
+        where: { id },
+        data: {
+          status: "CANCELLED",
+          cancelledAt: new Date(),
+          cancellationReason: reason || "Cancelled by customer",
+          statusUpdatedAt: new Date(),
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
+          },
+          address: true,
+          user: { select: { id: true, name: true, email: true, phone: true } },
+        },
+      });
+
+      // Restore product stock
+      await Promise.all(
+        order.items.map((item) =>
+          tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          })
+        )
+      );
+
+      return updatedOrder;
+    });
+
+    res.json({
+      message: "Order cancelled successfully",
+      order: cancelledOrder,
+    });
+  } catch (err) {
+    console.error("Order cancellation failed:", err);
+    res.status(500).json({ error: "Failed to cancel order" });
+  }
+});
 router.patch("/:id/status", requireAuth, requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
-  const validStatuses: OrderStatus[] = ["PLACED", "SHIPPED", "DELIVERED"];
+  const validStatuses: OrderStatus[] = [
+    "PLACED",
+    "SHIPPED",
+    "DELIVERED",
+    "CANCELLED",
+  ]; 
 
   try {
     // Validate input
     if (!validStatuses.includes(status)) {
       res.status(400).json({ error: "Invalid status value" });
+      return;
     }
 
     // Get current order
     const order = await prisma.order.findUnique({ where: { id } });
-    if (!order) res.status(404).json({ error: "Order not found" });
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
 
     // Prepare update data
     const updateData: any = {
@@ -277,6 +385,9 @@ router.patch("/:id/status", requireAuth, requireAdmin, async (req, res) => {
       updateData.shippedAt = new Date();
     } else if (status === "DELIVERED" && !order?.deliveredAt) {
       updateData.deliveredAt = new Date();
+    } else if (status === "CANCELLED" && !order?.cancelledAt) {
+      updateData.cancelledAt = new Date();
+      updateData.cancellationReason = "Cancelled by admin";
     }
 
     // Update order

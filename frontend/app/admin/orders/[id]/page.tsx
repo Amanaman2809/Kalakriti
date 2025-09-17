@@ -13,12 +13,13 @@ import {
     Mail,
     Truck,
     Copy,
-    AlertCircle
+    AlertCircle,
+    CircleX,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { Order, OrderStatus, PaymentStatus, OrderStatusValues, PaymentStatusValues } from '@/utils/types';
-import { useParams} from 'next/navigation';
+import { useParams } from 'next/navigation';
 
 export default function OrderDetailPage() {
     const [order, setOrder] = useState<Order | null>(null);
@@ -27,8 +28,22 @@ export default function OrderDetailPage() {
     const [updating, setUpdating] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState<Partial<Order>>({});
+    const [showCancelDialog, setShowCancelDialog] = useState(false);
+    const [cancelReason, setCancelReason] = useState('');
+    const [customCancelReason, setCustomCancelReason] = useState('');
+    const [confirmingCancel, setConfirmingCancel] = useState(false);
+
     const param = useParams();
     const id = param?.id;
+
+    const cancellationReasons = [
+        "Customer requested cancellation",
+        "Payment issues detected",
+        "Product out of stock",
+        "Shipping address issues",
+        "Order processing error",
+        "Other"
+    ];
 
     useEffect(() => {
         const fetchOrder = async () => {
@@ -67,7 +82,9 @@ export default function OrderDetailPage() {
             }
         };
 
-        fetchOrder();
+        if (id) {
+            fetchOrder();
+        }
     }, [id]);
 
     const handleEditToggle = () => {
@@ -118,6 +135,46 @@ export default function OrderDetailPage() {
         }
     };
 
+    const handleCancelConfirm = async () => {
+        if (!order) return;
+        let reasonToSend = cancelReason === "Other" ? customCancelReason.trim() : cancelReason;
+        if (!reasonToSend) {
+            toast.error("Please provide a cancellation reason");
+            return;
+        }
+
+        setConfirmingCancel(true);
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) throw new Error('Authentication token missing');
+
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/orders/${order.id}/cancel`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ reason: reasonToSend }),
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to cancel order');
+            }
+
+            const result = await res.json();
+            setOrder(prev => prev ? { ...prev, status: 'CANCELLED' as OrderStatus } : null);
+            setShowCancelDialog(false);
+            setCancelReason('');
+            setCustomCancelReason('');
+            toast.success('Order cancelled successfully');
+        } catch (err: any) {
+            toast.error(err.message || 'Cancellation failed');
+        } finally {
+            setConfirmingCancel(false);
+        }
+    };
+
     const copyOrderId = () => {
         navigator.clipboard.writeText(order?.id || '');
         toast.success('Order ID copied to clipboard');
@@ -127,9 +184,10 @@ export default function OrderDetailPage() {
         const configs = {
             PLACED: { color: 'bg-yellow-50 text-yellow-800 border-yellow-200', label: 'Order Placed' },
             SHIPPED: { color: 'bg-blue-50 text-blue-800 border-blue-200', label: 'Shipped' },
-            DELIVERED: { color: 'bg-green-50 text-green-800 border-green-200', label: 'Delivered' }
+            DELIVERED: { color: 'bg-green-50 text-green-800 border-green-200', label: 'Delivered' },
+            CANCELLED: { color: 'bg-red-50 text-red-800 border-red-200', label: 'Cancelled' }
         };
-        return configs[status];
+        return configs[status] || configs.PLACED;
     };
 
     const getPaymentStatusConfig = (status: PaymentStatus) => {
@@ -138,7 +196,7 @@ export default function OrderDetailPage() {
             PENDING: { color: 'bg-yellow-50 text-yellow-800 border-yellow-200' },
             FAILED: { color: 'bg-red-50 text-red-800 border-red-200' }
         };
-        return configs[status];
+        return configs[status] || configs.PENDING;
     };
 
     if (loading) {
@@ -247,13 +305,25 @@ export default function OrderDetailPage() {
                             </button>
                         </>
                     ) : (
-                        <button
-                            onClick={handleEditToggle}
-                            className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors"
-                        >
-                            <Edit className="h-4 w-4" />
-                            Edit Order
-                        </button>
+                        <>
+                            <button
+                                onClick={handleEditToggle}
+                                className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors"
+                            >
+                                <Edit className="h-4 w-4" />
+                                Edit Order
+                            </button>
+                            {/* Fixed: Removed redundant condition */}
+                            {(order.status === "PLACED" || order.status === "SHIPPED") && (
+                                <button
+                                    onClick={() => setShowCancelDialog(true)}
+                                    className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-xl hover:bg-red-700 transition-colors"
+                                >
+                                    <CircleX className="h-4 w-4" />
+                                    Cancel Order
+                                </button>
+                            )}
+                        </>
                     )}
                 </div>
             </div>
@@ -541,6 +611,100 @@ export default function OrderDetailPage() {
                     )}
                 </div>
             </div>
+
+            {/* Admin Cancel Order Dialog */}
+            {showCancelDialog && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full transform transition-all">
+                        <div className="p-6">
+                            {/* Header */}
+                            <div className="text-center mb-6">
+                                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <CircleX className="h-8 w-8 text-red-600" />
+                                </div>
+                                <h2 className="text-xl font-semibold text-gray-900 mb-2">Cancel Order</h2>
+                                <p className="text-gray-600">
+                                    Cancel order #{order.id.slice(0, 8).toUpperCase()}
+                                </p>
+                            </div>
+
+                            {/* Order Details */}
+                            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-600">Order Total:</span>
+                                    <span className="font-semibold text-gray-900">₹{order.total.toLocaleString()}</span>
+                                </div>
+                            </div>
+
+                            {/* Reason Selection */}
+                            <div className="mb-6">
+                                <h3 className="text-sm font-medium text-gray-700 mb-3">Reason for cancellation:</h3>
+                                <div className="space-y-2 max-h-40 overflow-y-auto">
+                                    {cancellationReasons.map((reason) => (
+                                        <label key={reason} className="flex items-center cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="cancellationReason"
+                                                value={reason}
+                                                checked={cancelReason === reason}
+                                                onChange={(e) => setCancelReason(e.target.value)}
+                                                className="mr-3 text-red-600 focus:ring-red-500"
+                                                disabled={confirmingCancel}
+                                            />
+                                            <span className="text-sm text-gray-700">{reason}</span>
+                                        </label>
+                                    ))}
+                                </div>
+
+                                {/* Custom reason input */}
+                                {cancelReason === "Other" && (
+                                    <div className="mt-3">
+                                        <textarea
+                                            placeholder="Please specify the reason for cancellation..."
+                                            value={customCancelReason}
+                                            onChange={(e) => setCustomCancelReason(e.target.value)}
+                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors resize-none text-sm"
+                                            rows={3}
+                                            disabled={confirmingCancel}
+                                            maxLength={500}
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {customCancelReason.length}/500 characters
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => {
+                                        setShowCancelDialog(false);
+                                        setCancelReason('');
+                                        setCustomCancelReason('');
+                                    }}
+                                    disabled={confirmingCancel}
+                                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                >
+                                    Keep Order
+                                </button>
+                                <button
+                                    onClick={handleCancelConfirm}
+                                    disabled={confirmingCancel || !cancelReason || (cancelReason === "Other" && !customCancelReason.trim())}
+                                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {confirmingCancel ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <CircleX className="h-4 w-4" />
+                                    )}
+                                    {confirmingCancel ? "Cancelling..." : "Cancel Order"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

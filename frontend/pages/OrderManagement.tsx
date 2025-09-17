@@ -22,11 +22,12 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 
 type StatusOption = {
-  value: "PLACED" | "SHIPPED" | "DELIVERED";
+  value: "PLACED" | "SHIPPED" | "DELIVERED" | "CANCELLED";
   label: string;
 };
 
@@ -35,7 +36,7 @@ type PaymentStatusOption = {
   label: string;
 };
 
-// Types (keeping your original types)
+// Types with CANCELLED status included
 interface Order {
   id: string;
   user?: {
@@ -47,7 +48,7 @@ interface Order {
   updatedAt?: string;
   shippedAt?: string;
   deliveredAt?: string;
-  status: "PLACED" | "SHIPPED" | "DELIVERED";
+  status: "PLACED" | "SHIPPED" | "DELIVERED" | "CANCELLED";
   paymentStatus: "PAID" | "PENDING" | "FAILED";
   paymentMode: string;
   total: number;
@@ -59,22 +60,23 @@ interface OrderStats {
   placed: number;
   shipped: number;
   delivered: number;
+  cancelled: number;
   revenue: number;
 }
 
 interface OrderFilters {
   start?: string;
   end?: string;
-  status?: ("PLACED" | "SHIPPED" | "DELIVERED")[];
+  status?: ("PLACED" | "SHIPPED" | "DELIVERED" | "CANCELLED")[];
   paymentStatus?: ("PAID" | "PENDING" | "FAILED")[];
   sortBy:
-    | "createdAt"
-    | "total"
-    | "updatedAt"
-    | "shippedAt"
-    | "deliveredAt"
-    | "status"
-    | "paymentStatus";
+  | "createdAt"
+  | "total"
+  | "updatedAt"
+  | "shippedAt"
+  | "deliveredAt"
+  | "status"
+  | "paymentStatus";
   sortOrder: "asc" | "desc";
 }
 
@@ -94,7 +96,7 @@ interface ApiResponse {
 }
 
 interface FilterOptions {
-  statusOptions: { value: "PLACED" | "SHIPPED" | "DELIVERED"; count: number }[];
+  statusOptions: { value: "PLACED" | "SHIPPED" | "DELIVERED" | "CANCELLED"; count: number }[];
   paymentStatusOptions: {
     value: "PAID" | "PENDING" | "FAILED";
     count: number;
@@ -105,6 +107,7 @@ interface FilterOptions {
 
 export default function OrdersListPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [allOrders, setAllOrders] = useState<Order[]>([]); // Store all orders for filtering
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -125,12 +128,13 @@ export default function OrdersListPage() {
     limit: 25,
   });
 
-  // Initialize with default filter options to prevent null issues
+  // Initialize with default filter options including CANCELLED
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     statusOptions: [
       { value: "PLACED", count: 0 },
       { value: "SHIPPED", count: 0 },
       { value: "DELIVERED", count: 0 },
+      { value: "CANCELLED", count: 0 },
     ],
     paymentStatusOptions: [
       { value: "PAID", count: 0 },
@@ -154,6 +158,7 @@ export default function OrdersListPage() {
     placed: 0,
     shipped: 0,
     delivered: 0,
+    cancelled: 0,
     revenue: 0,
   });
 
@@ -161,13 +166,9 @@ export default function OrdersListPage() {
   const toast = {
     success: (message: string) => {
       console.log("Success:", message);
-      // Replace with your actual toast implementation:
-      // toast.success(message);
     },
     error: (message: string) => {
       console.log("Error:", message);
-      // Replace with your actual toast implementation:
-      // toast.error(message);
     },
   };
 
@@ -196,8 +197,84 @@ export default function OrdersListPage() {
   // Fixed authentication token retrieval
   const getAuthToken = () => {
     return localStorage.getItem("token");
-    // return cookies.get("authToken");
-    // return authContext.token;
+  };
+
+  // Updated filter function to handle all filters properly
+  const applyFilters = (ordersToFilter: Order[]) => {
+    let filtered = [...ordersToFilter];
+
+    // Apply status filter
+    if (filters.status && filters.status.length > 0) {
+      filtered = filtered.filter(order => filters.status!.includes(order.status));
+    }
+
+    // Apply payment status filter
+    if (filters.paymentStatus && filters.paymentStatus.length > 0) {
+      filtered = filtered.filter(order => filters.paymentStatus!.includes(order.paymentStatus));
+    }
+
+    // Apply date range filter
+    if (filters.start) {
+      filtered = filtered.filter(order => {
+        const orderDate = new Date(order.createdAt);
+        const startDate = new Date(filters.start!);
+        return orderDate >= startDate;
+      });
+    }
+
+    if (filters.end) {
+      filtered = filtered.filter(order => {
+        const orderDate = new Date(order.createdAt);
+        const endDate = new Date(filters.end!);
+        endDate.setHours(23, 59, 59, 999); // End of day
+        return orderDate <= endDate;
+      });
+    }
+
+    // Apply search term
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter((order) =>
+        order.id.toLowerCase().includes(searchLower) ||
+        order.user?.name?.toLowerCase().includes(searchLower) ||
+        order.user?.email?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue: any, bValue: any;
+
+      switch (filters.sortBy) {
+        case "createdAt":
+          aValue = new Date(a.createdAt).getTime();
+          bValue = new Date(b.createdAt).getTime();
+          break;
+        case "total":
+          aValue = a.total;
+          bValue = b.total;
+          break;
+        case "status":
+          aValue = a.status;
+          bValue = b.status;
+          break;
+        case "paymentStatus":
+          aValue = a.paymentStatus;
+          bValue = b.paymentStatus;
+          break;
+        default:
+          aValue = new Date(a.createdAt).getTime();
+          bValue = new Date(b.createdAt).getTime();
+      }
+
+      if (filters.sortOrder === "asc") {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+    return filtered;
   };
 
   const fetchOrders = async (page = 1, showRefreshing = false) => {
@@ -209,61 +286,137 @@ export default function OrdersListPage() {
       if (!token) {
         // For demo purposes, create mock data instead of throwing error
         console.warn("No auth token - using mock data for demonstration");
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        // Generate mock data
-        const mockOrders = Array.from({ length: 25 }, (_, i) => ({
-          id: `order-${String(i + 1).padStart(8, "0")}`,
-          user: {
-            name: ["John Doe", "Jane Smith", "Alice Johnson", "Bob Wilson"][
-              i % 4
+        // Generate mock data including CANCELLED status with more balanced distribution
+        const mockOrders = Array.from({ length: 120 }, (_, i) => {
+          // More balanced status distribution
+          const statusWeights = [
+            { status: "PLACED", weight: 0.3 },
+            { status: "SHIPPED", weight: 0.25 },
+            { status: "DELIVERED", weight: 0.3 },
+            { status: "CANCELLED", weight: 0.15 }
+          ];
+
+          let random = Math.random();
+          let cumulativeWeight = 0;
+          let selectedStatus = "PLACED";
+
+          for (const { status, weight } of statusWeights) {
+            cumulativeWeight += weight;
+            if (random <= cumulativeWeight) {
+              selectedStatus = status;
+              break;
+            }
+          }
+
+          return {
+            id: `order-${String(i + 1).padStart(8, "0")}`,
+            user: {
+              name: ["John Doe", "Jane Smith", "Alice Johnson", "Bob Wilson", "Sarah Connor", "Mike Johnson"][
+                i % 6
+              ],
+              email: `user${i + 1}@example.com`,
+              phone: `+91${Math.floor(Math.random() * 1000000000)}`,
+            },
+            createdAt: new Date(
+              Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000, // Last 60 days
+            ).toISOString(),
+            status: selectedStatus as any,
+            paymentStatus: ["PAID", "PENDING", "FAILED"][
+              Math.floor(Math.random() * 3)
+            ] as any,
+            paymentMode: ["Credit Card", "UPI", "Cash on Delivery", "Net Banking"][
+              Math.floor(Math.random() * 4)
             ],
-            email: `user${i + 1}@example.com`,
-            phone: `+91${Math.floor(Math.random() * 1000000000)}`,
-          },
-          createdAt: new Date(
-            Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000,
-          ).toISOString(),
-          status: ["PLACED", "SHIPPED", "DELIVERED"][
-            Math.floor(Math.random() * 3)
-          ] as any,
-          paymentStatus: ["PAID", "PENDING", "FAILED"][
-            Math.floor(Math.random() * 3)
-          ] as any,
-          paymentMode: ["Credit Card", "UPI", "Cash on Delivery"][
-            Math.floor(Math.random() * 3)
-          ],
-          total: Math.floor(Math.random() * 50000) + 500,
-          items: Array.from(
-            { length: Math.floor(Math.random() * 5) + 1 },
-            (_, j) => ({ id: j }),
-          ),
-        }));
+            total: Math.floor(Math.random() * 50000) + 500,
+            items: Array.from(
+              { length: Math.floor(Math.random() * 5) + 1 },
+              (_, j) => ({ id: j }),
+            ),
+          };
+        });
 
-        setOrders(mockOrders);
-        setPagination((prev) => ({
-          ...prev,
+        // Store all orders for client-side filtering
+        setAllOrders(mockOrders);
+
+        // Apply filters to get the filtered orders
+        const filteredOrders = applyFilters(mockOrders);
+
+        // Paginate the filtered results
+        const startIndex = (page - 1) * 25;
+        const endIndex = startIndex + 25;
+        const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+        setOrders(paginatedOrders);
+        setPagination({
           currentPage: page,
-          totalPages: 6,
-          totalCount: 150,
-          hasNextPage: page < 6,
+          totalPages: Math.ceil(filteredOrders.length / 25),
+          totalCount: filteredOrders.length,
+          hasNextPage: endIndex < filteredOrders.length,
           hasPrevPage: page > 1,
+          limit: 25,
+        });
+
+        // Calculate stats from all orders (not just filtered)
+        const allStats = mockOrders.reduce(
+          (acc, order) => {
+            acc.total++;
+            acc.revenue += order.total;
+            switch (order.status) {
+              case "PLACED":
+                acc.placed++;
+                break;
+              case "SHIPPED":
+                acc.shipped++;
+                break;
+              case "DELIVERED":
+                acc.delivered++;
+                break;
+              case "CANCELLED":
+                acc.cancelled++;
+                break;
+            }
+            return acc;
+          },
+          { total: 0, placed: 0, shipped: 0, delivered: 0, cancelled: 0, revenue: 0 },
+        );
+        setStats(allStats);
+
+        // Update filter options with actual counts
+        const statusCounts = {
+          PLACED: mockOrders.filter(o => o.status === "PLACED").length,
+          SHIPPED: mockOrders.filter(o => o.status === "SHIPPED").length,
+          DELIVERED: mockOrders.filter(o => o.status === "DELIVERED").length,
+          CANCELLED: mockOrders.filter(o => o.status === "CANCELLED").length,
+        };
+
+        const paymentStatusCounts = {
+          PAID: mockOrders.filter(o => o.paymentStatus === "PAID").length,
+          PENDING: mockOrders.filter(o => o.paymentStatus === "PENDING").length,
+          FAILED: mockOrders.filter(o => o.paymentStatus === "FAILED").length,
+        };
+
+        setFilterOptions(prev => ({
+          ...prev,
+          statusOptions: [
+            { value: "PLACED", count: statusCounts.PLACED },
+            { value: "SHIPPED", count: statusCounts.SHIPPED },
+            { value: "DELIVERED", count: statusCounts.DELIVERED },
+            { value: "CANCELLED", count: statusCounts.CANCELLED },
+          ],
+          paymentStatusOptions: [
+            { value: "PAID", count: paymentStatusCounts.PAID },
+            { value: "PENDING", count: paymentStatusCounts.PENDING },
+            { value: "FAILED", count: paymentStatusCounts.FAILED },
+          ],
         }));
 
-        // Calculate mock stats
-        const mockStats = {
-          total: 150,
-          placed: 45,
-          shipped: 32,
-          delivered: 73,
-          revenue: mockOrders.reduce((sum, order) => sum + order.total, 0),
-        };
-        setStats(mockStats);
         setError(null);
         return;
       }
 
-      // Your actual API call (currently commented for demo)
+      // Your actual API call
       const API_BASE_URL =
         process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
       const queryParams = buildQueryParams(page);
@@ -285,10 +438,10 @@ export default function OrdersListPage() {
 
       const data: ApiResponse = await response.json();
       setOrders(data.orders || []);
-      // console.log(data.orders);
+      setAllOrders(data.orders || []);
       setPagination(data.pagination);
 
-      // Calculate stats from API response
+      // Calculate stats from API response including cancelled
       const newStats = data.orders.reduce(
         (acc, order) => {
           acc.total = data.pagination.totalCount;
@@ -303,10 +456,13 @@ export default function OrdersListPage() {
             case "DELIVERED":
               acc.delivered++;
               break;
+            case "CANCELLED":
+              acc.cancelled++;
+              break;
           }
           return acc;
         },
-        { total: 0, placed: 0, shipped: 0, delivered: 0, revenue: 0 },
+        { total: 0, placed: 0, shipped: 0, delivered: 0, cancelled: 0, revenue: 0 },
       );
 
       setStats(newStats);
@@ -352,10 +508,35 @@ export default function OrdersListPage() {
     }
   };
 
+  // Updated useEffect to re-apply filters when filters change
+  useEffect(() => {
+    if (allOrders.length > 0) {
+      // Client-side filtering for demo
+      const filteredOrders = applyFilters(allOrders);
+      const startIndex = (pagination.currentPage - 1) * 25;
+      const endIndex = startIndex + 25;
+      const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+      setOrders(paginatedOrders);
+      setPagination(prev => ({
+        ...prev,
+        totalPages: Math.ceil(filteredOrders.length / 25),
+        totalCount: filteredOrders.length,
+        hasNextPage: endIndex < filteredOrders.length,
+        hasPrevPage: pagination.currentPage > 1,
+      }));
+    } else {
+      // Fetch from API when filters change
+      fetchOrders();
+      fetchFilterOptions();
+    }
+  }, [filters, searchTerm]);
+
+  // Initial load
   useEffect(() => {
     fetchOrders();
     fetchFilterOptions();
-  }, [filters]);
+  }, []);
 
   const handleRefresh = () => {
     fetchOrders(pagination.currentPage, true);
@@ -364,7 +545,23 @@ export default function OrdersListPage() {
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
-      fetchOrders(newPage);
+      if (allOrders.length > 0) {
+        // Client-side pagination for demo
+        const filteredOrders = applyFilters(allOrders);
+        const startIndex = (newPage - 1) * 25;
+        const endIndex = startIndex + 25;
+        const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+        setOrders(paginatedOrders);
+        setPagination(prev => ({
+          ...prev,
+          currentPage: newPage,
+          hasNextPage: endIndex < filteredOrders.length,
+          hasPrevPage: newPage > 1,
+        }));
+      } else {
+        fetchOrders(newPage);
+      }
     }
   };
 
@@ -392,8 +589,10 @@ export default function OrdersListPage() {
   const exportOrders = async () => {
     try {
       const token = getAuthToken();
+      const ordersToExport = allOrders.length > 0 ? applyFilters(allOrders) : orders;
+
       if (!token) {
-        // For demo, export current visible orders
+        // For demo, export current filtered orders
         const csvContent = [
           [
             "Order ID",
@@ -407,7 +606,7 @@ export default function OrdersListPage() {
             "Total",
             "Items",
           ].join(","),
-          ...orders.map((order) =>
+          ...ordersToExport.map((order) =>
             [
               order.id.slice(0, 8).toUpperCase(),
               `"${order.user?.name || "N/A"}"`,
@@ -437,7 +636,6 @@ export default function OrdersListPage() {
       // Your actual export logic for production
       const API_BASE_URL =
         process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
-      // const queryParams = buildQueryParams(1).replace("limit=25", "limit=1000");
 
       const response = await fetch(`${API_BASE_URL}/api/orders/admin`, {
         headers: {
@@ -449,7 +647,6 @@ export default function OrdersListPage() {
       if (!response.ok) throw new Error("Failed to fetch orders for export");
 
       const data: ApiResponse = await response.json();
-      // console.log(data);
 
       const csvContent = [
         [
@@ -494,18 +691,8 @@ export default function OrdersListPage() {
     }
   };
 
-  // Filter orders by search term (client-side filtering for better UX)
-  const filteredOrders = orders.filter((order) => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      order.id.toLowerCase().includes(searchLower) ||
-      order.user?.name?.toLowerCase().includes(searchLower) ||
-      order.user?.email?.toLowerCase().includes(searchLower)
-    );
-  });
-
-  const getStatusConfig = (status: "PLACED" | "SHIPPED" | "DELIVERED") => {
+  // Updated getStatusConfig to include CANCELLED
+  const getStatusConfig = (status: "PLACED" | "SHIPPED" | "DELIVERED" | "CANCELLED") => {
     const configs = {
       PLACED: {
         color: "bg-amber-100 text-amber-800 border-amber-200",
@@ -521,6 +708,11 @@ export default function OrdersListPage() {
         color: "bg-emerald-100 text-emerald-800 border-emerald-200",
         icon: CheckCircle,
         trend: "up",
+      },
+      CANCELLED: {
+        color: "bg-red-100 text-red-800 border-red-200",
+        icon: XCircle,
+        trend: "down",
       },
     };
     return configs[status] || configs.PLACED;
@@ -611,12 +803,12 @@ export default function OrdersListPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Stats Cards - Updated to include cancelled */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         {[
           {
             label: "Total Orders",
-            value: pagination.totalCount,
+            value: stats.total,
             icon: ShoppingBag,
             color: "text-blue-600 bg-blue-50",
             trend: "up",
@@ -645,6 +837,14 @@ export default function OrdersListPage() {
             color: "text-emerald-600 bg-emerald-50",
             trend: "up",
             change: "+22%",
+          },
+          {
+            label: "Cancelled",
+            value: stats.cancelled,
+            icon: XCircle,
+            color: "text-red-600 bg-red-50",
+            trend: "down",
+            change: "-8%",
           },
           {
             label: "Revenue",
@@ -676,13 +876,12 @@ export default function OrdersListPage() {
                 </div>
                 <div className="flex items-center gap-1 text-xs font-medium">
                   <TrendIcon
-                    className={`h-3 w-3 ${
-                      stat.trend === "up"
+                    className={`h-3 w-3 ${stat.trend === "up"
                         ? "text-emerald-500"
                         : stat.trend === "down"
                           ? "text-rose-500"
                           : "text-amber-500"
-                    }`}
+                      }`}
                   />
                   <span
                     className={
@@ -831,6 +1030,8 @@ export default function OrdersListPage() {
                     status: selected.map((s) => s.value),
                   }))
                 }
+                placeholder="Select status..."
+                className="text-sm"
               />
             </div>
 
@@ -857,6 +1058,8 @@ export default function OrdersListPage() {
                     paymentStatus: selected.map((p) => p.value),
                   }))
                 }
+                placeholder="Select payment status..."
+                className="text-sm"
               />
             </div>
           </div>
@@ -867,7 +1070,6 @@ export default function OrdersListPage() {
                 <label className="text-sm font-medium text-gray-700">
                   Sort by:
                 </label>
-                {/* Sort By Dropdown */}
                 <select
                   className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-gray-50"
                   value={filters.sortBy}
@@ -913,7 +1115,7 @@ export default function OrdersListPage() {
 
       {/* Orders Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        {filteredOrders.length === 0 ? (
+        {orders.length === 0 ? (
           <div className="p-12 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
               <Package className="h-8 w-8 text-gray-400" />
@@ -923,12 +1125,12 @@ export default function OrdersListPage() {
             </h3>
             <p className="text-gray-600 mb-6 max-w-md mx-auto">
               {searchTerm ||
-              Object.keys(filters).some(
-                (key) =>
-                  key !== "sortBy" &&
-                  key !== "sortOrder" &&
-                  filters[key as keyof OrderFilters],
-              )
+                Object.keys(filters).some(
+                  (key) =>
+                    key !== "sortBy" &&
+                    key !== "sortOrder" &&
+                    filters[key as keyof OrderFilters],
+                )
                 ? "Try adjusting your search or filter criteria"
                 : "Orders will appear here when customers make purchases"}
             </p>
@@ -939,13 +1141,13 @@ export default function OrdersListPage() {
                   key !== "sortOrder" &&
                   filters[key as keyof OrderFilters],
               )) && (
-              <button
-                onClick={clearFilters}
-                className="bg-primary text-white px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors font-medium"
-              >
-                Clear All Filters
-              </button>
-            )}
+                <button
+                  onClick={clearFilters}
+                  className="bg-primary text-white px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors font-medium"
+                >
+                  Clear All Filters
+                </button>
+              )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -972,7 +1174,7 @@ export default function OrdersListPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredOrders.map((order) => {
+                {orders.map((order) => {
                   const StatusIcon = getStatusConfig(order.status).icon;
                   const PaymentStatusIcon = getPaymentStatusConfig(
                     order.paymentStatus,
@@ -1117,11 +1319,10 @@ export default function OrdersListPage() {
                       <button
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                          pagination.currentPage === pageNum
+                        className={`px-3 py-2 text-sm font-medium rounded-lg ${pagination.currentPage === pageNum
                             ? "bg-blue-600 text-white"
                             : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-700"
-                        }`}
+                          }`}
                       >
                         {pageNum}
                       </button>
@@ -1154,7 +1355,7 @@ export default function OrdersListPage() {
             </div>
 
             <div className="text-sm text-gray-700">
-              Page {pagination.currentPage} of {pagination.totalPages}
+              Page {pagination.currentPage} of {pagination.totalPages} • {pagination.totalCount} total orders
             </div>
           </div>
         </div>
