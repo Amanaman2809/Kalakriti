@@ -18,6 +18,7 @@ import addressRoute from "./routes/address";
 import adminStats from "./routes/admin/dashboard";
 import orderFilters from "./routes/admin/orderFilters";
 import paymentRoute from "./routes/payments";
+import userRoutes from "./routes/users";
 
 dotenv.config();
 const app = express();
@@ -46,6 +47,7 @@ app.use("/api/search", searchRoute);
 app.use("/api/cloudinary", cloudinaryRoute);
 app.use("/api/addresses", addressRoute);
 app.use("/api", adminStats);
+app.use("/api/users", userRoutes);
 
 app.get("/", (_req, res) => {
   res.send("Hello from Chalava backend!");

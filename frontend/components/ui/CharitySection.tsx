@@ -13,7 +13,7 @@ import {
   getWishlist,
 } from "@/utils/product";
 
-const CHARITY_CATEGORY_ID = "f95d41b4-9a43-4f03-a675-1311a205c72e";
+const CHARITY_CATEGORY_ID = "5b83255a-3141-4aed-b75c-cf07a5cb2976";
 
 export default function CharitySection() {
   const [products, setProducts] = useState<Product[]>([]);

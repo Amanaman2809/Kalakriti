@@ -58,7 +58,7 @@ export default function ProductManagement() {
     description: "",
     price: "",
     stock: "",
-    categoryId: "",
+    categoryId: categories.length === 0 ? "" : categories[0].id, 
     tags: "",
     images: [],
   });
@@ -159,10 +159,10 @@ export default function ProductManagement() {
       setProducts(productsData.products || []);
       setCategories(Array.isArray(categoriesData) ? categoriesData : []);
 
-      if (categories.length > 0 && !editingId && !formData.categoryId) {
+      if (categoriesData.length > 0 && !editingId && !formData.categoryId) {
         setFormData(prev => ({
           ...prev,
-          categoryId: categories[0].id,
+          categoryId: categoriesData[0].id,
         }));
       }
     } catch (error) {
@@ -173,7 +173,11 @@ export default function ProductManagement() {
       setRefreshing(false);
     }
   };
-
+  useEffect(() => {
+    if (categories.length > 0 && !formData.categoryId) {
+      setFormData(prev => ({ ...prev, categoryId: categories[0].id }));
+    }
+  }, [categories]);
   useEffect(() => {
     fetchData();
   }, []);
@@ -590,14 +594,14 @@ export default function ProductManagement() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors appearance-none"
                     required
                   >
-                    {categories.length > 0 ? (
+                    {categories.length === 0 ? (
+                      <option disabled>Loading categories...</option>
+                    ) : (
                       categories.map(category => (
                         <option key={category.id} value={category.id}>
                           {category.name}
                         </option>
                       ))
-                    ) : (
-                      <option value="">Loading categories...</option>
                     )}
                   </select>
                 </div>
