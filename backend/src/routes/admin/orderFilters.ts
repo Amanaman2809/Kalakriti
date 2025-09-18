@@ -337,7 +337,7 @@ const buildOrderBy = (sortBy: string, sortOrder: string): OrderByInput => {
       orderBy.createdAt = direction;
       break;
     case "total":
-      orderBy.total = direction;
+      orderBy.netAmount = direction;
       break;
     case "updatedAt":
       orderBy.updatedAt = direction;

@@ -60,108 +60,272 @@ router.get("/", requireAuth, async (req, res) => {
 // Place Order
 router.post("/", requireAuth, async (req, res) => {
   const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
   const { addressId, paymentMode } = req.body;
 
   if (!["COD", "ONLINE"].includes(paymentMode)) {
-    res.status(400).json({ error: "Invalid payment mode" });
-    return;
-  }
-
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-
-  if (!addressId || typeof addressId !== "string") {
-    res.status(400).json({ error: "Invalid address ID" });
-    return;
-  }
-
-  // Verify address belongs to user
-  const address = await prisma.address.findFirst({
-    where: { id: addressId, userId },
-  });
-
-  if (!address) {
-    res.status(404).json({ error: "Address not found" });
-  }
-
-  const cartItems = await prisma.cartItem.findMany({
-    where: { userId },
-    include: { product: true },
-  });
-
-  if (!cartItems || cartItems.length === 0) {
-    res.status(400).json({ error: "Cart is empty" });
-  }
-
-  const total = cartItems.reduce(
-    (acc, item) => acc + item.product.price * item.quantity,
-    0,
-  );
-
-  if (!total) {
-    res.status(400).json({ error: "Invalid total" });
+    return res.status(400).json({ error: "Invalid payment mode" });
   }
 
   try {
-    if (paymentMode === "COD") {
-      const order = await prisma.$transaction(async (tx) => {
-        // Create order with address relation
-        const createdOrder = await tx.order.create({
-          data: {
-            userId,
-            addressId, // Use addressId instead of raw address string
-            total,
-            paymentMode,
-            paymentStatus: "PAID",
-            status: "PLACED",
-            items: {
-              create: cartItems.map((item) => ({
-                productId: item.productId,
-                quantity: item.quantity,
-                price: item.product.price,
-              })),
-            },
+    // 1. Load cart items
+    const cartItems = await prisma.cartItem.findMany({
+      where: { userId },
+      include: { product: true },
+    });
+    if (!cartItems.length)
+      return res.status(400).json({ error: "Cart is empty" });
+
+    const grossAmount = cartItems.reduce(
+      (s, it) => s + it.product.price * it.quantity,
+      0,
+    );
+    const shippingAmount = grossAmount >= 99900 ? 0 : 9900; // example: ₹99 = 9900 paise
+    const taxAmount = Math.round(grossAmount * 0.18);
+
+    const grossPlusExtras = grossAmount + shippingAmount + taxAmount;
+
+    // 2. Fetch available store credits
+    const now = new Date();
+    const credits = await prisma.storeCredit.findMany({
+      where: {
+        userId,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        amount: { gt: 0 },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    let availableCredit = credits.reduce((s, c) => s + c.amount, 0);
+
+    let creditsToApply = 0;
+    let orderCreditsToCreate: { storeCreditId: string; amount: number }[] = [];
+
+    if (availableCredit > 0) {
+      creditsToApply = Math.min(availableCredit, grossPlusExtras);
+      let remainingToUse = creditsToApply;
+      for (const c of credits) {
+        if (remainingToUse <= 0) break;
+        const usable = Math.min(c.amount, remainingToUse);
+        orderCreditsToCreate.push({ storeCreditId: c.id, amount: usable });
+        remainingToUse -= usable;
+      }
+    }
+
+    const netAmount = grossPlusExtras - creditsToApply;
+
+    // 3. Create order in transaction
+    const order = await prisma.$transaction(async (tx) => {
+      const createdOrder = await tx.order.create({
+        data: {
+          userId,
+          addressId,
+          paymentMode,
+          paymentStatus: netAmount === 0 ? "PAID" : "PENDING",
+          status: "PLACED",
+          grossAmount,
+          shippingAmount,
+          taxAmount,
+          creditsApplied: creditsToApply,
+          netAmount,
+          items: {
+            create: cartItems.map((ci) => ({
+              productId: ci.productId,
+              quantity: ci.quantity,
+              price: ci.product.price,
+            })),
           },
-          include: {
-            address: true,
-            items: true,
+        },
+      });
+
+      // Decrement stock
+      await Promise.all(
+        cartItems.map((ci) =>
+          tx.product.update({
+            where: { id: ci.productId },
+            data: { stock: { decrement: ci.quantity } },
+          }),
+        ),
+      );
+
+      // Create OrderCredit entries
+      for (const c of orderCreditsToCreate) {
+        await tx.orderCredit.create({
+          data: {
+            orderId: createdOrder.id,
+            storeCreditId: c.storeCreditId,
+            amount: c.amount,
           },
         });
+      }
 
-        // Update product stock
-        await Promise.all(
-          cartItems.map((item) =>
-            tx.product.update({
-              where: { id: item.productId },
-              data: { stock: { decrement: item.quantity } },
-            }),
-          ),
-        );
+      if (creditsToApply > 0) {
+        // Negative ledger entry for clarity
+        await tx.storeCredit.create({
+          data: {
+            userId,
+            amount: -creditsToApply,
+            reason: `Consumed for order ${createdOrder.id}`,
+          },
+        });
+      }
 
-        // Clear cart
-        await tx.cartItem.deleteMany({ where: { userId } });
+      // Clear cart
+      await tx.cartItem.deleteMany({ where: { userId } });
 
-        return createdOrder;
-      });
+      // Create Payment record if fully covered by credit
+      if (netAmount === 0) {
+        await tx.payment.create({
+          data: {
+            orderId: createdOrder.id,
+            userId,
+            provider: "INTERNAL",
+            providerPaymentId: null,
+            amount: 0,
+            status: "PAID",
+          },
+        });
+      }
 
-      res.status(201).json({
-        message: "Order Placed Successfully",
-        order,
-      });
+      return createdOrder;
+    });
+
+    // If ONLINE payment required, return client-side info
+    if (paymentMode === "ONLINE" && netAmount > 0) {
+      // TODO: Implement Razorpay/Stripe integration
+      return res
+        .status(200)
+        .json({ message: "Payment required", orderId: order.id, netAmount });
     }
 
-    if (paymentMode === "ONLINE") {
-      // TODO: Implement Razorpay payment integration
-      res.status(200).json({ message: "Payment Successful" });
-    }
+    return res
+      .status(201)
+      .json({ message: "Order placed successfully", order });
   } catch (error) {
     console.error("Order placement failed:", error);
-    res.status(500).json({ error: "Failed to place order" });
+    return res.status(500).json({ error: "Failed to place order" });
   }
 });
 
+// Cancel Order
+router.patch("/:id/cancel", requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user?.id;
+  const { reason } = req.body;
+
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        items: { include: { product: true } },
+        orderCredits: true,
+        payments: true,
+      },
+    });
+
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    if (order.userId !== userId)
+      return res
+        .status(403)
+        .json({ error: "Unauthorized to cancel this order" });
+    if (order.status !== "PLACED")
+      return res
+        .status(400)
+        .json({ error: "Only 'PLACED' orders can be cancelled" });
+
+    const hoursDiff =
+      (Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60 * 60);
+    if (hoursDiff > 24)
+      return res.status(400).json({ error: "Cancellation window expired" });
+
+    const cancelledOrder = await prisma.$transaction(async (tx) => {
+      // Update order
+      const updatedOrder = await tx.order.update({
+        where: { id },
+        data: {
+          status: "CANCELLED",
+          cancelledAt: new Date(),
+          cancellationReason: reason || "Cancelled by customer",
+          statusUpdatedAt: new Date(),
+          paymentStatus:
+            order.paymentMode === "ONLINE" && order.paymentStatus === "PAID"
+              ? "REFUNDED"
+              : order.paymentStatus,
+        },
+        include: {
+          items: { include: { product: true } },
+          address: true,
+          user: { select: { id: true, name: true, email: true, phone: true } },
+        },
+      });
+
+      // Restore stock
+      await Promise.all(
+        order.items.map((item) =>
+          tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          }),
+        ),
+      );
+
+      // Restore store credits used
+      for (const oc of order.orderCredits) {
+        await tx.storeCredit.create({
+          data: {
+            userId: order.userId,
+            amount: oc.amount,
+            reason: `Refund for cancelled order ${order.id}`,
+          },
+        });
+
+        await tx.refund.create({
+          data: {
+            orderId: order.id,
+            userId: order.userId,
+            method: "STORE_CREDIT",
+            amount: oc.amount,
+            reason: `Credits refunded for cancelled order`,
+          },
+        });
+      }
+
+      // Refund gateway payments if any
+      const gatewayPaid =
+        order.payments
+          ?.filter((p) => p.provider !== "INTERNAL" && p.status === "PAID")
+          .reduce((s, p) => s + p.amount, 0) || 0;
+
+      if (gatewayPaid > 0) {
+        await tx.refund.create({
+          data: {
+            orderId: order.id,
+            userId: order.userId,
+            method: "GATEWAY",
+            amount: gatewayPaid,
+            reason: "Gateway refund requested",
+          },
+        });
+        // Trigger async gateway refund workflow outside this transaction
+      }
+
+      return updatedOrder;
+    });
+
+    return res.json({
+      message: "Order cancelled successfully",
+      order: cancelledOrder,
+    });
+  } catch (err) {
+    console.error("Order cancellation failed:", err);
+    return res.status(500).json({ error: "Failed to cancel order" });
+  }
+});
+
+// Get order details by ID -- Both Admin and User
 router.get("/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   const userId = req.user?.id;
@@ -250,106 +414,8 @@ router.patch("/:id", requireAuth, requireAdmin, async (req, res) => {
     res.status(500).json({ error: "Failed to update order" });
   }
 });
-// Cancel Order - User can cancel their own order
-router.patch("/:id/cancel", requireAuth, async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user?.id;
-  const { reason } = req.body;
 
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-
-  try {
-    // Get the order first
-    const order = await prisma.order.findUnique({
-      where: { id },
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
-      },
-    });
-
-    if (!order) {
-      res.status(404).json({ error: "Order not found" });
-      return;
-    }
-
-    // Check if user owns the order
-    if (order.userId !== userId) {
-      res.status(403).json({ error: "Unauthorized to cancel this order" });
-      return;
-    }
-
-    // Check if order can be cancelled
-    if (order.status !== "PLACED") {
-      res.status(400).json({ 
-        error: "Order cannot be cancelled. Only orders with 'PLACED' status can be cancelled." 
-      });
-      return;
-    }
-
-    // Check if order is within 24 hours
-    const orderTime = new Date(order.createdAt).getTime();
-    const currentTime = Date.now();
-    const timeDiff = currentTime - orderTime;
-    const hoursDiff = timeDiff / (1000 * 60 * 60);
-
-    if (hoursDiff > 24) {
-      res.status(400).json({ 
-        error: "Order cancellation window has expired. Orders can only be cancelled within 24 hours of placement." 
-      });
-      return;
-    }
-
-    // Cancel the order in a transaction
-    const cancelledOrder = await prisma.$transaction(async (tx) => {
-      // Update order status to cancelled
-      const updatedOrder = await tx.order.update({
-        where: { id },
-        data: {
-          status: "CANCELLED",
-          cancelledAt: new Date(),
-          cancellationReason: reason || "Cancelled by customer",
-          statusUpdatedAt: new Date(),
-        },
-        include: {
-          items: {
-            include: {
-              product: true,
-            },
-          },
-          address: true,
-          user: { select: { id: true, name: true, email: true, phone: true } },
-        },
-      });
-
-      // Restore product stock
-      await Promise.all(
-        order.items.map((item) =>
-          tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { increment: item.quantity } },
-          })
-        )
-      );
-
-      return updatedOrder;
-    });
-
-    res.json({
-      message: "Order cancelled successfully",
-      order: cancelledOrder,
-    });
-  } catch (err) {
-    console.error("Order cancellation failed:", err);
-    res.status(500).json({ error: "Failed to cancel order" });
-  }
-});
+// Update Order Status - Admin can update order status
 router.patch("/:id/status", requireAuth, requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -358,7 +424,7 @@ router.patch("/:id/status", requireAuth, requireAdmin, async (req, res) => {
     "SHIPPED",
     "DELIVERED",
     "CANCELLED",
-  ]; 
+  ];
 
   try {
     // Validate input

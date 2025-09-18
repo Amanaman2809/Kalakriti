@@ -1,13 +1,25 @@
 "use client";
 
-import { useState, useEffect, ChangeEvent, FormEvent, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  ChangeEvent,
+  FormEvent,
+  useCallback,
+} from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 import { CartItem, Address } from "@/utils/types";
 import { fetchCartItems } from "@/utils/product";
-import { getAddresses, addAddress, deleteAddress, updateAddress, AddressInput } from "@/utils/address";
+import {
+  getAddresses,
+  addAddress,
+  deleteAddress,
+  updateAddress,
+  AddressInput,
+} from "@/utils/address";
 import {
   Loader2,
   ChevronRight,
@@ -22,7 +34,7 @@ import {
   MapPin,
   Phone,
   User,
-  AlertTriangle
+  AlertTriangle,
 } from "lucide-react";
 
 const url = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -33,22 +45,25 @@ export default function CheckoutPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<"cod" | "online" | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "online" | null>(
+    null,
+  );
   const [mounted, setMounted] = useState(false);
+  const [storeCredit, setStoreCredit] = useState<number>(0);
   const [isLoading, setIsLoading] = useState({
     cart: true,
     address: true,
-    placingOrder: false
+    placingOrder: false,
   });
   const [errors, setErrors] = useState({
     cart: null as string | null,
     address: null as string | null,
-    order: null as string | null
+    order: null as string | null,
   });
   const [addressForm, setAddressForm] = useState({
     show: false,
     mode: "add" as "add" | "edit",
-    editingId: null as string | null
+    editingId: null as string | null,
   });
   const [addressData, setAddressData] = useState<AddressInput>({
     street: "",
@@ -63,6 +78,29 @@ export default function CheckoutPage() {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (!mounted) return;
+
+    const fetchCredits = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const res = await fetch(`${url}/api/store-credits`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setStoreCredit(data.balance || 0);
+        }
+      } catch (error) {
+        console.warn("Failed to fetch store credits:", error);
+      }
+    };
+
+    fetchCredits();
+  }, [mounted]);
+
   // Enhanced fetch data with better error handling
   useEffect(() => {
     if (!mounted) return;
@@ -71,10 +109,10 @@ export default function CheckoutPage() {
       try {
         const [cartData, addressData] = await Promise.all([
           fetchCartItems(),
-          getAddresses().catch(err => {
+          getAddresses().catch((err) => {
             console.warn("Failed to load addresses:", err);
             return []; // Return empty array on address fetch failure
-          })
+          }),
         ]);
 
         setCartItems(cartData);
@@ -86,20 +124,21 @@ export default function CheckoutPage() {
           setAddressForm({ show: true, mode: "add", editingId: null });
         }
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to load data";
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to load data";
         console.error("Fetch error:", error);
-        setErrors(prev => ({
+        setErrors((prev) => ({
           ...prev,
           cart: error instanceof Error ? error.message : "Failed to load cart",
-          address: error instanceof Error ? error.message : "Failed to load addresses"
+          address:
+            error instanceof Error ? error.message : "Failed to load addresses",
         }));
         toast.error(errorMessage);
-      }
-     finally {
-        setIsLoading(prev => ({
+      } finally {
+        setIsLoading((prev) => ({
           ...prev,
           cart: false,
-          address: false
+          address: false,
         }));
       }
     };
@@ -111,22 +150,26 @@ export default function CheckoutPage() {
   const calculateTotals = useCallback(() => {
     const subtotal = cartItems.reduce(
       (sum, item) => sum + item.product.price * item.quantity,
-      0
+      0,
     );
     const shipping = subtotal >= 999 ? 0 : 99;
-    const tax = subtotal * 0.18; // 18% GST
+    const tax = Math.round(subtotal * 0.18 * 100) / 100; // Round to 2 decimal places
     const total = subtotal + shipping + tax;
 
-    return { subtotal, shipping, tax, total };
-  }, [cartItems]);
+    const creditApplied = Math.min(storeCredit, total);
+    const finalTotal = Math.max(0, total - creditApplied); // Ensure non-negative
 
-  const { subtotal, shipping, tax, total } = calculateTotals();
+    return { subtotal, shipping, tax, total, creditApplied, finalTotal };
+  }, [cartItems, storeCredit]);
+
+  const { subtotal, shipping, tax, total, creditApplied, finalTotal } =
+    calculateTotals();
 
   // Handle address form input changes
   const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    setAddressData(prev => ({
+    setAddressData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     }));
   }, []);
 
@@ -160,8 +203,8 @@ export default function CheckoutPage() {
   const handleSaveAddress = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      setIsLoading(prev => ({ ...prev, address: true }));
-      setErrors(prev => ({ ...prev, address: null }));
+      setIsLoading((prev) => ({ ...prev, address: true }));
+      setErrors((prev) => ({ ...prev, address: null }));
 
       let newSelectedAddress = selectedAddress;
 
@@ -170,13 +213,13 @@ export default function CheckoutPage() {
         newSelectedAddress = added.id;
         toast.success("Address added successfully", {
           duration: 2000,
-          position: 'top-center'
+          position: "top-center",
         });
       } else if (addressForm.mode === "edit" && addressForm.editingId) {
         await updateAddress(addressForm.editingId, addressData);
         toast.success("Address updated successfully", {
           duration: 2000,
-          position: 'top-center'
+          position: "top-center",
         });
       }
 
@@ -185,14 +228,16 @@ export default function CheckoutPage() {
       setAddresses(updatedAddresses);
       setSelectedAddress(newSelectedAddress);
       setAddressForm({ show: false, mode: "add", editingId: null });
-    } catch (err: any) {
-      setErrors(prev => ({
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to save address";
+      setErrors((prev) => ({
         ...prev,
-        address: err.message || "Failed to save address"
+        address: errorMessage,
       }));
-      toast.error(err.message || "Failed to save address");
+      toast.error(errorMessage);
     } finally {
-      setIsLoading(prev => ({ ...prev, address: false }));
+      setIsLoading((prev) => ({ ...prev, address: false }));
     }
   };
 
@@ -201,20 +246,22 @@ export default function CheckoutPage() {
     if (!confirm("Are you sure you want to delete this address?")) return;
 
     try {
-      setIsLoading(prev => ({ ...prev, address: true }));
+      setIsLoading((prev) => ({ ...prev, address: true }));
       await deleteAddress(id);
 
-      const updatedAddresses = addresses.filter(addr => addr.id !== id);
+      const updatedAddresses = addresses.filter((addr) => addr.id !== id);
       setAddresses(updatedAddresses);
 
       if (selectedAddress === id) {
         setSelectedAddress(updatedAddresses[0]?.id || null);
       }
       toast.success("Address deleted successfully");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete address");
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to delete address";
+      toast.error(errorMessage);
     } finally {
-      setIsLoading(prev => ({ ...prev, address: false }));
+      setIsLoading((prev) => ({ ...prev, address: false }));
     }
   };
 
@@ -230,35 +277,35 @@ export default function CheckoutPage() {
     }
 
     try {
-      setIsLoading(prev => ({ ...prev, placingOrder: true }));
-      setErrors(prev => ({ ...prev, order: null }));
+      setIsLoading((prev) => ({ ...prev, placingOrder: true }));
+      setErrors((prev) => ({ ...prev, order: null }));
 
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
         toast.error("Please login to continue");
-        router.push('/login');
+        router.push("/login");
         return;
       }
 
       const response = await fetch(`${url}/api/orders`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           addressId: selectedAddress,
-          paymentMode: paymentMethod.toUpperCase()
-        })
+          paymentMode: paymentMethod.toUpperCase(),
+        }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        let errorMessage = 'Failed to place order';
+        let errorMessage = "Failed to place order";
 
         try {
           const errorData = JSON.parse(errorText);
-          errorMessage = errorData.error || errorMessage;
+          errorMessage = errorData.error || errorData.message || errorMessage;
         } catch {
           errorMessage = errorText || errorMessage;
         }
@@ -271,18 +318,24 @@ export default function CheckoutPage() {
 
       toast.success("🎉 Order placed successfully!", {
         duration: 3000,
-        position: 'top-center'
+        position: "top-center",
       });
 
-      router.push(`/orders/${orderId}`);
-    } catch (err: any) {
-      setErrors(prev => ({
+      if (orderId) {
+        router.push(`/orders/${orderId}`);
+      } else {
+        router.push("/orders");
+      }
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to place order";
+      setErrors((prev) => ({
         ...prev,
-        order: err.message || 'Failed to place order'
+        order: errorMessage,
       }));
-      toast.error(err.message || "Failed to place order");
+      toast.error(errorMessage);
     } finally {
-      setIsLoading(prev => ({ ...prev, placingOrder: false }));
+      setIsLoading((prev) => ({ ...prev, placingOrder: false }));
     }
   };
 
@@ -311,7 +364,9 @@ export default function CheckoutPage() {
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle className="w-8 h-8 text-red-500" />
               </div>
-              <h3 className="text-xl font-semibold text-red-800 mb-2">Failed to load cart</h3>
+              <h3 className="text-xl font-semibold text-red-800 mb-2">
+                Failed to load cart
+              </h3>
               <p className="text-red-600 mb-6">{errors.cart}</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
@@ -352,7 +407,9 @@ export default function CheckoutPage() {
           </button>
           <div>
             <h1 className="text-3xl font-bold text-text">Secure Checkout</h1>
-            <p className="text-gray-600 mt-1">Review your order and complete payment</p>
+            <p className="text-gray-600 mt-1">
+              Review your order and complete payment
+            </p>
           </div>
         </div>
 
@@ -373,7 +430,9 @@ export default function CheckoutPage() {
               onDelete={handleDeleteAddress}
               onSave={handleSaveAddress}
               onInputChange={handleInputChange}
-              onCancel={() => setAddressForm({ show: false, mode: "add", editingId: null })}
+              onCancel={() =>
+                setAddressForm({ show: false, mode: "add", editingId: null })
+              }
             />
 
             {/* Payment Method Section */}
@@ -393,6 +452,9 @@ export default function CheckoutPage() {
               shipping={shipping}
               tax={tax}
               total={total}
+              creditApplied={creditApplied}
+              finalTotal={finalTotal}
+              storeCredit={storeCredit}
               selectedAddress={selectedAddress}
               paymentMethod={paymentMethod}
               isLoading={isLoading.placingOrder}
@@ -407,6 +469,34 @@ export default function CheckoutPage() {
 }
 
 // Address Section Component
+interface AddressSectionProps {
+  addresses: Address[];
+  selectedAddress: string | null;
+  addressForm: {
+    show: boolean;
+    mode: "add" | "edit";
+    editingId: string | null;
+  };
+  addressData: AddressInput;
+  isLoading: {
+    cart: boolean;
+    address: boolean;
+    placingOrder: boolean;
+  };
+  errors: {
+    cart: string | null;
+    address: string | null;
+    order: string | null;
+  };
+  onSelectAddress: (id: string) => void;
+  onAddNew: () => void;
+  onEdit: (address: Address) => void;
+  onDelete: (id: string) => void;
+  onSave: (e: FormEvent<HTMLFormElement>) => void;
+  onInputChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onCancel: () => void;
+}
+
 const AddressSection = ({
   addresses,
   selectedAddress,
@@ -420,8 +510,8 @@ const AddressSection = ({
   onDelete,
   onSave,
   onInputChange,
-  onCancel
-}: any) => (
+  onCancel,
+}: AddressSectionProps) => (
   <div className="bg-white rounded-2xl shadow-sm border border-accent p-6">
     <div className="flex justify-between items-center mb-6">
       <div className="flex items-center gap-3">
@@ -473,7 +563,23 @@ const AddressSection = ({
 );
 
 // Address Form Component
-const AddressForm = ({ addressData, mode, isLoading, onSave, onInputChange, onCancel }: any) => (
+interface AddressFormProps {
+  addressData: AddressInput;
+  mode: "add" | "edit";
+  isLoading: boolean;
+  onSave: (e: FormEvent<HTMLFormElement>) => void;
+  onInputChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onCancel: () => void;
+}
+
+const AddressForm = ({
+  addressData,
+  mode,
+  isLoading,
+  onSave,
+  onInputChange,
+  onCancel,
+}: AddressFormProps) => (
   <form onSubmit={onSave} className="space-y-4">
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
@@ -492,7 +598,9 @@ const AddressForm = ({ addressData, mode, isLoading, onSave, onInputChange, onCa
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          City
+        </label>
         <input
           type="text"
           name="city"
@@ -504,7 +612,9 @@ const AddressForm = ({ addressData, mode, isLoading, onSave, onInputChange, onCa
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          State
+        </label>
         <input
           type="text"
           name="state"
@@ -516,7 +626,9 @@ const AddressForm = ({ addressData, mode, isLoading, onSave, onInputChange, onCa
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Postal Code
+        </label>
         <input
           type="text"
           name="postalCode"
@@ -528,7 +640,9 @@ const AddressForm = ({ addressData, mode, isLoading, onSave, onInputChange, onCa
         />
       </div>
       <div className="sm:col-span-2">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Country
+        </label>
         <input
           type="text"
           name="country"
@@ -567,8 +681,10 @@ const AddressForm = ({ addressData, mode, isLoading, onSave, onInputChange, onCa
             <Loader2 className="h-5 w-5 animate-spin" />
             Saving...
           </>
+        ) : mode === "add" ? (
+          "Save Address"
         ) : (
-          mode === "add" ? "Save Address" : "Update Address"
+          "Update Address"
         )}
       </button>
       <button
@@ -583,22 +699,38 @@ const AddressForm = ({ addressData, mode, isLoading, onSave, onInputChange, onCa
 );
 
 // Address List Component
-const AddressList = ({ addresses, selectedAddress, onSelect, onEdit, onDelete }: any) => (
+interface AddressListProps {
+  addresses: Address[];
+  selectedAddress: string | null;
+  onSelect: (id: string) => void;
+  onEdit: (address: Address) => void;
+  onDelete: (id: string) => void;
+}
+
+const AddressList = ({
+  addresses,
+  selectedAddress,
+  onSelect,
+  onEdit,
+  onDelete,
+}: AddressListProps) => (
   <div className="space-y-4">
     {addresses.map((address: Address) => (
       <div
         key={address.id}
-        className={`border rounded-xl p-4 cursor-pointer transition-all duration-200 ${selectedAddress === address.id
+        className={`border rounded-xl p-4 cursor-pointer transition-all duration-200 ${
+          selectedAddress === address.id
             ? "border-primary bg-primary/5 shadow-md"
             : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
-          }`}
+        }`}
         onClick={() => onSelect(address.id)}
       >
         <div className="flex justify-between">
           <div className="flex-1">
             <h3 className="font-semibold text-gray-900">{address.street}</h3>
             <p className="text-gray-600 mt-1">
-              {address.city}, {address.state}, {address.country} - {address.postalCode}
+              {address.city}, {address.state}, {address.country} -{" "}
+              {address.postalCode}
             </p>
             <p className="text-gray-500 text-sm mt-1 flex items-center gap-1">
               <Phone className="h-4 w-4" />
@@ -642,7 +774,15 @@ const AddressList = ({ addresses, selectedAddress, onSelect, onEdit, onDelete }:
 );
 
 // Payment Section Component
-const PaymentSection = ({ paymentMethod, onPaymentMethodChange }: any) => (
+interface PaymentSectionProps {
+  paymentMethod: "cod" | "online" | null;
+  onPaymentMethodChange: (method: "cod" | "online") => void;
+}
+
+const PaymentSection = ({
+  paymentMethod,
+  onPaymentMethodChange,
+}: PaymentSectionProps) => (
   <div className="bg-white rounded-2xl shadow-sm border border-accent p-6">
     <div className="flex items-center gap-3 mb-6">
       <CreditCard className="h-6 w-6 text-primary" />
@@ -651,30 +791,38 @@ const PaymentSection = ({ paymentMethod, onPaymentMethodChange }: any) => (
     <div className="space-y-4">
       {[
         {
-          id: "cod",
+          id: "cod" as const,
           title: "Cash on Delivery",
           description: "Pay when you receive your order",
-          icon: "💵"
+          icon: "💵",
         },
         {
-          id: "online",
+          id: "online" as const,
           title: "Online Payment",
           description: "Pay securely with your card",
-          icon: "💳"
-        }
+          icon: "💳",
+        },
       ].map((method) => (
         <div
           key={method.id}
-          className={`border rounded-xl p-4 cursor-pointer transition-all duration-200 ${paymentMethod === method.id
+          className={`border rounded-xl p-4 cursor-pointer transition-all duration-200 ${
+            paymentMethod === method.id
               ? "border-primary bg-primary/5 shadow-md"
               : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
-            }`}
+          }`}
           onClick={() => onPaymentMethodChange(method.id)}
         >
           <div className="flex items-center gap-4">
-            <div className={`h-5 w-5 rounded-full border flex items-center justify-center transition-colors ${paymentMethod === method.id ? "border-primary bg-primary" : "border-gray-300"
-              }`}>
-              {paymentMethod === method.id && <Check className="h-3 w-3 text-white" />}
+            <div
+              className={`h-5 w-5 rounded-full border flex items-center justify-center transition-colors ${
+                paymentMethod === method.id
+                  ? "border-primary bg-primary"
+                  : "border-gray-300"
+              }`}
+            >
+              {paymentMethod === method.id && (
+                <Check className="h-3 w-3 text-white" />
+              )}
             </div>
             <div className="text-2xl">{method.icon}</div>
             <div className="flex-1">
@@ -689,18 +837,37 @@ const PaymentSection = ({ paymentMethod, onPaymentMethodChange }: any) => (
 );
 
 // Order Summary Component
+interface OrderSummaryProps {
+  cartItems: CartItem[];
+  subtotal: number;
+  shipping: number;
+  tax: number;
+  total: number;
+  creditApplied: number;
+  finalTotal: number;
+  storeCredit: number;
+  selectedAddress: string | null;
+  paymentMethod: "cod" | "online" | null;
+  isLoading: boolean;
+  error: string | null;
+  onPlaceOrder: () => void;
+}
+
 const OrderSummary = ({
   cartItems,
   subtotal,
   shipping,
   tax,
   total,
+  creditApplied,
+  finalTotal,
+  storeCredit,
   selectedAddress,
   paymentMethod,
   isLoading,
   error,
-  onPlaceOrder
-}: any) => (
+  onPlaceOrder,
+}: OrderSummaryProps) => (
   <div className="bg-white rounded-2xl shadow-sm border border-accent p-6 sticky top-8">
     <h2 className="text-xl font-semibold text-text mb-6">Order Summary</h2>
 
@@ -718,7 +885,9 @@ const OrderSummary = ({
             />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-sm line-clamp-1">{item.product.name}</h3>
+            <h3 className="font-medium text-sm line-clamp-1">
+              {item.product.name}
+            </h3>
             <p className="text-gray-500 text-xs">Qty: {item.quantity}</p>
           </div>
           <p className="font-semibold text-sm">
@@ -736,7 +905,7 @@ const OrderSummary = ({
       </div>
       <div className="flex justify-between text-gray-600">
         <span>Shipping</span>
-        <span className={shipping === 0 ? 'text-green-600 font-medium' : ''}>
+        <span className={shipping === 0 ? "text-green-600 font-medium" : ""}>
           {shipping === 0 ? "FREE" : `₹${shipping.toLocaleString()}`}
         </span>
       </div>
@@ -744,30 +913,51 @@ const OrderSummary = ({
         <span>Tax (GST 18%)</span>
         <span>₹{tax.toLocaleString()}</span>
       </div>
+    </div>
+
+    <div className="border-t pt-4 mb-6">
+      {creditApplied > 0 && (
+        <div className="flex justify-between text-gray-600 mb-2">
+          <span>Store Credit Applied</span>
+          <span className="text-green-600">
+            -₹{creditApplied.toLocaleString()}
+          </span>
+        </div>
+      )}
+      <div className="flex justify-between items-center">
+        <span className="text-lg font-semibold text-text">Final Total</span>
+        <span className="text-2xl font-bold text-primary">
+          ₹{finalTotal.toLocaleString()}
+        </span>
+      </div>
+
       {subtotal < 999 && (
-        <div className="bg-accent p-3 rounded-lg">
+        <div className="bg-accent p-3 rounded-lg mt-4">
           <p className="text-sm text-primary">
             Add ₹{(999 - subtotal).toLocaleString()} more for FREE shipping!
           </p>
         </div>
       )}
-    </div>
 
-    <div className="border-t pt-4 mb-6">
-      <div className="flex justify-between items-center">
-        <span className="text-lg font-semibold text-text">Total</span>
-        <span className="text-2xl font-bold text-primary">₹{total.toLocaleString()}</span>
-      </div>
+      {storeCredit > creditApplied && (
+        <div className="flex justify-between text-gray-600 mt-2">
+          <span>Remaining Credit</span>
+          <span className="text-green-600">
+            ₹{(storeCredit - creditApplied).toLocaleString()}
+          </span>
+        </div>
+      )}
     </div>
 
     {/* Place Order Button */}
     <button
       onClick={onPlaceOrder}
       disabled={!selectedAddress || !paymentMethod || isLoading}
-      className={`w-full py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 transition-all duration-200 ${!selectedAddress || !paymentMethod
+      className={`w-full py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 transition-all duration-200 ${
+        !selectedAddress || !paymentMethod
           ? "bg-gray-200 cursor-not-allowed text-gray-500"
           : "bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl"
-        }`}
+      }`}
     >
       {isLoading ? (
         <>
@@ -806,7 +996,8 @@ const OrderSummary = ({
     </div>
 
     <p className="text-xs text-gray-500 text-center mt-4">
-      By placing your order, you agree to our Terms of Service and Privacy Policy
+      By placing your order, you agree to our Terms of Service and Privacy
+      Policy
     </p>
   </div>
 );
@@ -819,7 +1010,9 @@ const EmptyCart = () => (
         <Shield className="h-12 w-12 text-gray-400" />
       </div>
       <h2 className="text-2xl font-bold text-text mb-4">Your cart is empty</h2>
-      <p className="text-gray-600 mb-8">Add some products to your cart before proceeding to checkout</p>
+      <p className="text-gray-600 mb-8">
+        Add some products to your cart before proceeding to checkout
+      </p>
       <Link
         href="/products"
         className="inline-flex items-center gap-2 bg-primary text-white px-8 py-4 rounded-xl hover:bg-primary/90 transition-colors font-medium"
@@ -831,11 +1024,19 @@ const EmptyCart = () => (
   </div>
 );
 
-const EmptyAddressState = ({ onAddNew }: any) => (
+interface EmptyAddressStateProps {
+  onAddNew: () => void;
+}
+
+const EmptyAddressState = ({ onAddNew }: EmptyAddressStateProps) => (
   <div className="text-center py-8">
     <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-    <h3 className="text-lg font-semibold text-gray-700 mb-2">No addresses found</h3>
-    <p className="text-gray-500 mb-6">Please add a shipping address to continue with your order</p>
+    <h3 className="text-lg font-semibold text-gray-700 mb-2">
+      No addresses found
+    </h3>
+    <p className="text-gray-500 mb-6">
+      Please add a shipping address to continue with your order
+    </p>
     <button
       onClick={onAddNew}
       className="bg-primary text-white px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors font-medium"

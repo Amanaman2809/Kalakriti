@@ -19,35 +19,35 @@ router.get("/admin/stats", requireAuth, requireAdmin, async (req, res) => {
     // overall
     const overall = await prisma.order.aggregate({
       _count: { id: true },
-      _sum: { total: true },
+      _sum: { netAmount: true },
     });
 
     // monthly
     const monthly = await prisma.order.aggregate({
       where: { createdAt: { gte: startOfMonth } },
       _count: { id: true },
-      _sum: { total: true },
+      _sum: { netAmount: true },
     });
 
     // weekly
     const weekly = await prisma.order.aggregate({
       where: { createdAt: { gte: startOfWeek } },
       _count: { id: true },
-      _sum: { total: true },
+      _sum: { netAmount: true },
     });
 
     res.json({
       overall: {
         totalOrders: overall._count.id,
-        totalSum: overall._sum.total || 0,
+        totalSum: overall._sum.netAmount || 0,
       },
       monthly: {
         totalOrders: monthly._count.id,
-        totalSum: monthly._sum.total || 0,
+        totalSum: monthly._sum.netAmount || 0,
       },
       weekly: {
         totalOrders: weekly._count.id,
-        totalSum: weekly._sum.total || 0,
+        totalSum: weekly._sum.netAmount || 0,
       },
     });
   } catch (err) {

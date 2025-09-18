@@ -17,6 +17,7 @@ import cloudinaryRoute from "./routes/cloudinary";
 import addressRoute from "./routes/address";
 import adminStats from "./routes/admin/dashboard";
 import orderFilters from "./routes/admin/orderFilters";
+import paymentRoute from "./routes/payments";
 
 dotenv.config();
 const app = express();
@@ -39,6 +40,7 @@ app.use("/api/cart", cartRoute);
 app.use("/api/wishlist", wishlistRoute);
 app.use("/api/orders", orderRoute);
 app.use("/api/orders", orderFilters);
+app.use("/api/payments", paymentRoute);
 app.use("/api", feedbackRoute);
 app.use("/api/search", searchRoute);
 app.use("/api/cloudinary", cloudinaryRoute);
