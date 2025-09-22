@@ -193,10 +193,12 @@ router.post("/", requireAuth, async (req, res) => {
 
     // If ONLINE payment required, return client-side info
     if (paymentMode === "ONLINE" && netAmount > 0) {
-      // TODO: Implement Razorpay/Stripe integration
-      return res
-        .status(200)
-        .json({ message: "Payment required", orderId: order.id, netAmount });
+      return res.status(200).json({
+        message: "Order placed successfully. Payment required",
+        orderId: order.id,
+        netAmount,
+        requiresPayment: true,
+      });
     }
 
     return res
