@@ -5,6 +5,11 @@ import { requireAuth, requireAdmin } from "../../middlewares/requireAuth";
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// ✅ Helper function to convert paise to rupees
+const paiseToRupees = (paise: number): number => {
+  return paise / 100;
+};
+
 router.get("/admin/stats", requireAuth, requireAdmin, async (req, res) => {
   try {
     const now = new Date();
@@ -39,15 +44,15 @@ router.get("/admin/stats", requireAuth, requireAdmin, async (req, res) => {
     res.json({
       overall: {
         totalOrders: overall._count.id,
-        totalSum: overall._sum.netAmount || 0,
+        totalSum: paiseToRupees(overall._sum.netAmount || 0), // ✅ Convert to rupees
       },
       monthly: {
         totalOrders: monthly._count.id,
-        totalSum: monthly._sum.netAmount || 0,
+        totalSum: paiseToRupees(monthly._sum.netAmount || 0), // ✅ Convert to rupees
       },
       weekly: {
         totalOrders: weekly._count.id,
-        totalSum: weekly._sum.netAmount || 0,
+        totalSum: paiseToRupees(weekly._sum.netAmount || 0), // ✅ Convert to rupees
       },
     });
   } catch (err) {

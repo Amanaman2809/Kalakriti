@@ -5,13 +5,18 @@ import { requireAuth, requireAdmin } from "../middlewares/requireAuth";
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Helper function to convert paise to rupees
+const paiseToRupees = (paise: number): number => {
+  return paise / 100;
+};
+
 // Get all categories
 router.get("/categories", async (_req, res) => {
   const categories = await prisma.category.findMany();
   res.json(categories);
 });
 
-// Get all products in a category
+// Get all products in a category - FIXED: Convert paise to rupees
 router.get("/category/:id/products", async (req, res) => {
   const { id } = req.params;
 
@@ -25,7 +30,13 @@ router.get("/category/:id/products", async (req, res) => {
       where: { categoryId: id },
     });
 
-    res.json(products);
+    // Convert product prices from paise to rupees
+    const productsWithRupeePrices = products.map((product) => ({
+      ...product,
+      price: paiseToRupees(product.price),
+    }));
+
+    res.json(productsWithRupeePrices);
   } catch (err) {
     console.error("Error fetching products for category", id, err);
     res
@@ -33,21 +44,27 @@ router.get("/category/:id/products", async (req, res) => {
       .json({ error: "Failed to fetch products for this category" });
   }
 });
-// Create a new category
-router.post("/admin/categories", requireAuth, requireAdmin, async (req, res) => {
-  const { name, image } = req.body;
-  if (!name) {
-    res.status(400).json({ error: "Name required" });
-    return;
-  }
 
-  try {
-    const category = await prisma.category.create({ data: { name, image } });
-    res.status(201).json(category);
-  } catch (err) {
-    res.status(500).json({ error: "Category creation failed" });
+// Create a new category
+router.post(
+  "/admin/categories",
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    const { name, image } = req.body;
+    if (!name) {
+      res.status(400).json({ error: "Name required" });
+      return;
+    }
+
+    try {
+      const category = await prisma.category.create({ data: { name, image } });
+      res.status(201).json(category);
+    } catch (err) {
+      res.status(500).json({ error: "Category creation failed" });
+    }
   }
-});
+);
 
 // Update the Category Name and Image
 router.put(
@@ -71,7 +88,7 @@ router.put(
     } catch (err) {
       res.status(500).json({ error: "Category update failed" });
     }
-  },
+  }
 );
 
 // Delete a category
@@ -88,7 +105,7 @@ router.delete(
     } catch (err) {
       res.status(500).json({ error: "Category deletion failed" });
     }
-  },
+  }
 );
 
 export default router;

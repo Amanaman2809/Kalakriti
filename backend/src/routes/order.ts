@@ -1,13 +1,19 @@
 import express from "express";
 import { OrderStatus, PrismaClient } from "../generated/prisma/client";
-import {
-  // AuthenticatedRequest,
-  requireAdmin,
-  requireAuth,
-} from "../middlewares/requireAuth";
+import { requireAdmin, requireAuth } from "../middlewares/requireAuth";
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// Helper function for precise financial calculations
+const toPreciseRupees = (amount: number): number => {
+  return Math.round(amount * 100) / 100; // Always 2 decimal places
+};
+
+// Helper function to round to nearest rupee (no decimals)
+const toRoundedRupees = (amount: number): number => {
+  return Math.round(amount); // Round to whole rupees for customer charges
+};
 
 // for admin
 router.get("/admin", requireAuth, requireAdmin, async (req, res) => {
@@ -20,7 +26,6 @@ router.get("/admin", requireAuth, requireAdmin, async (req, res) => {
         address: true,
       },
     });
-    // console.log(orders);
     res.json({ orders: orders });
   } catch (err) {
     console.error(err);
@@ -34,6 +39,7 @@ router.get("/", requireAuth, async (req, res) => {
 
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
+    return;
   }
 
   try {
@@ -46,7 +52,7 @@ router.get("/", requireAuth, async (req, res) => {
             product: true,
           },
         },
-        address: true, // Include address details
+        address: true,
       },
     });
 
@@ -57,7 +63,7 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
-// Place Order
+// Place Order - FIXED FOR FINANCIAL PRECISION & PROPER WORKFLOW
 router.post("/", requireAuth, async (req, res) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -68,25 +74,94 @@ router.post("/", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "Invalid payment mode" });
   }
 
+  if (!addressId) {
+    return res.status(400).json({ error: "Address is required" });
+  }
+
   try {
-    // 1. Load cart items
+    // ✅ STEP 1: Validate everything BEFORE creating order or touching stock
+    console.log("=== ORDER VALIDATION PHASE ===");
+
+    // Load and validate cart items
     const cartItems = await prisma.cartItem.findMany({
       where: { userId },
       include: { product: true },
     });
-    if (!cartItems.length)
+
+    if (!cartItems.length) {
       return res.status(400).json({ error: "Cart is empty" });
+    }
 
-    const grossAmount = cartItems.reduce(
-      (s, it) => s + it.product.price * it.quantity,
-      0,
+    // Validate address exists
+    const address = await prisma.address.findFirst({
+      where: { id: addressId, userId },
+    });
+
+    if (!address) {
+      return res.status(400).json({ error: "Invalid address" });
+    }
+
+    // ✅ STEP 2: Stock validation - CHECK BEFORE RESERVATION
+    console.log("=== STOCK VALIDATION ===");
+    const stockValidation:any = [];
+    for (const item of cartItems) {
+      const currentProduct = await prisma.product.findUnique({
+        where: { id: item.productId },
+        select: { id: true, name: true, stock: true, price: true },
+      });
+
+      if (!currentProduct) {
+        return res.status(400).json({
+          error: `Product ${item.product.name} no longer exists`,
+        });
+      }
+
+      if (currentProduct.stock < item.quantity) {
+        return res.status(400).json({
+          error: `Insufficient stock for ${currentProduct.name}. Available: ${currentProduct.stock}, Requested: ${item.quantity}`,
+        });
+      }
+
+      stockValidation.push({
+        productId: currentProduct.id,
+        name: currentProduct.name,
+        requestedQty: item.quantity,
+        availableStock: currentProduct.stock,
+        price: currentProduct.price,
+      });
+    }
+
+    console.log("Stock validation passed:", stockValidation);
+
+    // ✅ STEP 3: PRECISE FINANCIAL CALCULATIONS - NO MONEY ERRORS
+    console.log("=== FINANCIAL CALCULATIONS ===");
+
+    // Calculate gross amount with precise values
+    const grossAmount = toPreciseRupees(
+      cartItems.reduce((s, it) => s + it.product.price * it.quantity, 0)
     );
-    const shippingAmount = grossAmount >= 99900 ? 0 : 9900; // example: ₹99 = 9900 paise
-    const taxAmount = Math.round(grossAmount * 0.18);
 
-    const grossPlusExtras = grossAmount + shippingAmount + taxAmount;
+    // Shipping calculation
+    const shippingAmount = grossAmount >= 999 ? 0 : 99;
 
-    // 2. Fetch available store credits
+    // Tax calculation - precise but rounded for customer
+    const calculatedTax = toPreciseRupees(grossAmount * 0.18);
+    const taxAmount = toRoundedRupees(calculatedTax); // Round tax to nearest rupee
+
+    // Total before credits
+    const grossPlusExtras = toRoundedRupees(
+      grossAmount + shippingAmount + taxAmount
+    );
+
+    console.log("Financial calculations:", {
+      grossAmount: grossAmount,
+      shippingAmount: shippingAmount,
+      calculatedTax: calculatedTax,
+      taxAmount: taxAmount,
+      grossPlusExtras: grossPlusExtras,
+    });
+
+    // ✅ STEP 4: Handle store credits
     const now = new Date();
     const credits = await prisma.storeCredit.findMany({
       where: {
@@ -98,7 +173,6 @@ router.post("/", requireAuth, async (req, res) => {
     });
 
     let availableCredit = credits.reduce((s, c) => s + c.amount, 0);
-
     let creditsToApply = 0;
     let orderCreditsToCreate: { storeCreditId: string; amount: number }[] = [];
 
@@ -113,104 +187,178 @@ router.post("/", requireAuth, async (req, res) => {
       }
     }
 
-    const netAmount = grossPlusExtras - creditsToApply;
+    // ✅ FINAL AMOUNT - ALWAYS WHOLE RUPEES
+    const netAmount = toRoundedRupees(grossPlusExtras - creditsToApply);
 
-    // 3. Create order in transaction
-    const order = await prisma.$transaction(async (tx) => {
-      const createdOrder = await tx.order.create({
-        data: {
-          userId,
-          addressId,
-          paymentMode,
-          paymentStatus: netAmount === 0 ? "PAID" : "PENDING",
-          status: "PLACED",
-          grossAmount,
-          shippingAmount,
-          taxAmount,
-          creditsApplied: creditsToApply,
-          netAmount,
-          items: {
-            create: cartItems.map((ci) => ({
-              productId: ci.productId,
-              quantity: ci.quantity,
-              price: ci.product.price,
-            })),
-          },
-        },
-      });
-
-      // Decrement stock
-      await Promise.all(
-        cartItems.map((ci) =>
-          tx.product.update({
-            where: { id: ci.productId },
-            data: { stock: { decrement: ci.quantity } },
-          }),
-        ),
-      );
-
-      // Create OrderCredit entries
-      for (const c of orderCreditsToCreate) {
-        await tx.orderCredit.create({
-          data: {
-            orderId: createdOrder.id,
-            storeCreditId: c.storeCreditId,
-            amount: c.amount,
-          },
-        });
-      }
-
-      if (creditsToApply > 0) {
-        // Negative ledger entry for clarity
-        await tx.storeCredit.create({
-          data: {
-            userId,
-            amount: -creditsToApply,
-            reason: `Consumed for order ${createdOrder.id}`,
-          },
-        });
-      }
-
-      // Clear cart
-      await tx.cartItem.deleteMany({ where: { userId } });
-
-      // Create Payment record if fully covered by credit
-      if (netAmount === 0) {
-        await tx.payment.create({
-          data: {
-            orderId: createdOrder.id,
-            userId,
-            provider: "INTERNAL",
-            providerPaymentId: null,
-            amount: 0,
-            status: "PAID",
-          },
-        });
-      }
-
-      return createdOrder;
+    console.log("Final order amounts:", {
+      grossAmount,
+      shippingAmount,
+      taxAmount,
+      grossPlusExtras,
+      creditsToApply,
+      netAmount,
     });
 
-    // If ONLINE payment required, return client-side info
-    if (paymentMode === "ONLINE" && netAmount > 0) {
-      return res.status(200).json({
-        message: "Order placed successfully. Payment required",
-        orderId: order.id,
-        netAmount,
-        requiresPayment: true,
+    // ✅ STEP 5: Create order and handle stock in TRANSACTION
+    console.log("=== CREATING ORDER ===");
+
+    const order = await prisma.$transaction(
+      async (tx) => {
+        // ✅ DOUBLE-CHECK STOCK AGAIN in transaction (prevent race conditions)
+        for (const validation of stockValidation) {
+          const currentStock = await tx.product.findUnique({
+            where: { id: validation.productId },
+            select: { stock: true },
+          });
+
+          if (!currentStock || currentStock.stock < validation.requestedQty) {
+            throw new Error(
+              `Stock changed for ${validation.name}. Please refresh and try again.`
+            );
+          }
+        }
+
+        // ✅ CREATE ORDER FIRST
+        const createdOrder = await tx.order.create({
+          data: {
+            userId,
+            addressId,
+            paymentMode,
+            paymentStatus: netAmount === 0 ? "PAID" : "PENDING",
+            status: "PENDING", // ✅ PENDING until payment confirmed
+            grossAmount: toRoundedRupees(grossAmount),
+            shippingAmount,
+            taxAmount,
+            creditsApplied: creditsToApply,
+            netAmount,
+            items: {
+              create: cartItems.map((ci) => ({
+                productId: ci.productId,
+                quantity: ci.quantity,
+                price: toRoundedRupees(ci.product.price), // Store rounded prices
+              })),
+            },
+          },
+          include: {
+            items: { include: { product: true } },
+            address: true,
+            user: {
+              select: { id: true, name: true, email: true, phone: true },
+            },
+          },
+        });
+
+        // ✅ RESERVE STOCK (decrement) - ONLY AFTER ORDER CREATED
+        console.log("Reserving stock...");
+        await Promise.all(
+          cartItems.map(async (ci) => {
+            await tx.product.update({
+              where: { id: ci.productId },
+              data: { stock: { decrement: ci.quantity } },
+            });
+            console.log(
+              `Reserved ${ci.quantity} units of product ${ci.productId}`
+            );
+          })
+        );
+
+        // Handle store credits
+        for (const c of orderCreditsToCreate) {
+          await tx.orderCredit.create({
+            data: {
+              orderId: createdOrder.id,
+              storeCreditId: c.storeCreditId,
+              amount: c.amount,
+            },
+          });
+        }
+
+        if (creditsToApply > 0) {
+          await tx.storeCredit.create({
+            data: {
+              userId,
+              amount: -creditsToApply,
+              reason: `Applied to order ${createdOrder.id}`,
+            },
+          });
+        }
+
+        // Clear cart ONLY after successful order creation
+        await tx.cartItem.deleteMany({ where: { userId } });
+
+        // Handle zero-amount orders
+        if (netAmount === 0) {
+          await tx.payment.create({
+            data: {
+              orderId: createdOrder.id,
+              userId,
+              provider: "INTERNAL",
+              providerPaymentId: null,
+              amount: 0,
+              status: "PAID",
+            },
+          });
+
+          // Update order status to PLACED for zero amount
+          await tx.order.update({
+            where: { id: createdOrder.id },
+            data: { status: "PLACED", paymentStatus: "PAID" },
+          });
+        }
+
+        return createdOrder;
+      },
+      {
+        timeout: 10000, // 10 second timeout
+      }
+    );
+
+    console.log("✅ Order created successfully:", order.id);
+
+    // ✅ DIFFERENT RESPONSES BASED ON PAYMENT MODE
+    if (paymentMode === "COD") {
+      // COD orders are immediately placed
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { status: "PLACED" },
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Order placed successfully",
+        order: { ...order, status: "PLACED" },
       });
     }
 
-    return res
-      .status(201)
-      .json({ message: "Order placed successfully", order });
-  } catch (error) {
-    console.error("Order placement failed:", error);
-    return res.status(500).json({ error: "Failed to place order" });
+    if (paymentMode === "ONLINE" && netAmount > 0) {
+      return res.status(200).json({
+        success: true,
+        message: "Order created. Please complete payment",
+        order: order,
+        requiresPayment: true,
+        paymentAmount: netAmount,
+      });
+    }
+
+    // Zero amount orders (fully covered by credits)
+    return res.status(201).json({
+      success: true,
+      message: "Order placed successfully",
+      order: order,
+    });
+  } catch (error: any) {
+    console.error("❌ Order placement failed:", error);
+
+    // ✅ RESTORE STOCK if error occurred after stock decrement
+    // This is handled by transaction rollback automatically
+
+    return res.status(500).json({
+      error: error.message || "Failed to place order",
+    });
   }
 });
 
-// Cancel Order
+// Cancel Order - RESTORE STOCK PROPERLY
 router.patch("/:id/cancel", requireAuth, async (req, res) => {
   const { id } = req.params;
   const userId = req.user?.id;
@@ -229,22 +377,29 @@ router.patch("/:id/cancel", requireAuth, async (req, res) => {
     });
 
     if (!order) return res.status(404).json({ error: "Order not found" });
-    if (order.userId !== userId)
+    if (order.userId !== userId) {
       return res
         .status(403)
         .json({ error: "Unauthorized to cancel this order" });
-    if (order.status !== "PLACED")
-      return res
-        .status(400)
-        .json({ error: "Only 'PLACED' orders can be cancelled" });
+    }
+
+    // ✅ Can cancel PENDING, PLACED orders only
+    if (!["PENDING", "PLACED"].includes(order.status)) {
+      return res.status(400).json({
+        error: `Cannot cancel order with status: ${order.status}`,
+      });
+    }
 
     const hoursDiff =
       (Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60 * 60);
-    if (hoursDiff > 24)
-      return res.status(400).json({ error: "Cancellation window expired" });
+    if (hoursDiff > 24) {
+      return res
+        .status(400)
+        .json({ error: "Cancellation window expired (24 hours)" });
+    }
 
     const cancelledOrder = await prisma.$transaction(async (tx) => {
-      // Update order
+      // Update order status
       const updatedOrder = await tx.order.update({
         where: { id },
         data: {
@@ -253,9 +408,7 @@ router.patch("/:id/cancel", requireAuth, async (req, res) => {
           cancellationReason: reason || "Cancelled by customer",
           statusUpdatedAt: new Date(),
           paymentStatus:
-            order.paymentMode === "ONLINE" && order.paymentStatus === "PAID"
-              ? "REFUNDED"
-              : order.paymentStatus,
+            order.paymentStatus === "PAID" ? "REFUNDED" : order.paymentStatus,
         },
         include: {
           items: { include: { product: true } },
@@ -264,17 +417,21 @@ router.patch("/:id/cancel", requireAuth, async (req, res) => {
         },
       });
 
-      // Restore stock
+      // ✅ RESTORE STOCK
+      console.log("Restoring stock for cancelled order...");
       await Promise.all(
-        order.items.map((item) =>
-          tx.product.update({
+        order.items.map(async (item) => {
+          await tx.product.update({
             where: { id: item.productId },
             data: { stock: { increment: item.quantity } },
-          }),
-        ),
+          });
+          console.log(
+            `Restored ${item.quantity} units of product ${item.productId}`
+          );
+        })
       );
 
-      // Restore store credits used
+      // Restore store credits
       for (const oc of order.orderCredits) {
         await tx.storeCredit.create({
           data: {
@@ -295,7 +452,7 @@ router.patch("/:id/cancel", requireAuth, async (req, res) => {
         });
       }
 
-      // Refund gateway payments if any
+      // Handle gateway payment refunds
       const gatewayPaid =
         order.payments
           ?.filter((p) => p.provider !== "INTERNAL" && p.status === "PAID")
@@ -308,26 +465,26 @@ router.patch("/:id/cancel", requireAuth, async (req, res) => {
             userId: order.userId,
             method: "GATEWAY",
             amount: gatewayPaid,
-            reason: "Gateway refund requested",
+            reason: "Gateway refund for cancelled order",
           },
         });
-        // Trigger async gateway refund workflow outside this transaction
       }
 
       return updatedOrder;
     });
 
     return res.json({
+      success: true,
       message: "Order cancelled successfully",
       order: cancelledOrder,
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error("Order cancellation failed:", err);
     return res.status(500).json({ error: "Failed to cancel order" });
   }
 });
 
-// Get order details by ID -- Both Admin and User
+// Get order details by ID
 router.get("/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   const userId = req.user?.id;
@@ -336,24 +493,19 @@ router.get("/:id", requireAuth, async (req, res) => {
     const order = await prisma.order.findUnique({
       where: { id },
       include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
+        items: { include: { product: true } },
         address: true,
         user: { select: { id: true, name: true, email: true, phone: true } },
+        payments: true,
       },
     });
 
     if (!order) {
-      res.status(404).json({ error: "Order not found" });
-      return;
+      return res.status(404).json({ error: "Order not found" });
     }
 
     if (order.userId !== userId && req.user?.role !== "ADMIN") {
-      res.status(403).json({ error: "Unauthorized to view this order" });
-      return;
+      return res.status(403).json({ error: "Unauthorized to view this order" });
     }
 
     res.json(order);
@@ -363,6 +515,7 @@ router.get("/:id", requireAuth, async (req, res) => {
   }
 });
 
+// Admin update order
 router.patch("/:id", requireAuth, requireAdmin, async (req, res) => {
   const { id } = req.params;
   const {
@@ -374,26 +527,21 @@ router.patch("/:id", requireAuth, requireAdmin, async (req, res) => {
   } = req.body;
 
   try {
-    // First get the current order
     const order = await prisma.order.findUnique({ where: { id } });
     if (!order) {
-      res.status(404).json({ error: "Order not found" });
-      return;
+      return res.status(404).json({ error: "Order not found" });
     }
 
-    const updateData: any = {
-      statusUpdatedAt: new Date(),
-    };
+    const updateData: any = { statusUpdatedAt: new Date() };
 
     if (status) updateData.status = status;
     if (paymentStatus) updateData.paymentStatus = paymentStatus;
     if (carrierName) updateData.carrierName = carrierName;
     if (trackingNumber) updateData.trackingNumber = trackingNumber;
-    if (estimatedDelivery) {
+    if (estimatedDelivery)
       updateData.estimatedDelivery = new Date(estimatedDelivery);
-    }
 
-    // Set timestamps based on status
+    // Set timestamps
     if (status === "SHIPPED" && !order.shippedAt) {
       updateData.shippedAt = new Date();
     } else if (status === "DELIVERED" && !order.deliveredAt) {
@@ -417,11 +565,12 @@ router.patch("/:id", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
-// Update Order Status - Admin can update order status
+// Update Order Status
 router.patch("/:id/status", requireAuth, requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
   const validStatuses: OrderStatus[] = [
+    "PENDING",
     "PLACED",
     "SHIPPED",
     "DELIVERED",
@@ -429,36 +578,26 @@ router.patch("/:id/status", requireAuth, requireAdmin, async (req, res) => {
   ];
 
   try {
-    // Validate input
     if (!validStatuses.includes(status)) {
-      res.status(400).json({ error: "Invalid status value" });
-      return;
+      return res.status(400).json({ error: "Invalid status value" });
     }
 
-    // Get current order
     const order = await prisma.order.findUnique({ where: { id } });
     if (!order) {
-      res.status(404).json({ error: "Order not found" });
-      return;
+      return res.status(404).json({ error: "Order not found" });
     }
 
-    // Prepare update data
-    const updateData: any = {
-      status,
-      statusUpdatedAt: new Date(),
-    };
+    const updateData: any = { status, statusUpdatedAt: new Date() };
 
-    // Set timestamps based on status
-    if (status === "SHIPPED" && !order?.shippedAt) {
+    if (status === "SHIPPED" && !order.shippedAt) {
       updateData.shippedAt = new Date();
-    } else if (status === "DELIVERED" && !order?.deliveredAt) {
+    } else if (status === "DELIVERED" && !order.deliveredAt) {
       updateData.deliveredAt = new Date();
-    } else if (status === "CANCELLED" && !order?.cancelledAt) {
+    } else if (status === "CANCELLED" && !order.cancelledAt) {
       updateData.cancelledAt = new Date();
       updateData.cancellationReason = "Cancelled by admin";
     }
 
-    // Update order
     const updatedOrder = await prisma.order.update({
       where: { id },
       data: updateData,

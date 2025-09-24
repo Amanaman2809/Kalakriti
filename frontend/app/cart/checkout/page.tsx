@@ -45,11 +45,10 @@ export default function CheckoutPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<"cod" | "online" | null>(
-    null,
-  );
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "online" | null>(null);
   const [mounted, setMounted] = useState(false);
   const [storeCredit, setStoreCredit] = useState<number>(0);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState({
     cart: true,
     address: true,
@@ -86,7 +85,7 @@ export default function CheckoutPage() {
         const token = localStorage.getItem("token");
         if (!token) return;
 
-        const res = await fetch(`${url}/api/store-credits`, {
+        const res = await fetch(`${url}/api/payments/store-credits`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
@@ -101,7 +100,6 @@ export default function CheckoutPage() {
     fetchCredits();
   }, [mounted]);
 
-  // Enhanced fetch data with better error handling
   useEffect(() => {
     if (!mounted) return;
 
@@ -111,7 +109,7 @@ export default function CheckoutPage() {
           fetchCartItems(),
           getAddresses().catch((err) => {
             console.warn("Failed to load addresses:", err);
-            return []; // Return empty array on address fetch failure
+            return [];
           }),
         ]);
 
@@ -124,48 +122,39 @@ export default function CheckoutPage() {
           setAddressForm({ show: true, mode: "add", editingId: null });
         }
       } catch (error: unknown) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to load data";
+        const errorMessage = error instanceof Error ? error.message : "Failed to load data";
         console.error("Fetch error:", error);
         setErrors((prev) => ({
           ...prev,
           cart: error instanceof Error ? error.message : "Failed to load cart",
-          address:
-            error instanceof Error ? error.message : "Failed to load addresses",
+          address: error instanceof Error ? error.message : "Failed to load addresses",
         }));
         toast.error(errorMessage);
       } finally {
-        setIsLoading((prev) => ({
-          ...prev,
-          cart: false,
-          address: false,
-        }));
+        setIsLoading((prev) => ({ ...prev, cart: false, address: false }));
       }
     };
 
     fetchData();
   }, [mounted]);
 
-  // Calculate order totals with proper formatting
   const calculateTotals = useCallback(() => {
     const subtotal = cartItems.reduce(
       (sum, item) => sum + item.product.price * item.quantity,
       0,
     );
     const shipping = subtotal >= 999 ? 0 : 99;
-    const tax = Math.round(subtotal * 0.18 * 100) / 100; // Round to 2 decimal places
-    const total = subtotal + shipping + tax;
+    const tax = Math.round(subtotal * 0.18);
+    const total = Math.round(subtotal + shipping + tax);
 
     const creditApplied = Math.min(storeCredit, total);
-    const finalTotal = Math.max(0, total - creditApplied); // Ensure non-negative
+    const finalTotal = Math.max(0, total - creditApplied);
 
     return { subtotal, shipping, tax, total, creditApplied, finalTotal };
   }, [cartItems, storeCredit]);
 
-  const { subtotal, shipping, tax, total, creditApplied, finalTotal } =
-    calculateTotals();
+  const { subtotal, shipping, tax, total, creditApplied, finalTotal } = calculateTotals();
 
-  // Handle address form input changes
   const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setAddressData((prev) => ({
       ...prev,
@@ -173,7 +162,6 @@ export default function CheckoutPage() {
     }));
   }, []);
 
-  // Prepare form for adding new address
   const handleAddNewAddress = useCallback(() => {
     setAddressData({
       street: "",
@@ -186,7 +174,6 @@ export default function CheckoutPage() {
     setAddressForm({ show: true, mode: "add", editingId: null });
   }, []);
 
-  // Prepare form for editing address
   const handleEditAddress = useCallback((address: Address) => {
     setAddressData({
       street: address.street,
@@ -199,7 +186,6 @@ export default function CheckoutPage() {
     setAddressForm({ show: true, mode: "edit", editingId: address.id });
   }, []);
 
-  // Save address with enhanced error handling
   const handleSaveAddress = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
@@ -223,14 +209,12 @@ export default function CheckoutPage() {
         });
       }
 
-      // Refresh addresses
       const updatedAddresses = await getAddresses();
       setAddresses(updatedAddresses);
       setSelectedAddress(newSelectedAddress);
       setAddressForm({ show: false, mode: "add", editingId: null });
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to save address";
+      const errorMessage = err instanceof Error ? err.message : "Failed to save address";
       setErrors((prev) => ({
         ...prev,
         address: errorMessage,
@@ -241,7 +225,6 @@ export default function CheckoutPage() {
     }
   };
 
-  // Delete address with confirmation
   const handleDeleteAddress = async (id: string) => {
     if (!confirm("Are you sure you want to delete this address?")) return;
 
@@ -257,15 +240,102 @@ export default function CheckoutPage() {
       }
       toast.success("Address deleted successfully");
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to delete address";
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete address";
       toast.error(errorMessage);
     } finally {
       setIsLoading((prev) => ({ ...prev, address: false }));
     }
   };
 
-  // Enhanced order placement with better error handling
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  // ✅ FIXED: Removed global declaration, use (window as any).Razorpay
+  const initiateRazorpayPayment = async (orderId: string) => {
+    try {
+      setPaymentProcessing(true);
+
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error("Failed to load payment gateway");
+      }
+
+      const token = localStorage.getItem("token");
+      const orderResponse = await fetch(`${url}/api/payments/create-razorpay-order`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ orderId }),
+      });
+
+      if (!orderResponse.ok) {
+        throw new Error("Failed to create payment order");
+      }
+
+      const orderData = await orderResponse.json();
+
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.razorpayOrder.amount,
+        currency: orderData.razorpayOrder.currency,
+        name: "Kalakriti Store",
+        order_id: orderData.razorpayOrder.id,
+        prefill: {
+          name: orderData.customer.name,
+          email: orderData.customer.email,
+          contact: orderData.customer.phone,
+        },
+        handler: async function (response: any) {
+          const verifyResponse = await fetch(`${url}/api/payments/verify-payment`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              orderId: orderId,
+            }),
+          });
+
+          const verifyData = await verifyResponse.json();
+
+          if (verifyData.success) {
+            toast.success("🎉 Payment successful!", { duration: 3000, position: "top-center" });
+            router.push(`/orders/${orderId}`);
+          } else {
+            toast.error("Payment verification failed");
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setPaymentProcessing(false);
+            toast.error("Payment cancelled");
+          },
+        },
+      };
+
+      // ✅ FIXED: Use (window as any) instead of window.Razorpay
+      const razorpay = new (window as any).Razorpay(options);
+      razorpay.open();
+    } catch (error) {
+      setPaymentProcessing(false);
+      toast.error("Payment failed");
+    }
+  };
+
   const handlePlaceOrder = async () => {
     if (!selectedAddress) {
       toast.error("Please select a shipping address");
@@ -314,21 +384,25 @@ export default function CheckoutPage() {
       }
 
       const res = await response.json();
-      const orderId = res?.order?.id;
+      console.log("Order response:", res);
 
-      toast.success("🎉 Order placed successfully!", {
-        duration: 3000,
-        position: "top-center",
-      });
+      const orderId = res?.orderId || res?.order?.id;
 
-      if (orderId) {
-        router.push(`/orders/${orderId}`);
+      if (!orderId) {
+        throw new Error("Order ID not received");
+      }
+
+      if (paymentMethod === "online") {
+        await initiateRazorpayPayment(orderId);
       } else {
-        router.push("/orders");
+        toast.success("🎉 Order placed successfully!", {
+          duration: 3000,
+          position: "top-center",
+        });
+        router.push(`/orders/${orderId}`);
       }
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to place order";
+      const errorMessage = err instanceof Error ? err.message : "Failed to place order";
       setErrors((prev) => ({
         ...prev,
         order: errorMessage,
@@ -339,6 +413,7 @@ export default function CheckoutPage() {
     }
   };
 
+  // Rest of your component stays exactly the same...
   if (!mounted || isLoading.cart) {
     return (
       <div className="min-h-screen bg-background">
@@ -364,9 +439,7 @@ export default function CheckoutPage() {
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle className="w-8 h-8 text-red-500" />
               </div>
-              <h3 className="text-xl font-semibold text-red-800 mb-2">
-                Failed to load cart
-              </h3>
+              <h3 className="text-xl font-semibold text-red-800 mb-2">Failed to load cart</h3>
               <p className="text-red-600 mb-6">{errors.cart}</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
@@ -375,10 +448,7 @@ export default function CheckoutPage() {
                 >
                   Try Again
                 </button>
-                <Link
-                  href="/cart"
-                  className="bg-white text-primary border border-primary px-6 py-3 rounded-xl hover:bg-primary/5 transition-colors font-medium"
-                >
+                <Link href="/cart" className="bg-white text-primary border border-primary px-6 py-3 rounded-xl hover:bg-primary/5 transition-colors font-medium">
                   Back to Cart
                 </Link>
               </div>
@@ -396,7 +466,6 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={() => router.back()}
@@ -407,16 +476,12 @@ export default function CheckoutPage() {
           </button>
           <div>
             <h1 className="text-3xl font-bold text-text">Secure Checkout</h1>
-            <p className="text-gray-600 mt-1">
-              Review your order and complete payment
-            </p>
+            <p className="text-gray-600 mt-1">Review your order and complete payment</p>
           </div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Column - Address & Payment */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Shipping Address Section */}
             <AddressSection
               addresses={addresses}
               selectedAddress={selectedAddress}
@@ -430,12 +495,9 @@ export default function CheckoutPage() {
               onDelete={handleDeleteAddress}
               onSave={handleSaveAddress}
               onInputChange={handleInputChange}
-              onCancel={() =>
-                setAddressForm({ show: false, mode: "add", editingId: null })
-              }
+              onCancel={() => setAddressForm({ show: false, mode: "add", editingId: null })}
             />
 
-            {/* Payment Method Section */}
             {selectedAddress && (
               <PaymentSection
                 paymentMethod={paymentMethod}
@@ -444,7 +506,6 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          {/* Right Column - Order Summary */}
           <div className="lg:col-span-1">
             <OrderSummary
               cartItems={cartItems}
@@ -457,9 +518,10 @@ export default function CheckoutPage() {
               storeCredit={storeCredit}
               selectedAddress={selectedAddress}
               paymentMethod={paymentMethod}
-              isLoading={isLoading.placingOrder}
+              isLoading={isLoading.placingOrder || paymentProcessing}
               error={errors.order}
               onPlaceOrder={handlePlaceOrder}
+              paymentProcessing={paymentProcessing}
             />
           </div>
         </div>
@@ -718,11 +780,10 @@ const AddressList = ({
     {addresses.map((address: Address) => (
       <div
         key={address.id}
-        className={`border rounded-xl p-4 cursor-pointer transition-all duration-200 ${
-          selectedAddress === address.id
+        className={`border rounded-xl p-4 cursor-pointer transition-all duration-200 ${selectedAddress === address.id
             ? "border-primary bg-primary/5 shadow-md"
             : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
-        }`}
+          }`}
         onClick={() => onSelect(address.id)}
       >
         <div className="flex justify-between">
@@ -799,26 +860,24 @@ const PaymentSection = ({
         {
           id: "online" as const,
           title: "Online Payment",
-          description: "Pay securely with your card",
+          description: "Pay securely with UPI, Cards, or Net Banking",
           icon: "💳",
         },
       ].map((method) => (
         <div
           key={method.id}
-          className={`border rounded-xl p-4 cursor-pointer transition-all duration-200 ${
-            paymentMethod === method.id
+          className={`border rounded-xl p-4 cursor-pointer transition-all duration-200 ${paymentMethod === method.id
               ? "border-primary bg-primary/5 shadow-md"
               : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
-          }`}
+            }`}
           onClick={() => onPaymentMethodChange(method.id)}
         >
           <div className="flex items-center gap-4">
             <div
-              className={`h-5 w-5 rounded-full border flex items-center justify-center transition-colors ${
-                paymentMethod === method.id
+              className={`h-5 w-5 rounded-full border flex items-center justify-center transition-colors ${paymentMethod === method.id
                   ? "border-primary bg-primary"
                   : "border-gray-300"
-              }`}
+                }`}
             >
               {paymentMethod === method.id && (
                 <Check className="h-3 w-3 text-white" />
@@ -851,6 +910,7 @@ interface OrderSummaryProps {
   isLoading: boolean;
   error: string | null;
   onPlaceOrder: () => void;
+  paymentProcessing: boolean;
 }
 
 const OrderSummary = ({
@@ -867,6 +927,7 @@ const OrderSummary = ({
   isLoading,
   error,
   onPlaceOrder,
+  paymentProcessing,
 }: OrderSummaryProps) => (
   <div className="bg-white rounded-2xl shadow-sm border border-accent p-6 sticky top-8">
     <h2 className="text-xl font-semibold text-text mb-6">Order Summary</h2>
@@ -952,22 +1013,27 @@ const OrderSummary = ({
     {/* Place Order Button */}
     <button
       onClick={onPlaceOrder}
-      disabled={!selectedAddress || !paymentMethod || isLoading}
-      className={`w-full py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 transition-all duration-200 ${
-        !selectedAddress || !paymentMethod
+      disabled={!selectedAddress || !paymentMethod || isLoading || paymentProcessing}
+      className={`w-full py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 transition-all duration-200 ${!selectedAddress || !paymentMethod || paymentProcessing
           ? "bg-gray-200 cursor-not-allowed text-gray-500"
           : "bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl"
-      }`}
+        }`}
     >
-      {isLoading ? (
+      {isLoading || paymentProcessing ? (
         <>
           <Loader2 className="h-5 w-5 animate-spin" />
-          Processing Order...
+          {paymentMethod === "online" && paymentProcessing ? "Processing Payment..." : "Processing Order..."}
         </>
       ) : !selectedAddress ? (
         "Add Address to Continue"
       ) : !paymentMethod ? (
         "Select Payment Method"
+      ) : paymentMethod === "online" ? (
+        <>
+          <CreditCard className="h-5 w-5" />
+          Pay ₹{finalTotal.toLocaleString()}
+          <ChevronRight className="h-5 w-5" />
+        </>
       ) : (
         <>
           <Shield className="h-5 w-5" />

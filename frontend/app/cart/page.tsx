@@ -132,10 +132,6 @@ export default function CartPage() {
     return cartItems.reduce((sum, item) => sum + item.quantity, 0);
   }, [cartItems]);
 
-  const calculateSavings = useCallback(() => {
-    // Mock savings calculation - you can implement actual discount logic
-    return calculateSubtotal() * 0.1;
-  }, [calculateSubtotal]);
 
   if (!mounted || isLoading) {
     return (
@@ -236,7 +232,6 @@ export default function CartPage() {
             <div className="lg:col-span-1">
               <OrderSummary
                 subtotal={calculateSubtotal()}
-                savings={calculateSavings()}
                 totalItems={calculateTotalItems()}
               />
             </div>
@@ -397,16 +392,14 @@ const EmptyCart = () => (
 // Order summary component
 const OrderSummary = ({
   subtotal,
-  savings,
   totalItems
 }: {
   subtotal: number;
-  savings: number;
   totalItems: number;
 }) => {
-  const shipping = subtotal > 999 ? 0 : 99;
-  const tax = subtotal * 0.18; // 18% GST
-  const total = subtotal + shipping + tax - savings;
+  const shipping = subtotal >= 999 ? 0 : 99; // ✅ Changed to >=
+  const tax = Math.round(subtotal * 0.18); // ✅ Round tax
+  const total = Math.round(subtotal + shipping + tax); // ✅ Round total
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-accent p-6 sticky top-8">
@@ -417,13 +410,6 @@ const OrderSummary = ({
           <span className="text-gray-600">Subtotal ({totalItems} items)</span>
           <span className="font-medium">₹{subtotal.toLocaleString()}</span>
         </div>
-
-        {savings > 0 && (
-          <div className="flex justify-between text-green-600">
-            <span>Savings</span>
-            <span>-₹{savings.toLocaleString()}</span>
-          </div>
-        )}
 
         <div className="flex justify-between">
           <span className="text-gray-600">Shipping</span>
@@ -437,10 +423,10 @@ const OrderSummary = ({
           <span className="font-medium">₹{tax.toLocaleString()}</span>
         </div>
 
-        {subtotal <= 999 && (
+        {subtotal < 999 && (
           <div className="bg-accent p-3 rounded-lg">
             <p className="text-sm text-primary">
-              Add ₹{(1000 - subtotal).toLocaleString()} more for FREE shipping!
+              Add ₹{(999 - subtotal).toLocaleString()} more for FREE shipping!
             </p>
           </div>
         )}

@@ -27,6 +27,7 @@ enum PaymentStatus {
 }
 
 enum OrderStatus {
+  PENDING
   PLACED
   SHIPPED
   DELIVERED
@@ -37,6 +38,7 @@ enum RefundMethod {
   GATEWAY
   STORE_CREDIT
 }
+
 
 /**
  * Money fields are Int representing smallest currency unit (paise).

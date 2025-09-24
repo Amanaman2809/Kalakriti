@@ -10,6 +10,11 @@ import { requireAdmin, requireAuth } from "../../middlewares/requireAuth";
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// ✅ Helper function to convert paise to rupees
+const paiseToRupees = (paise: number): number => {
+  return paise / 100;
+};
+
 // Define the where input type
 type OrderWhereInput = Prisma.OrderWhereInput;
 
@@ -74,12 +79,14 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
 
       const invalidStatuses = statusArray.filter(
         (s) =>
-          !validStatuses.includes(s.toString().toUpperCase() as OrderStatus),
+          !validStatuses.includes(s.toString().toUpperCase() as OrderStatus)
       );
 
       if (invalidStatuses.length > 0) {
         return res.status(400).json({
-          error: `Invalid status values: ${invalidStatuses.join(", ")}. Valid statuses: ${validStatuses.join(", ")}`,
+          error: `Invalid status values: ${invalidStatuses.join(
+            ", "
+          )}. Valid statuses: ${validStatuses.join(", ")}`,
         });
       }
 
@@ -107,13 +114,15 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
       const invalidPaymentStatuses = paymentStatusArray.filter(
         (ps) =>
           !validPaymentStatuses.includes(
-            ps.toString().toUpperCase() as PaymentStatus,
-          ),
+            ps.toString().toUpperCase() as PaymentStatus
+          )
       );
 
       if (invalidPaymentStatuses.length > 0) {
         return res.status(400).json({
-          error: `Invalid payment status values: ${invalidPaymentStatuses.join(", ")}. Valid payment statuses: ${validPaymentStatuses.join(", ")}`,
+          error: `Invalid payment status values: ${invalidPaymentStatuses.join(
+            ", "
+          )}. Valid payment statuses: ${validPaymentStatuses.join(", ")}`,
         });
       }
 
@@ -124,7 +133,7 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
       } else {
         where.paymentStatus = {
           in: paymentStatusArray.map(
-            (ps) => ps.toString().toUpperCase() as PaymentStatus,
+            (ps) => ps.toString().toUpperCase() as PaymentStatus
           ),
         };
       }
@@ -144,13 +153,15 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
 
     if (!validSortFields.includes(sortBy as ValidSortField)) {
       return res.status(400).json({
-        error: `Invalid sortBy field. Valid fields: ${validSortFields.join(", ")}`,
+        error: `Invalid sortBy field. Valid fields: ${validSortFields.join(
+          ", "
+        )}`,
       });
     }
 
     if (
       !validSortOrders.includes(
-        (sortOrder as string).toLowerCase() as "asc" | "desc",
+        (sortOrder as string).toLowerCase() as "asc" | "desc"
       )
     ) {
       return res.status(400).json({
@@ -200,7 +211,7 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
                 select: {
                   id: true,
                   name: true,
-                  price: true,
+                  price: true, // This is in paise from database
                   images: true,
                 },
               },
@@ -212,13 +223,31 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
       prisma.order.count({ where }),
     ]);
 
+    // ✅ Convert product prices from paise to rupees and order amounts
+    const ordersWithConvertedPrices = orders.map((order) => ({
+      ...order,
+      grossAmount: paiseToRupees(order.grossAmount),
+      shippingAmount: paiseToRupees(order.shippingAmount),
+      taxAmount: paiseToRupees(order.taxAmount),
+      netAmount: paiseToRupees(order.netAmount),
+      creditsApplied: paiseToRupees(order.creditsApplied),
+      items: order.items.map((item) => ({
+        ...item,
+        price: paiseToRupees(item.price), // Convert item price
+        product: {
+          ...item.product,
+          price: paiseToRupees(item.product.price), // Convert product price
+        },
+      })),
+    }));
+
     // Calculate pagination info
     const totalPages = Math.ceil(totalCount / limitNum);
     const hasNextPage = pageNum < totalPages;
     const hasPrevPage = pageNum > 1;
 
     res.json({
-      orders,
+      orders: ordersWithConvertedPrices, // ✅ Return converted prices
       pagination: {
         currentPage: pageNum,
         totalPages,
@@ -390,7 +419,7 @@ router.get("/admin/orders-v2", requireAuth, requireAdmin, async (req, res) => {
     const pageNum = Math.max(1, parseInt(page as string) || 1);
     const limitNum = Math.min(
       100,
-      Math.max(1, parseInt(limit as string) || 50),
+      Math.max(1, parseInt(limit as string) || 50)
     );
     const skip = (pageNum - 1) * limitNum;
 
@@ -428,11 +457,29 @@ router.get("/admin/orders-v2", requireAuth, requireAdmin, async (req, res) => {
       prisma.order.count({ where }),
     ]);
 
+    // ✅ Convert prices for v2 route as well
+    const ordersWithConvertedPrices = orders.map((order) => ({
+      ...order,
+      grossAmount: paiseToRupees(order.grossAmount),
+      shippingAmount: paiseToRupees(order.shippingAmount),
+      taxAmount: paiseToRupees(order.taxAmount),
+      netAmount: paiseToRupees(order.netAmount),
+      creditsApplied: paiseToRupees(order.creditsApplied),
+      items: order.items.map((item) => ({
+        ...item,
+        price: paiseToRupees(item.price),
+        product: {
+          ...item.product,
+          price: paiseToRupees(item.product.price),
+        },
+      })),
+    }));
+
     // Calculate pagination info
     const totalPages = Math.ceil(totalCount / limitNum);
 
     res.json({
-      orders,
+      orders: ordersWithConvertedPrices, // ✅ Return converted prices
       pagination: {
         currentPage: pageNum,
         totalPages,
@@ -506,7 +553,7 @@ router.get(
       console.error("Error fetching filter options:", err);
       res.status(500).json({ error: "Failed to fetch filter options" });
     }
-  },
+  }
 );
 
 export default router;

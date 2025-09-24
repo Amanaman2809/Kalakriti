@@ -41,10 +41,10 @@ router.post("/login", async (req, res) => {
     return;
   }
 
-  if (!user.isVerified) {
-    res.status(401).json({ error: "Account not verified" });
-    return;
-  }
+  // if (!user.isVerified) {
+  //   res.status(401).json({ error: "Account not verified" });
+  //   return;
+  // }
 
   const token = generateToken({
     id: user.id,

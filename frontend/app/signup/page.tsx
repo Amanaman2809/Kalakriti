@@ -79,7 +79,6 @@ export default function SignupPage() {
       }
 
       router.push("/login");
-      // router.push(`/verify?phone=${encodeURIComponent(form.phone)}`);
     } catch (err: any) {
       setErrorMsg(err.message || "Signup failed");
     } finally {

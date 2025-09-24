@@ -7,6 +7,7 @@ import {
   Check,
   Loader2,
   Sparkles,
+  AlertCircle,
 } from "lucide-react";
 import { ProductCardProps } from "@/utils/types";
 import { useState, useEffect } from "react";
@@ -23,6 +24,10 @@ export default function ProductCard({
   const isWishlistLoading =
     interactions?.loading?.[`wishlist-${product.id}`] || false;
   const isCartLoading = interactions?.loading?.[`cart-${product.id}`] || false;
+
+  // ✅ Stock status checks
+  const isOutOfStock = product.stock === 0;
+  const isLowStock = product.stock > 0 && product.stock <= 5;
 
   const [isMounted, setIsMounted] = useState(false);
   const [showAddedEffect, setShowAddedEffect] = useState(false);
@@ -43,7 +48,7 @@ export default function ProductCard({
     e.preventDefault();
     e.stopPropagation();
 
-    if (!addToCartHandler) return;
+    if (!addToCartHandler || isOutOfStock) return;
 
     // Show animation effect
     if (!isInCart) {
@@ -55,7 +60,8 @@ export default function ProductCard({
   };
 
   return (
-    <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-accent hover:border-secondary/30 hover:-translate-y-2">
+    <div className={`group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-accent hover:border-secondary/30 hover:-translate-y-2 ${isOutOfStock ? 'opacity-75' : ''
+      }`}>
       <Link href={`/products/${product.id}`}>
         <div className="relative aspect-square overflow-hidden">
           {product.images && product.images.length > 0 ? (
@@ -63,7 +69,7 @@ export default function ProductCard({
               src={product.images[0]}
               fill
               alt={product.name}
-              className="object-cover group-hover:scale-110 transition-transform duration-700"
+              className={`object-cover group-hover:scale-110 transition-transform duration-700`}
               sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
             />
           ) : (
@@ -81,36 +87,37 @@ export default function ProductCard({
             </div>
           )}
 
-          {/* Floating particles effect on hover */}
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-            {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute rounded-full bg-primary/30 animate-float"
-                style={{
-                  width: Math.random() * 10 + 5 + "px",
-                  height: Math.random() * 10 + 5 + "px",
-                  top: Math.random() * 100 + "%",
-                  left: Math.random() * 100 + "%",
-                  animationDelay: Math.random() * 2 + "s",
-                  animationDuration: Math.random() * 5 + 5 + "s",
-                }}
-              />
-            ))}
-          </div>
+          {/* Floating particles effect on hover - only if not out of stock */}
+          {!isOutOfStock && (
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+              {[...Array(3)].map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute rounded-full bg-primary/30 animate-float"
+                  style={{
+                    width: Math.random() * 10 + 5 + "px",
+                    height: Math.random() * 10 + 5 + "px",
+                    top: Math.random() * 100 + "%",
+                    left: Math.random() * 100 + "%",
+                    animationDelay: Math.random() * 2 + "s",
+                    animationDuration: Math.random() * 5 + 5 + "s",
+                  }}
+                />
+              ))}
+            </div>
+          )}
 
-          {/* Action buttons - only show if handlers exist */}
-          {(toggleWishlist || addToCartHandler) && (
+          {/* Action buttons - only show if handlers exist and not out of stock */}
+          {(toggleWishlist || addToCartHandler) && !isOutOfStock && (
             <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
               {toggleWishlist && (
                 <button
                   onClick={handleToggleWishlist}
                   disabled={isWishlistLoading}
-                  className={`p-3 rounded-full transition-all duration-300 shadow-lg ${
-                    isInWishlist
+                  className={`p-3 rounded-full transition-all duration-300 shadow-lg ${isInWishlist
                       ? "bg-red-500 text-white scale-110 animate-heart-beat"
                       : "bg-white/90 text-gray-700 hover:bg-white hover:scale-110"
-                  } disabled:opacity-70`}
+                    } disabled:opacity-70`}
                   title={
                     isInWishlist ? "Remove from wishlist" : "Add to wishlist"
                   }
@@ -119,9 +126,8 @@ export default function ProductCard({
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <Heart
-                      className={`w-5 h-5 transition-all duration-300 ${
-                        isInWishlist ? "fill-current" : ""
-                      }`}
+                      className={`w-5 h-5 transition-all duration-300 ${isInWishlist ? "fill-current" : ""
+                        }`}
                     />
                   )}
                 </button>
@@ -131,11 +137,10 @@ export default function ProductCard({
                 <button
                   onClick={handleAddToCart}
                   disabled={isCartLoading || isInCart}
-                  className={`p-3 rounded-full transition-all duration-300 shadow-lg ${
-                    isInCart
+                  className={`p-3 rounded-full transition-all duration-300 shadow-lg ${isInCart
                       ? "bg-green-500 text-white animate-pulse-slow"
                       : "bg-white/90 text-gray-700 hover:bg-white hover:scale-110"
-                  } disabled:opacity-70`}
+                    } disabled:opacity-70`}
                   title={isInCart ? "Added to cart" : "Add to cart"}
                 >
                   {isCartLoading ? (
@@ -157,47 +162,82 @@ export default function ProductCard({
             </span>
           </div>
 
-          {/* Rating badge */}
-          <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 text-yellow-400 shadow-sm">
-            <Star className="w-3 h-3 fill-current" />
-            <span className="text-xs font-medium text-gray-600">4.5</span>
-          </div>
+          {/* Rating badge - only show if not out of stock */}
+          {!isOutOfStock && (
+            <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 text-yellow-400 shadow-sm">
+              <Star className="w-3 h-3 fill-current" />
+              <span className="text-xs font-medium text-gray-600">4.5</span>
+            </div>
+          )}
+
+          {/* ✅ Low Stock Warning Badge */}
+          {isLowStock && !isOutOfStock && (
+            <div className="absolute bottom-4 right-4 bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-medium shadow-lg">
+              Only {product.stock} left
+            </div>
+          )}
         </div>
 
         <div className="p-5">
           <div className="flex items-start justify-between mb-2">
-            <h3 className="font-semibold text-text line-clamp-1 text-lg group-hover:text-primary transition-colors duration-300">
+            <h3 className={`font-semibold line-clamp-1 text-lg group-hover:text-primary transition-colors duration-300 ${isOutOfStock ? 'text-gray-500' : 'text-text'
+              }`}>
               {product.name}
             </h3>
           </div>
 
-          <p className="text-sm text-gray-600 line-clamp-2 mb-4 leading-relaxed group-hover:text-gray-800 transition-colors duration-300">
+          <p className={`text-sm line-clamp-2 mb-4 leading-relaxed group-hover:text-gray-800 transition-colors duration-300 ${isOutOfStock ? 'text-gray-400' : 'text-gray-600'
+            }`}>
             {product.description}
           </p>
 
+          {/* ✅ Stock Status Display */}
+          {isOutOfStock ? (
+            <div className="mb-3">
+              <span className="inline-flex items-center gap-1 text-red-600 text-sm font-medium">
+                <AlertCircle className="w-4 h-4" />
+                Currently Unavailable
+              </span>
+            </div>
+          ) : isLowStock ? (
+            <div className="mb-3">
+              <span className="inline-flex items-center gap-1 text-orange-600 text-sm font-medium">
+                <AlertCircle className="w-4 h-4" />
+                Only {product.stock} left in stock
+              </span>
+            </div>
+          ) : null}
+
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-xl font-bold text-text">
+              <span className={`text-xl font-bold ${isOutOfStock ? 'text-gray-400' : 'text-text'
+                }`}>
                 ₹{product.price.toLocaleString()}
               </span>
             </div>
 
             {addToCartHandler && (
               <button
-                className={`flex items-center gap-2 font-medium px-4 py-2 rounded-lg transition-all duration-300 relative overflow-hidden ${
-                  isInCart
-                    ? "bg-green-100 text-green-700 border border-green-200"
-                    : "bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl hover:scale-105"
-                } disabled:opacity-70`}
+                className={`flex items-center gap-2 font-medium px-4 py-2 rounded-lg transition-all duration-300 relative overflow-hidden ${isOutOfStock
+                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    : isInCart
+                      ? "bg-green-100 text-green-700 border border-green-200"
+                      : "bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl hover:scale-105"
+                  } disabled:opacity-70`}
                 onClick={handleAddToCart}
-                disabled={isCartLoading || isInCart}
+                disabled={isCartLoading || isInCart || isOutOfStock}
               >
-                {/* Shine effect on hover */}
-                {!isInCart && !isCartLoading && (
+                {/* Shine effect on hover - only if not out of stock */}
+                {!isInCart && !isCartLoading && !isOutOfStock && (
                   <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-white/20 to-primary/0 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                 )}
 
-                {isCartLoading ? (
+                {isOutOfStock ? (
+                  <>
+                    <AlertCircle className="w-4 h-4" />
+                    Out of Stock
+                  </>
+                ) : isCartLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Adding...

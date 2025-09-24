@@ -1,10 +1,16 @@
-import express,{Request} from "express";
+import express, { Request } from "express";
 import { PrismaClient } from "../generated/prisma/client";
-import {requireAuth } from "../middlewares/requireAuth";
+import { requireAuth } from "../middlewares/requireAuth";
+
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// get user's wishlist
+// Helper function to convert paise to rupees
+const paiseToRupees = (paise: number): number => {
+  return paise / 100;
+};
+
+// ✅ get user's wishlist (convert prices from paise to rupees)
 router.get("/", requireAuth, async (req, res) => {
   const userId = req.user?.id;
   if (!userId) {
@@ -20,7 +26,7 @@ router.get("/", requireAuth, async (req, res) => {
           select: {
             id: true,
             name: true,
-            price: true,
+            price: true, // This is in paise from database
             stock: true,
             images: true,
           },
@@ -28,14 +34,23 @@ router.get("/", requireAuth, async (req, res) => {
       },
     });
 
-    res.json(wishlist);
+    // ✅ Convert product prices from paise to rupees for frontend
+    const wishlistWithRupeePrices = wishlist.map((item) => ({
+      ...item,
+      product: {
+        ...item.product,
+        price: paiseToRupees(item.product.price), // Convert paise to rupees
+      },
+    }));
+
+    res.json(wishlistWithRupeePrices);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-// add to wishlist
+// add to wishlist (no price conversion needed)
 router.post("/", requireAuth, async (req, res) => {
   const userId = req.user?.id;
   const { productId } = req.body;
@@ -81,63 +96,69 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
-// remove from wishlist
-router.delete(
-  "/:productId",
-  requireAuth,
-  async (req, res) => {
-    const userId = req.user?.id;
-    if (!userId) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
+// remove from wishlist (no price conversion needed)
+router.delete("/:productId", requireAuth, async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
 
-    const { productId } = req.params;
-    if (!productId) {
-      res.status(400).json({ error: "Product ID is required" });
-      return;
-    }
+  const { productId } = req.params;
+  if (!productId) {
+    res.status(400).json({ error: "Product ID is required" });
+    return;
+  }
 
-    try {
-      await prisma.wishlistItem.delete({
+  try {
+    await prisma.wishlistItem.delete({
+      where: { userId_productId: { userId, productId } },
+    });
+
+    res.status(204).end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// move from wishlist to cart (no price conversion needed)
+router.put("/:productId", requireAuth, async (req: Request, res) => {
+  const userId = req.user?.id;
+  const { productId } = req.params;
+
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  if (!productId) {
+    res.status(400).json({ error: "Missing product ID" });
+    return;
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const wishlistItem = await tx.wishlistItem.findUnique({
         where: { userId_productId: { userId, productId } },
       });
 
-      res.status(204).end();
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  },
-);
+      if (!wishlistItem) {
+        throw new Error("NOT_FOUND");
+      }
 
-// move from wishlist to cart
-router.put(
-  "/:productId",
-  requireAuth,
-  async (req:Request, res) => {
-    const userId = req.user?.id;
-    const { productId } = req.params;
+      // Check if item already exists in cart
+      const existingCartItem = await tx.cartItem.findUnique({
+        where: { userId_productId: { userId, productId } },
+      });
 
-    if (!userId) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
-    if (!productId) {
-      res.status(400).json({ error: "Missing product ID" });
-      return;
-    }
-
-    try {
-      await prisma.$transaction(async (tx) => {
-        const wishlistItem = await tx.wishlistItem.findUnique({
+      if (existingCartItem) {
+        // Update quantity if already in cart
+        await tx.cartItem.update({
           where: { userId_productId: { userId, productId } },
+          data: { quantity: existingCartItem.quantity + 1 },
         });
-
-        if (!wishlistItem) {
-          throw new Error("NOT_FOUND");
-        }
-
+      } else {
+        // Create new cart item
         await tx.cartItem.create({
           data: {
             userId,
@@ -145,23 +166,24 @@ router.put(
             quantity: 1,
           },
         });
-
-        await tx.wishlistItem.delete({
-          where: { userId_productId: { userId, productId } },
-        });
-      });
-
-      res.status(204).end();
-    } catch (err: any) {
-      if (err.message === "NOT_FOUND") {
-        res.status(404).json({ error: "Wishlist item not found" });
-        return;
       }
 
-      console.error(err);
-      res.status(500).json({ error: "Failed to move item to cart" });
+      // Remove from wishlist
+      await tx.wishlistItem.delete({
+        where: { userId_productId: { userId, productId } },
+      });
+    });
+
+    res.status(204).end();
+  } catch (err: any) {
+    if (err.message === "NOT_FOUND") {
+      res.status(404).json({ error: "Wishlist item not found" });
+      return;
     }
-  },
-);
+
+    console.error(err);
+    res.status(500).json({ error: "Failed to move item to cart" });
+  }
+});
 
 export default router;

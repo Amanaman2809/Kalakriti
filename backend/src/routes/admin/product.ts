@@ -4,6 +4,18 @@ import { requireAuth, requireAdmin } from "../../middlewares/requireAuth";
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// Helper function to convert paise to rupees
+const paiseToRupees = (paise: number): number => {
+  return paise / 100;
+};
+
+// Helper function to convert rupees to paise
+const rupeesToPaise = (rupees: number): number => {
+  return Math.round(rupees * 100);
+};
+
+// Public: Get all products (convert paise to rupees)
 router.get("/", async (_req: Request, res: Response) => {
   try {
     const products = await prisma.product.findMany({
@@ -11,13 +23,21 @@ router.get("/", async (_req: Request, res: Response) => {
         category: true,
       },
     });
-    res.json({ products: products });
+
+    // Convert prices from paise to rupees for frontend
+    const productsWithRupeePrices = products.map((product) => ({
+      ...product,
+      price: paiseToRupees(product.price),
+    }));
+
+    res.json({ products: productsWithRupeePrices });
   } catch (error) {
+    console.error("Error fetching products:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-// Public: single product
+// Public: single product (convert paise to rupees)
 router.get("/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
 
@@ -28,17 +48,26 @@ router.get("/:id", async (req: Request, res: Response) => {
         category: true,
       },
     });
+
     if (!product) {
       res.status(404).json({ error: "Product not found" });
       return;
     }
-    res.json(product);
+
+    // Convert price from paise to rupees
+    const productWithRupeePrice = {
+      ...product,
+      price: paiseToRupees(product.price),
+    };
+
+    res.json(productWithRupeePrice);
   } catch (error) {
+    console.error("Error fetching product:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-// Admin: create product
+// Admin: create product (convert rupees to paise)
 router.post("/", requireAuth, requireAdmin, async (req, res) => {
   const { name, description, price, stock, categoryId, tags, images } =
     req.body;
@@ -55,25 +84,35 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
   }
 
   try {
+    // Convert price from rupees to paise
+    const priceInPaise = rupeesToPaise(Number(price));
+
     const product = await prisma.product.create({
       data: {
         name,
         description,
-        price,
-        stock,
+        price: priceInPaise, //Store in paise
+        stock: Number(stock),
         categoryId,
         tags,
         images,
       },
     });
-    res.status(201).json(product);
+
+    // Return with price converted back to rupees
+    const responseProduct = {
+      ...product,
+      price: paiseToRupees(product.price),
+    };
+
+    res.status(201).json(responseProduct);
   } catch (err) {
-    console.error(err);
+    console.error("Product creation error:", err);
     res.status(500).json({ error: "Creation failed" });
   }
 });
 
-// Admin: Add Products in bulk
+// Admin: Add Products in bulk (convert rupees to paise)
 router.post("/bulk", requireAuth, requireAdmin, async (req, res) => {
   const { products } = req.body;
 
@@ -83,42 +122,71 @@ router.post("/bulk", requireAuth, requireAdmin, async (req, res) => {
   }
 
   try {
+    // Convert all prices from rupees to paise
+    const productsWithPaisePrices = products.map((product) => ({
+      name: product.name,
+      description: product.description,
+      price: rupeesToPaise(Number(product.price)), // Convert to paise
+      stock: Number(product.stock),
+      categoryId: product.categoryId,
+      tags: product.tags,
+      images: product.images,
+    }));
+
     const createdProducts = await prisma.product.createMany({
-      data: products.map((product) => ({
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        stock: product.stock,
-        categoryId: product.categoryId,
-        tags: product.tags,
-        images: product.images,
-      })),
+      data: productsWithPaisePrices,
     });
+
     res.status(201).json(createdProducts);
   } catch (err) {
-    console.error(err);
+    console.error("Bulk creation error:", err);
     res.status(500).json({ error: "Bulk creation failed" });
   }
 });
 
-// Admin: update product
+// Admin: update product (convert rupees to paise)
 router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { name, description, price, stock, categoryId, tags, images } =
     req.body;
 
   try {
+    const priceInRupees = Number(price);
+    const priceInPaise = rupeesToPaise(priceInRupees);
+
+    console.log("Converted to paise:", priceInPaise);
+
+    if (isNaN(priceInPaise) || priceInPaise < 0) {
+      return res.status(400).json({ error: "Invalid price value" });
+    }
+
     const product = await prisma.product.update({
       where: { id },
-      data: { name, description, price, stock, categoryId, tags, images },
+      data: {
+        name,
+        description,
+        price: priceInPaise, // Store in paise
+        stock: Number(stock),
+        categoryId,
+        tags,
+        images,
+      },
     });
-    res.json(product);
+
+    // Return with price converted back to rupees
+    const responseProduct = {
+      ...product,
+      price: paiseToRupees(product.price),
+    };
+
+    res.json(responseProduct);
   } catch (err) {
-    console.error(err);
+    console.error("Product update error:", err);
     res.status(500).json({ error: "Update failed" });
   }
 });
 
+// Admin: delete product (no price conversion needed)
 router.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
   const { id } = req.params;
 
