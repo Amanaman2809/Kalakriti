@@ -21,7 +21,7 @@ type OrderWhereInput = Prisma.OrderWhereInput;
 // Define valid sort fields type
 type ValidSortField =
   | "createdAt"
-  | "total"
+  | "netAmount"
   | "updatedAt"
   | "shippedAt"
   | "deliveredAt"
@@ -79,13 +79,13 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
 
       const invalidStatuses = statusArray.filter(
         (s) =>
-          !validStatuses.includes(s.toString().toUpperCase() as OrderStatus)
+          !validStatuses.includes(s.toString().toUpperCase() as OrderStatus),
       );
 
       if (invalidStatuses.length > 0) {
         return res.status(400).json({
           error: `Invalid status values: ${invalidStatuses.join(
-            ", "
+            ", ",
           )}. Valid statuses: ${validStatuses.join(", ")}`,
         });
       }
@@ -114,14 +114,14 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
       const invalidPaymentStatuses = paymentStatusArray.filter(
         (ps) =>
           !validPaymentStatuses.includes(
-            ps.toString().toUpperCase() as PaymentStatus
-          )
+            ps.toString().toUpperCase() as PaymentStatus,
+          ),
       );
 
       if (invalidPaymentStatuses.length > 0) {
         return res.status(400).json({
           error: `Invalid payment status values: ${invalidPaymentStatuses.join(
-            ", "
+            ", ",
           )}. Valid payment statuses: ${validPaymentStatuses.join(", ")}`,
         });
       }
@@ -133,7 +133,7 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
       } else {
         where.paymentStatus = {
           in: paymentStatusArray.map(
-            (ps) => ps.toString().toUpperCase() as PaymentStatus
+            (ps) => ps.toString().toUpperCase() as PaymentStatus,
           ),
         };
       }
@@ -142,7 +142,7 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
     // Sorting configuration
     const validSortFields: ValidSortField[] = [
       "createdAt",
-      "total",
+      "netAmount",
       "updatedAt",
       "shippedAt",
       "deliveredAt",
@@ -154,14 +154,14 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
     if (!validSortFields.includes(sortBy as ValidSortField)) {
       return res.status(400).json({
         error: `Invalid sortBy field. Valid fields: ${validSortFields.join(
-          ", "
+          ", ",
         )}`,
       });
     }
 
     if (
       !validSortOrders.includes(
-        (sortOrder as string).toLowerCase() as "asc" | "desc"
+        (sortOrder as string).toLowerCase() as "asc" | "desc",
       )
     ) {
       return res.status(400).json({
@@ -345,7 +345,7 @@ const buildOrderWhere = (filters: {
 const buildOrderBy = (sortBy: string, sortOrder: string): OrderByInput => {
   const validSortFields: ValidSortField[] = [
     "createdAt",
-    "total",
+    "netAmount",
     "updatedAt",
     "shippedAt",
     "deliveredAt",
@@ -365,7 +365,7 @@ const buildOrderBy = (sortBy: string, sortOrder: string): OrderByInput => {
     case "createdAt":
       orderBy.createdAt = direction;
       break;
-    case "total":
+    case "netAmount":
       orderBy.netAmount = direction;
       break;
     case "updatedAt":
@@ -419,7 +419,7 @@ router.get("/admin/orders-v2", requireAuth, requireAdmin, async (req, res) => {
     const pageNum = Math.max(1, parseInt(page as string) || 1);
     const limitNum = Math.min(
       100,
-      Math.max(1, parseInt(limit as string) || 50)
+      Math.max(1, parseInt(limit as string) || 50),
     );
     const skip = (pageNum - 1) * limitNum;
 
@@ -541,7 +541,7 @@ router.get(
         },
         sortOptions: [
           { value: "createdAt", label: "Date Created" },
-          { value: "total", label: "Total Amount" },
+          { value: "netAmount", label: "Total Amount" },
           { value: "updatedAt", label: "Last Updated" },
           { value: "shippedAt", label: "Shipped Date" },
           { value: "deliveredAt", label: "Delivered Date" },
@@ -553,7 +553,7 @@ router.get(
       console.error("Error fetching filter options:", err);
       res.status(500).json({ error: "Failed to fetch filter options" });
     }
-  }
+  },
 );
 
 export default router;

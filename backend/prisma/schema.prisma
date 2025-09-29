@@ -4,8 +4,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -38,7 +38,6 @@ enum RefundMethod {
   GATEWAY
   STORE_CREDIT
 }
-
 
 /**
  * Money fields are Int representing smallest currency unit (paise).
@@ -97,14 +96,16 @@ model Product {
   id          String   @id @default(uuid())
   name        String
   description String?
-  price       Int // paise
+  price       Int
   stock       Int      @default(0)
   categoryId  String
   category    Category @relation(fields: [categoryId], references: [id])
   tags        String[]
   images      String[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  discountPct Int?     @db.SmallInt // percentage discount (nullable)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   wishlistItems WishlistItem[]
   orderItems    OrderItem[]
@@ -217,11 +218,12 @@ model Order {
  * Order item stores price (paise) at time of order
  */
 model OrderItem {
-  id        String @id @default(uuid())
-  orderId   String
-  productId String
-  quantity  Int
-  price     Int // paise, snapshot of product.price
+  id              String @id @default(uuid())
+  orderId         String
+  productId       String
+  quantity        Int
+  price           Int // original product price at order-time
+  discountApplied Int? // per-unit discount in paise at order-time
 
   order   Order   @relation(fields: [orderId], references: [id])
   product Product @relation(fields: [productId], references: [id])

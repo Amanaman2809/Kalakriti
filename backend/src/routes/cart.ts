@@ -60,7 +60,7 @@ router.get("/", requireAuth, async (req, res) => {
 
     console.log(
       "Cart items with converted prices:",
-      itemsWithRupeePrices.length
+      itemsWithRupeePrices.length,
     );
     res.json(itemsWithRupeePrices);
   } catch (err) {
@@ -69,55 +69,46 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
-// Add item to cart (price conversion handled in product validation)
+// Add item to cart (increment quantity if exists)
 router.post("/", requireAuth, async (req, res) => {
   const userId = req.user?.id;
-
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
   const { productId, quantity } = req.body;
-
-  if (!productId) {
-    res.status(400).json({ error: "Invalid productId" });
-    return;
-  }
-
-  if (typeof quantity !== "number" || quantity < 1) {
-    res.status(400).json({ error: "Invalid quantity" });
-    return;
-  }
+  if (!productId) return res.status(400).json({ error: "Invalid productId" });
+  if (typeof quantity !== "number" || quantity < 1)
+    return res.status(400).json({ error: "Invalid quantity" });
 
   try {
-    // Check product exists (price is in paise in database)
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
-    });
-    if (!product) {
-      res.status(404).json({ error: "Product not found" });
-      return;
-    }
+    // Fetch product and current cart item
+    const [product, existingCartItem] = await Promise.all([
+      prisma.product.findUnique({ where: { id: productId } }),
+      prisma.cartItem.findUnique({
+        where: { userId_productId: { userId, productId } },
+      }),
+    ]);
 
-    // Check if requested quantity exceeds available stock
-    if (quantity > product.stock) {
-      res
+    if (!product) return res.status(404).json({ error: "Product not found" });
+
+    const currentQuantity = existingCartItem?.quantity || 0;
+    const newQuantity = currentQuantity + quantity;
+
+    if (newQuantity > product.stock) {
+      return res
         .status(400)
         .json({ error: "Requested quantity exceeds available stock" });
-      return;
     }
 
     const item = await prisma.cartItem.upsert({
       where: { userId_productId: { userId, productId } },
-      update: { quantity },
-      create: { userId, productId, quantity },
+      update: { quantity: newQuantity },
+      create: { userId, productId, quantity: newQuantity },
       include: {
         product: {
           select: {
             id: true,
             name: true,
-            price: true, // Will be in paise
+            price: true, // paise
             stock: true,
             images: true,
           },
@@ -125,19 +116,13 @@ router.post("/", requireAuth, async (req, res) => {
       },
     });
 
-    // Convert product price from paise to rupees for response
     const responseItem = {
       ...item,
       product: {
         ...item.product,
-        price: paiseToRupees(item.product.price), // Convert to rupees
+        price: paiseToRupees(item.product.price),
       },
     };
-
-    console.log("Added to cart - Price converted:", {
-      originalPrice: item.product.price,
-      convertedPrice: responseItem.product.price,
-    });
 
     res.status(201).json(responseItem);
   } catch (err) {

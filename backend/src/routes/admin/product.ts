@@ -27,7 +27,9 @@ router.get("/", async (_req: Request, res: Response) => {
     // Convert prices from paise to rupees for frontend
     const productsWithRupeePrices = products.map((product) => ({
       ...product,
-      price: paiseToRupees(product.price),
+      price: paiseToRupees(product.price), // original
+      finalPrice:
+        paiseToRupees(product.price) * (1 - (product.discountPct || 0) / 100),
     }));
 
     res.json({ products: productsWithRupeePrices });
@@ -57,7 +59,9 @@ router.get("/:id", async (req: Request, res: Response) => {
     // Convert price from paise to rupees
     const productWithRupeePrice = {
       ...product,
-      price: paiseToRupees(product.price),
+      price: paiseToRupees(product.price), // original
+      finalPrice:
+        paiseToRupees(product.price) * (1 - (product.discountPct || 0) / 100),
     };
 
     res.json(productWithRupeePrice);
@@ -69,8 +73,20 @@ router.get("/:id", async (req: Request, res: Response) => {
 
 // Admin: create product (convert rupees to paise)
 router.post("/", requireAuth, requireAdmin, async (req, res) => {
-  const { name, description, price, stock, categoryId, tags, images } =
-    req.body;
+  const {
+    name,
+    description,
+    discount,
+    price,
+    stock,
+    categoryId,
+    tags,
+    images,
+  } = req.body;
+
+  if (discount < 0 || discount > 100) {
+    return res.status(400).json({ error: "Discount must be between 0-100%" });
+  }
 
   if (
     !name ||
@@ -92,7 +108,8 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
         name,
         description,
         price: priceInPaise, //Store in paise
-        stock: Number(stock),
+        stock: Math.max(Number(stock), 0),
+        discountPct: Number(discount) || 0,
         categoryId,
         tags,
         images,
@@ -127,8 +144,9 @@ router.post("/bulk", requireAuth, requireAdmin, async (req, res) => {
       name: product.name,
       description: product.description,
       price: rupeesToPaise(Number(product.price)), // Convert to paise
-      stock: Number(product.stock),
+      stock: Math.max(Number(product.stock), 0),
       categoryId: product.categoryId,
+      discountPct: Math.min(Math.max(Number(product.discount) || 0, 0), 100),
       tags: product.tags,
       images: product.images,
     }));
@@ -147,14 +165,26 @@ router.post("/bulk", requireAuth, requireAdmin, async (req, res) => {
 // Admin: update product (convert rupees to paise)
 router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   const { id } = req.params;
-  const { name, description, price, stock, categoryId, tags, images } =
-    req.body;
+  const {
+    name,
+    description,
+    discount,
+    price,
+    stock,
+    categoryId,
+    tags,
+    images,
+  } = req.body;
 
   try {
     const priceInRupees = Number(price);
     const priceInPaise = rupeesToPaise(priceInRupees);
 
-    console.log("Converted to paise:", priceInPaise);
+    if (discount < 0 || discount > 100) {
+      return res.status(400).json({ error: "Discount must be between 0-100%" });
+    }
+
+    // console.log("Converted to paise:", priceInPaise);
 
     if (isNaN(priceInPaise) || priceInPaise < 0) {
       return res.status(400).json({ error: "Invalid price value" });
@@ -165,8 +195,9 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
       data: {
         name,
         description,
+        discountPct: Number(discount) || 0,
         price: priceInPaise, // Store in paise
-        stock: Number(stock),
+        stock: Math.max(Number(stock), 0),
         categoryId,
         tags,
         images,
@@ -177,6 +208,8 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
     const responseProduct = {
       ...product,
       price: paiseToRupees(product.price),
+      finalPrice:
+        paiseToRupees(product.price) * (1 - (product.discountPct || 0) / 100),
     };
 
     res.json(responseProduct);

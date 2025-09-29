@@ -103,33 +103,36 @@ router.post("/", requireAuth, async (req, res) => {
 
     // ✅ STEP 2: Stock validation - CHECK BEFORE RESERVATION
     console.log("=== STOCK VALIDATION ===");
-    const stockValidation:any = [];
-    for (const item of cartItems) {
-      const currentProduct = await prisma.product.findUnique({
-        where: { id: item.productId },
-        select: { id: true, name: true, stock: true, price: true },
-      });
+    const productIds = cartItems.map((c) => c.productId);
+    const productsInDB = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        stock: true,
+        discountPct: true,
+      },
+    });
 
-      if (!currentProduct) {
-        return res.status(400).json({
-          error: `Product ${item.product.name} no longer exists`,
-        });
+    const stockValidation = cartItems.map((item) => {
+      const product = productsInDB.find((p) => p.id === item.productId);
+      if (!product) {
+        throw new Error(`Product ${item.productId} no longer exists`);
       }
-
-      if (currentProduct.stock < item.quantity) {
-        return res.status(400).json({
-          error: `Insufficient stock for ${currentProduct.name}. Available: ${currentProduct.stock}, Requested: ${item.quantity}`,
-        });
+      if (product.stock < item.quantity) {
+        throw new Error(
+          `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
+        );
       }
-
-      stockValidation.push({
-        productId: currentProduct.id,
-        name: currentProduct.name,
+      return {
+        productId: product.id,
+        name: product.name,
         requestedQty: item.quantity,
-        availableStock: currentProduct.stock,
-        price: currentProduct.price,
-      });
-    }
+        availableStock: product.stock,
+        discountedPrice: product.price * (1 - (product.discountPct || 0) / 100),
+      };
+    });
 
     console.log("Stock validation passed:", stockValidation);
 
@@ -138,7 +141,14 @@ router.post("/", requireAuth, async (req, res) => {
 
     // Calculate gross amount with precise values
     const grossAmount = toPreciseRupees(
-      cartItems.reduce((s, it) => s + it.product.price * it.quantity, 0)
+      cartItems.reduce(
+        (sum, item) =>
+          sum +
+          item.product.price *
+            (1 - (item.product.discountPct || 0) / 100) *
+            item.quantity,
+        0,
+      ),
     );
 
     // Shipping calculation
@@ -150,7 +160,7 @@ router.post("/", requireAuth, async (req, res) => {
 
     // Total before credits
     const grossPlusExtras = toRoundedRupees(
-      grossAmount + shippingAmount + taxAmount
+      grossAmount + shippingAmount + taxAmount,
     );
 
     console.log("Financial calculations:", {
@@ -213,7 +223,7 @@ router.post("/", requireAuth, async (req, res) => {
 
           if (!currentStock || currentStock.stock < validation.requestedQty) {
             throw new Error(
-              `Stock changed for ${validation.name}. Please refresh and try again.`
+              `Stock changed for ${validation.name}. Please refresh and try again.`,
             );
           }
         }
@@ -235,7 +245,10 @@ router.post("/", requireAuth, async (req, res) => {
               create: cartItems.map((ci) => ({
                 productId: ci.productId,
                 quantity: ci.quantity,
-                price: toRoundedRupees(ci.product.price), // Store rounded prices
+                price: toRoundedRupees(
+                  stockValidation.find((s) => s.productId === ci.productId)
+                    ?.discountedPrice || 0,
+                ),
               })),
             },
           },
@@ -257,9 +270,9 @@ router.post("/", requireAuth, async (req, res) => {
               data: { stock: { decrement: ci.quantity } },
             });
             console.log(
-              `Reserved ${ci.quantity} units of product ${ci.productId}`
+              `Reserved ${ci.quantity} units of product ${ci.productId}`,
             );
-          })
+          }),
         );
 
         // Handle store credits
@@ -310,7 +323,7 @@ router.post("/", requireAuth, async (req, res) => {
       },
       {
         timeout: 10000, // 10 second timeout
-      }
+      },
     );
 
     console.log("✅ Order created successfully:", order.id);
@@ -358,7 +371,7 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
-// Cancel Order - RESTORE STOCK PROPERLY
+// Cancel Order - use unified transaction function
 router.patch("/:id/cancel", requireAuth, async (req, res) => {
   const { id } = req.params;
   const userId = req.user?.id;
@@ -369,11 +382,7 @@ router.patch("/:id/cancel", requireAuth, async (req, res) => {
   try {
     const order = await prisma.order.findUnique({
       where: { id },
-      include: {
-        items: { include: { product: true } },
-        orderCredits: true,
-        payments: true,
-      },
+      include: { items: true },
     });
 
     if (!order) return res.status(404).json({ error: "Order not found" });
@@ -383,11 +392,11 @@ router.patch("/:id/cancel", requireAuth, async (req, res) => {
         .json({ error: "Unauthorized to cancel this order" });
     }
 
-    // ✅ Can cancel PENDING, PLACED orders only
+    // Only allow PENDING/PLACED orders
     if (!["PENDING", "PLACED"].includes(order.status)) {
-      return res.status(400).json({
-        error: `Cannot cancel order with status: ${order.status}`,
-      });
+      return res
+        .status(400)
+        .json({ error: `Cannot cancel order with status: ${order.status}` });
     }
 
     const hoursDiff =
@@ -398,80 +407,15 @@ router.patch("/:id/cancel", requireAuth, async (req, res) => {
         .json({ error: "Cancellation window expired (24 hours)" });
     }
 
-    const cancelledOrder = await prisma.$transaction(async (tx) => {
-      // Update order status
-      const updatedOrder = await tx.order.update({
-        where: { id },
-        data: {
-          status: "CANCELLED",
-          cancelledAt: new Date(),
-          cancellationReason: reason || "Cancelled by customer",
-          statusUpdatedAt: new Date(),
-          paymentStatus:
-            order.paymentStatus === "PAID" ? "REFUNDED" : order.paymentStatus,
-        },
-        include: {
-          items: { include: { product: true } },
-          address: true,
-          user: { select: { id: true, name: true, email: true, phone: true } },
-        },
-      });
-
-      // ✅ RESTORE STOCK
-      console.log("Restoring stock for cancelled order...");
-      await Promise.all(
-        order.items.map(async (item) => {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { increment: item.quantity } },
-          });
-          console.log(
-            `Restored ${item.quantity} units of product ${item.productId}`
-          );
-        })
-      );
-
-      // Restore store credits
-      for (const oc of order.orderCredits) {
-        await tx.storeCredit.create({
-          data: {
-            userId: order.userId,
-            amount: oc.amount,
-            reason: `Refund for cancelled order ${order.id}`,
-          },
-        });
-
-        await tx.refund.create({
-          data: {
-            orderId: order.id,
-            userId: order.userId,
-            method: "STORE_CREDIT",
-            amount: oc.amount,
-            reason: `Credits refunded for cancelled order`,
-          },
-        });
-      }
-
-      // Handle gateway payment refunds
-      const gatewayPaid =
-        order.payments
-          ?.filter((p) => p.provider !== "INTERNAL" && p.status === "PAID")
-          .reduce((s, p) => s + p.amount, 0) || 0;
-
-      if (gatewayPaid > 0) {
-        await tx.refund.create({
-          data: {
-            orderId: order.id,
-            userId: order.userId,
-            method: "GATEWAY",
-            amount: gatewayPaid,
-            reason: "Gateway refund for cancelled order",
-          },
-        });
-      }
-
-      return updatedOrder;
-    });
+    // ✅ Call unified transaction function
+    const cancelledOrder = await prisma.$transaction((tx) =>
+      cancelOrderWithTransaction(
+        id,
+        userId,
+        reason || "Cancelled by customer",
+        tx,
+      ),
+    );
 
     return res.json({
       success: true,
@@ -484,7 +428,7 @@ router.patch("/:id/cancel", requireAuth, async (req, res) => {
   }
 });
 
-// Get order details by ID
+// Get order details by ID with financial summary
 router.get("/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   const userId = req.user?.id;
@@ -497,6 +441,7 @@ router.get("/:id", requireAuth, async (req, res) => {
         address: true,
         user: { select: { id: true, name: true, email: true, phone: true } },
         payments: true,
+        orderCredits: true, // include applied store credits
       },
     });
 
@@ -508,7 +453,78 @@ router.get("/:id", requireAuth, async (req, res) => {
       return res.status(403).json({ error: "Unauthorized to view this order" });
     }
 
-    res.json(order);
+    const itemsWithTotals = order.items.map((item) => {
+      const originalPriceRupees = item.product.price / 100;
+      const discountedPriceRupees = item.price; // already in rupees
+      const discountRupees =
+        (originalPriceRupees - discountedPriceRupees) * item.quantity;
+      const total = discountedPriceRupees * item.quantity;
+
+      return {
+        id: item.id,
+        product: item.product,
+        quantity: item.quantity,
+        price: discountedPriceRupees,
+        total,
+        discount: discountRupees,
+      };
+    });
+
+    const totalDiscount = itemsWithTotals.reduce(
+      (sum, item) => sum + item.discount,
+      0,
+    );
+
+    const grossAmount = itemsWithTotals.reduce(
+      (sum, item) => sum + item.total,
+      0,
+    );
+    const shippingAmount = order.shippingAmount;
+    const taxAmount = order.taxAmount;
+    const creditsApplied = order.creditsApplied;
+    const totalAmount = grossAmount + shippingAmount + taxAmount;
+    const finalAmountToPay = Math.max(totalAmount - creditsApplied, 0);
+
+    // Prepare payments info
+    const payments = order.payments.map((p) => ({
+      id: p.id,
+      provider: p.provider,
+      amount: p.amount / 100,
+      status: p.status,
+      createdAt: p.createdAt,
+      meta: p.meta,
+    }));
+
+    // Build response
+    const response = {
+      id: order.id,
+      user: order.user,
+      address: order.address,
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+      createdAt: order.createdAt,
+      updatedAt: order.statusUpdatedAt,
+      items: itemsWithTotals.map((item) => ({
+        id: item.id,
+        product: item.product,
+        quantity: item.quantity,
+        price: item.price,
+        total: item.total,
+        discount: item.discount,
+      })),
+      financials: {
+        grossAmount,
+        shippingAmount,
+        taxAmount,
+        totalDiscount,
+        creditsApplied,
+        totalAmount,
+        finalAmountToPay,
+      },
+      payments,
+    };
+
+    res.json(response);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch order" });
@@ -593,9 +609,16 @@ router.patch("/:id/status", requireAuth, requireAdmin, async (req, res) => {
       updateData.shippedAt = new Date();
     } else if (status === "DELIVERED" && !order.deliveredAt) {
       updateData.deliveredAt = new Date();
-    } else if (status === "CANCELLED" && !order.cancelledAt) {
-      updateData.cancelledAt = new Date();
-      updateData.cancellationReason = "Cancelled by admin";
+    } else if (status === "CANCELLED") {
+      const cancelledOrder = await prisma.$transaction(async (tx) => {
+        return cancelOrderWithTransaction(
+          id,
+          order.userId,
+          "Cancelled by admin",
+          tx,
+        );
+      });
+      return res.json(cancelledOrder);
     }
 
     const updatedOrder = await prisma.order.update({
@@ -614,5 +637,100 @@ router.patch("/:id/status", requireAuth, requireAdmin, async (req, res) => {
     res.status(500).json({ error: "Failed to update order status" });
   }
 });
+
+async function cancelOrderWithTransaction(
+  orderId: string,
+  userId: string,
+  reason: string,
+  tx: any,
+) {
+  const order = await tx.order.findUnique({
+    where: { id: orderId },
+    include: {
+      items: { include: { product: true } },
+      orderCredits: true,
+      payments: true,
+    },
+  });
+
+  if (!order) throw new Error("Order not found");
+
+  // Update order status
+  const updatedOrder = await tx.order.update({
+    where: { id: orderId },
+    data: {
+      status: "CANCELLED",
+      cancelledAt: new Date(),
+      cancellationReason: reason || "Cancelled by admin",
+      statusUpdatedAt: new Date(),
+      paymentStatus:
+        order.paymentStatus === "PAID" ? "REFUNDED" : order.paymentStatus,
+    },
+    include: {
+      items: { include: { product: true } },
+      address: true,
+      user: { select: { id: true, name: true, email: true, phone: true } },
+    },
+  });
+
+  // Restore stock
+  await Promise.all(
+    order.items.map(async (item: any) => {
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stock: { increment: item.quantity } },
+      });
+    }),
+  );
+
+  // Refund all store credits applied to the order
+  for (const oc of order.orderCredits) {
+    await tx.storeCredit.create({
+      data: {
+        userId: order.userId,
+        amount: oc.amount,
+        reason: `Refund for cancelled order ${order.id}`,
+      },
+    });
+
+    await tx.refund.create({
+      data: {
+        orderId: order.id,
+        userId: order.userId,
+        method: "STORE_CREDIT",
+        amount: oc.amount,
+        reason: `Credits refunded for cancelled order`,
+      },
+    });
+  }
+
+  // Refund all paid amounts (gateway/online) as store credits
+  const gatewayPaid =
+    order.payments
+      ?.filter((p: any) => p.status === "PAID") // Include all PAID payments
+      .reduce((s: any, p: any) => s + p.amount, 0) || 0;
+
+  if (gatewayPaid > 0) {
+    await tx.storeCredit.create({
+      data: {
+        userId: order.userId,
+        amount: gatewayPaid,
+        reason: `Refund for cancelled order ${order.id} (online payment)`,
+      },
+    });
+
+    await tx.refund.create({
+      data: {
+        orderId: order.id,
+        userId: order.userId,
+        method: "STORE_CREDIT",
+        amount: gatewayPaid,
+        reason: "Converted online payment refund to store credit",
+      },
+    });
+  }
+
+  return updatedOrder;
+}
 
 export default router;
