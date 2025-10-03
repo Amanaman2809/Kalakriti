@@ -1,6 +1,8 @@
 import express from "express";
 import { searchProducts } from "../lib/search";
 import { PrismaClient } from "../generated/prisma";
+import { paiseToRupees } from "../utils/sharedFunctions";
+import { transformProduct } from "../lib/productTransform";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -31,11 +33,14 @@ router.get("/", async (req, res) => {
       minPrice,
       maxPrice,
       page,
-      limit
+      limit,
     );
     const hasMore = products.length === limit;
 
-    res.json({ products, hasMore });
+    // Convert the price to rupees
+    const convertedResults = products.map(transformProduct);
+
+    res.json({ products: convertedResults, hasMore });
   } catch (err) {
     console.error("Search error:", err);
     res.status(500).json({ error: "Search failed" });

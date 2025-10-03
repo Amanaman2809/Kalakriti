@@ -6,7 +6,6 @@ import {
   Heart,
   Check,
   Loader2,
-  Sparkles,
   AlertCircle,
 } from "lucide-react";
 import { ProductCardProps } from "@/utils/types";
@@ -29,12 +28,15 @@ export default function ProductCard({
   const isOutOfStock = product.stock === 0;
   const isLowStock = product.stock > 0 && product.stock <= 5;
 
+  // ✅ Discount calculations
+  const hasDiscount = (product.discountPct || 0) > 0;
+
   const [isMounted, setIsMounted] = useState(false);
   const [showAddedEffect, setShowAddedEffect] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
-  }, []);
+  }, [product]);
 
   const handleToggleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -60,8 +62,11 @@ export default function ProductCard({
   };
 
   return (
-    <div className={`group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-accent hover:border-secondary/30 hover:-translate-y-2 ${isOutOfStock ? 'opacity-75' : ''
-      }`}>
+    <div
+      className={`group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-accent flex flex-col h-full hover:border-secondary/30 hover:-translate-y-2 ${
+        isOutOfStock ? "opacity-75" : ""
+      }`}
+    >
       <Link href={`/products/${product.id}`}>
         <div className="relative aspect-square overflow-hidden">
           {product.images && product.images.length > 0 ? (
@@ -107,6 +112,16 @@ export default function ProductCard({
             </div>
           )}
 
+          {/* Discount Badge */}
+          {hasDiscount && (
+            <div className="absolute top-3 left-3 z-10">
+              <div className="bg-white/95 backdrop-blur-sm text-red-600 px-2 py-1 rounded-full text-xs font-semibold shadow-md border border-red-200 flex items-center gap-1 animate-pulse-gentle hover:scale-105 transition-transform duration-200">
+                <span className="text-[10px]">⚡</span>
+                {product.discountPct}% OFF
+              </div>
+            </div>
+          )}
+
           {/* Action buttons - only show if handlers exist and not out of stock */}
           {(toggleWishlist || addToCartHandler) && !isOutOfStock && (
             <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
@@ -114,10 +129,11 @@ export default function ProductCard({
                 <button
                   onClick={handleToggleWishlist}
                   disabled={isWishlistLoading}
-                  className={`p-3 rounded-full transition-all duration-300 shadow-lg ${isInWishlist
+                  className={`p-3 rounded-full transition-all duration-300 shadow-lg ${
+                    isInWishlist
                       ? "bg-red-500 text-white scale-110 animate-heart-beat"
                       : "bg-white/90 text-gray-700 hover:bg-white hover:scale-110"
-                    } disabled:opacity-70`}
+                  } disabled:opacity-70`}
                   title={
                     isInWishlist ? "Remove from wishlist" : "Add to wishlist"
                   }
@@ -126,8 +142,9 @@ export default function ProductCard({
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <Heart
-                      className={`w-5 h-5 transition-all duration-300 ${isInWishlist ? "fill-current" : ""
-                        }`}
+                      className={`w-5 h-5 transition-all duration-300 ${
+                        isInWishlist ? "fill-current" : ""
+                      }`}
                     />
                   )}
                 </button>
@@ -137,10 +154,11 @@ export default function ProductCard({
                 <button
                   onClick={handleAddToCart}
                   disabled={isCartLoading || isInCart}
-                  className={`p-3 rounded-full transition-all duration-300 shadow-lg ${isInCart
+                  className={`p-3 rounded-full transition-all duration-300 shadow-lg ${
+                    isInCart
                       ? "bg-green-500 text-white animate-pulse-slow"
                       : "bg-white/90 text-gray-700 hover:bg-white hover:scale-110"
-                    } disabled:opacity-70`}
+                  } disabled:opacity-70`}
                   title={isInCart ? "Added to cart" : "Add to cart"}
                 >
                   {isCartLoading ? (
@@ -155,13 +173,6 @@ export default function ProductCard({
             </div>
           )}
 
-          {/* Price badge */}
-          <div className="absolute top-4 left-4 transform hover:scale-105 transition-transform duration-300">
-            <span className="bg-primary text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg">
-              ₹{product.price.toLocaleString()}
-            </span>
-          </div>
-
           {/* Rating badge - only show if not out of stock */}
           {!isOutOfStock && (
             <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 text-yellow-400 shadow-sm">
@@ -169,61 +180,79 @@ export default function ProductCard({
               <span className="text-xs font-medium text-gray-600">4.5</span>
             </div>
           )}
-
-          {/* ✅ Low Stock Warning Badge */}
-          {isLowStock && !isOutOfStock && (
-            <div className="absolute bottom-4 right-4 bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-medium shadow-lg">
-              Only {product.stock} left
-            </div>
-          )}
         </div>
 
-        <div className="p-5">
+        <div className="p-5 flex flex-col flex-1 justify-between">
           <div className="flex items-start justify-between mb-2">
-            <h3 className={`font-semibold line-clamp-1 text-lg group-hover:text-primary transition-colors duration-300 ${isOutOfStock ? 'text-gray-500' : 'text-text'
-              }`}>
+            <h3
+              className={`font-semibold line-clamp-1 text-lg group-hover:text-primary transition-colors duration-300 ${
+                isOutOfStock ? "text-gray-500" : "text-text"
+              }`}
+            >
               {product.name}
             </h3>
           </div>
 
-          <p className={`text-sm line-clamp-2 mb-4 leading-relaxed group-hover:text-gray-800 transition-colors duration-300 ${isOutOfStock ? 'text-gray-400' : 'text-gray-600'
-            }`}>
+          <p
+            className={`text-sm line-clamp-2 mb-4 leading-relaxed group-hover:text-gray-800 transition-colors duration-300 ${
+              isOutOfStock ? "text-gray-400" : "text-gray-600"
+            }`}
+          >
             {product.description}
           </p>
 
-          {/* ✅ Stock Status Display */}
-          {isOutOfStock ? (
-            <div className="mb-3">
+          {/* ✅ Fixed Stock Status Display - Always reserves space */}
+          <div className="mb-3 h-6 flex items-center">
+            {isOutOfStock ? (
               <span className="inline-flex items-center gap-1 text-red-600 text-sm font-medium">
                 <AlertCircle className="w-4 h-4" />
                 Currently Unavailable
               </span>
-            </div>
-          ) : isLowStock ? (
-            <div className="mb-3">
+            ) : isLowStock ? (
               <span className="inline-flex items-center gap-1 text-orange-600 text-sm font-medium">
                 <AlertCircle className="w-4 h-4" />
                 Only {product.stock} left in stock
               </span>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
 
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <span className={`text-xl font-bold ${isOutOfStock ? 'text-gray-400' : 'text-text'
-                }`}>
-                ₹{product.price.toLocaleString()}
-              </span>
+              {/* Price display with discount */}
+              <div className="flex items-center gap-2 mb-1">
+                <span
+                  className={`text-xl font-bold ${
+                    isOutOfStock ? "text-gray-400" : "text-text"
+                  }`}
+                >
+                  ₹{product.finalPrice.toLocaleString()}
+                </span>
+                {hasDiscount && (
+                  <span className="text-sm text-gray-500 line-through">
+                    ₹{product.price}
+                  </span>
+                )}
+              </div>
+              {/* Fixed discount badge height */}
+              <div className="h-6">
+                {hasDiscount && (
+                  <span className="text-xs text-green-600 font-semibold bg-green-50 px-2 py-1 rounded-full">
+                    You save ₹
+                    {(product.price - product.finalPrice).toLocaleString()}
+                  </span>
+                )}
+              </div>
             </div>
 
             {addToCartHandler && (
               <button
-                className={`flex items-center gap-2 font-medium px-4 py-2 rounded-lg transition-all duration-300 relative overflow-hidden ${isOutOfStock
+                className={`flex items-center gap-2 font-medium px-4 py-2 rounded-lg transition-all duration-300 relative overflow-hidden ${
+                  isOutOfStock
                     ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                     : isInCart
                       ? "bg-green-100 text-green-700 border border-green-200"
                       : "bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl hover:scale-105"
-                  } disabled:opacity-70`}
+                } disabled:opacity-70`}
                 onClick={handleAddToCart}
                 disabled={isCartLoading || isInCart || isOutOfStock}
               >

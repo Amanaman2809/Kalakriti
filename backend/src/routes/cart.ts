@@ -1,6 +1,7 @@
 import express from "express";
 import { PrismaClient } from "../generated/prisma/client";
 import { requireAuth } from "../middlewares/requireAuth";
+import { transformProduct } from "../lib/productTransform";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -30,7 +31,8 @@ router.get("/", requireAuth, async (req, res) => {
             id: true,
             name: true,
             description: true,
-            price: true, // This is in paise from database
+            discountPct: true,
+            price: true,
             stock: true,
             categoryId: true,
             tags: true,
@@ -52,10 +54,7 @@ router.get("/", requireAuth, async (req, res) => {
     // Convert product prices from paise to rupees for frontend
     const itemsWithRupeePrices = items.map((item) => ({
       ...item,
-      product: {
-        ...item.product,
-        price: paiseToRupees(item.product.price), // Convert paise to rupees
-      },
+      product: transformProduct(item.product),
     }));
 
     console.log(

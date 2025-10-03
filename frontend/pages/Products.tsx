@@ -39,7 +39,8 @@ export default function ProductsPage() {
   });
 
   const initialPriceRange = searchParams?.get("price") || "";
-  const [selectedPriceRange, setSelectedPriceRange] = useState(initialPriceRange);
+  const [selectedPriceRange, setSelectedPriceRange] =
+    useState(initialPriceRange);
   const router = useRouter();
 
   useEffect(() => {
@@ -93,7 +94,7 @@ export default function ProductsPage() {
           ...(maxPrice && { maxPrice }),
         });
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/search?${params.toString()}`
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/search?${params.toString()}`,
         );
 
         if (!res.ok) {
@@ -102,9 +103,10 @@ export default function ProductsPage() {
 
         const data = await res.json();
         setProducts((prev) =>
-          page === 1 ? data.products : [...prev, ...data.products]
+          page === 1 ? data.products : [...prev, ...data.products],
         );
         setHasMore(data.hasMore);
+        console.log(data);
       } catch (error) {
         console.error("Failed to fetch products:", error);
       } finally {
@@ -295,8 +297,11 @@ export default function ProductsPage() {
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Price Range
-              <ChevronDown className={`h-4 w-4 transition-transform ${showPriceFilter ? "rotate-180" : ""
-                }`} />
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${
+                  showPriceFilter ? "rotate-180" : ""
+                }`}
+              />
             </button>
 
             {showPriceFilter && (
@@ -309,10 +314,11 @@ export default function ProductsPage() {
                         handlePriceRangeChange(range.value);
                         setShowPriceFilter(false);
                       }}
-                      className={`block w-full text-left px-4 py-2 text-sm ${selectedPriceRange === range.value
-                        ? "bg-gray-100 text-primary"
-                        : "text-gray-700 hover:bg-gray-100"
-                        }`}
+                      className={`block w-full text-left px-4 py-2 text-sm ${
+                        selectedPriceRange === range.value
+                          ? "bg-gray-100 text-primary"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
                     >
                       {range.label}
                     </button>
@@ -333,7 +339,9 @@ export default function ProductsPage() {
         </div>
       ) : products.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-gray-500">No products found. Try adjusting your search or filters.</p>
+          <p className="text-gray-500">
+            No products found. Try adjusting your search or filters.
+          </p>
         </div>
       ) : (
         <>

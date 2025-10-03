@@ -11,10 +11,12 @@ const url = process.env.NEXT_PUBLIC_API_BASE_URL;
 if (!url) throw new Error("API base URL is not set");
 
 export const addToCart = async (item: CartParams) => {
-  if (typeof window === "undefined") throw new Error("addToCart must be called in a browser environment.");
+  if (typeof window === "undefined")
+    throw new Error("addToCart must be called in a browser environment.");
   const token = localStorage.getItem("token");
   if (!token) throw new Error("No auth token found");
-  if (!item?.productId || typeof item.quantity !== "number") throw new Error("Invalid item shape");
+  if (!item?.productId || typeof item.quantity !== "number")
+    throw new Error("Invalid item shape");
 
   try {
     const controller = new AbortController();
@@ -31,12 +33,19 @@ export const addToCart = async (item: CartParams) => {
     clearTimeout(timeout);
     const data = await response.json();
 
-    if (!response.ok) throw { name: "AddToCartError", status: response.status, message: data.message || response.statusText, raw: data };
+    if (!response.ok)
+      throw {
+        name: "AddToCartError",
+        status: response.status,
+        message: data.message || response.statusText,
+        raw: data,
+      };
 
     await syncCartFromBackend();
     return data;
   } catch (error: any) {
-    if (error.name === "AbortError") throw new Error("Add to cart request timed out.");
+    if (error.name === "AbortError")
+      throw new Error("Add to cart request timed out.");
     console.error("Failed to add to cart:", error.message || error);
     throw new Error(error.message || "Add to cart failed");
   }
@@ -53,7 +62,7 @@ export async function syncCartFromBackend() {
     if (!res.ok) throw new Error("Failed to fetch cart for syncing");
     const items: CartItem[] = await res.json();
     localStorage.setItem("cart", JSON.stringify(items));
-    window.dispatchEvent(new Event('cartUpdated'));
+    window.dispatchEvent(new Event("cartUpdated"));
   } catch (error) {
     console.error("Cart sync error", error);
     localStorage.removeItem("cart"); // fallback: clear if cannot sync
@@ -61,10 +70,16 @@ export async function syncCartFromBackend() {
 }
 
 export const removeFromCart = async (item: CartParams) => {
-  if (typeof window === "undefined") throw new Error("removeFromCart must be called in a browser environment.");
+  if (typeof window === "undefined")
+    throw new Error("removeFromCart must be called in a browser environment.");
   const token = localStorage.getItem("token");
   if (!token) throw new Error("No auth token found");
-  if (!item?.productId || typeof item.quantity !== "number" || item.quantity < 1) throw new Error("Invalid removeFromCart payload");
+  if (
+    !item?.productId ||
+    typeof item.quantity !== "number" ||
+    item.quantity < 1
+  )
+    throw new Error("Invalid removeFromCart payload");
 
   try {
     const controller = new AbortController();
@@ -92,7 +107,8 @@ export const removeFromCart = async (item: CartParams) => {
     await syncCartFromBackend();
     return { success: true };
   } catch (error: any) {
-    if (error.name === "AbortError") throw new Error("removeFromCart request timed out.");
+    if (error.name === "AbortError")
+      throw new Error("removeFromCart request timed out.");
     console.error("Failed to remove from cart:", error.message || error);
     throw new Error(error.message || "removeFromCart failed");
   }
@@ -108,7 +124,7 @@ export const similarCatProd = async (categoryId: string) => {
     return response.json();
   } catch (error: any) {
     throw new Error(
-      error.message || "Failed to fetch product of this category"
+      error.message || "Failed to fetch product of this category",
     );
   }
 };
@@ -133,7 +149,7 @@ export const addFeedback = async (feedback: FeedbackSubmission) => {
           rating: feedback.rating,
           comment: feedback.comment,
         }),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -146,7 +162,7 @@ export const addFeedback = async (feedback: FeedbackSubmission) => {
   } catch (error: any) {
     console.error("Feedback submission error:", error);
     throw new Error(
-      error.message || "Failed to add feedback. Please try again."
+      error.message || "Failed to add feedback. Please try again.",
     );
   }
 };
@@ -161,17 +177,17 @@ export const fetchAllFeedbacks = async (productId: string) => {
     return response.json();
   } catch (error: any) {
     throw new Error(
-      error.message || "Failed to fetch feedbacks for this product"
+      error.message || "Failed to fetch feedbacks for this product",
     );
   }
 };
 
 export const feedbackSummary = async (
-  productId: string
+  productId: string,
 ): Promise<FeedbackSummary> => {
   try {
     const response = await fetch(
-      `${url}/api/products/${productId}/feedback-summary`
+      `${url}/api/products/${productId}/feedback-summary`,
     );
     if (!response.ok) {
       throw new Error(`Failed with status: ${response.status}`);
@@ -183,7 +199,7 @@ export const feedbackSummary = async (
     };
   } catch (error: any) {
     throw new Error(
-      error.message || "Failed to calculate feedback summary for this product"
+      error.message || "Failed to calculate feedback summary for this product",
     );
   }
 };
@@ -286,7 +302,7 @@ export async function moveItemToWishlist(productId: string): Promise<void> {
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(
-      `Failed to move item to wishlist: ${response.status} ${errorText}`
+      `Failed to move item to wishlist: ${response.status} ${errorText}`,
     );
   }
 }

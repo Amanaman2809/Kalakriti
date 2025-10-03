@@ -1,6 +1,7 @@
-import express, { Request } from "express";
+import express, { Request, Response } from "express";
 import { PrismaClient } from "../generated/prisma/client";
 import { requireAuth } from "../middlewares/requireAuth";
+import { transformProduct } from "../lib/productTransform";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -11,7 +12,8 @@ const paiseToRupees = (paise: number): number => {
 };
 
 // ✅ get user's wishlist (convert prices from paise to rupees)
-router.get("/", requireAuth, async (req, res) => {
+router.get("/", requireAuth, async (req: Request, res: Response) => {
+  // console.log("User ID:", req.user?.id);
   const userId = req.user?.id;
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
@@ -26,7 +28,8 @@ router.get("/", requireAuth, async (req, res) => {
           select: {
             id: true,
             name: true,
-            price: true, // This is in paise from database
+            price: true,
+            discountPct: true,
             stock: true,
             images: true,
           },
@@ -37,10 +40,7 @@ router.get("/", requireAuth, async (req, res) => {
     // ✅ Convert product prices from paise to rupees for frontend
     const wishlistWithRupeePrices = wishlist.map((item) => ({
       ...item,
-      product: {
-        ...item.product,
-        price: paiseToRupees(item.product.price), // Convert paise to rupees
-      },
+      product: transformProduct(item.product),
     }));
 
     res.json(wishlistWithRupeePrices);

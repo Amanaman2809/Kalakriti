@@ -16,7 +16,7 @@ const razorpay = new Razorpay({
 
 import { Request, Response } from "express";
 
-//FIXED: Store credits - convert paise to rupees for display
+//Store credits
 router.get(
   "/store-credits",
   requireAuth,
@@ -34,7 +34,7 @@ router.get(
 
       const now = new Date();
       const activeCredits = credits.filter(
-        (c) => !c.expiresAt || c.expiresAt > now
+        (c) => !c.expiresAt || c.expiresAt > now,
       );
       const balance = activeCredits.reduce((sum, c) => sum + c.amount, 0);
 
@@ -52,10 +52,10 @@ router.get(
       console.error("Failed to fetch store credit:", err);
       res.status(500).json({ error: "Failed to fetch store credit" });
     }
-  }
+  },
 );
 
-// CREATE RAZORPAY ORDER - Correct (no changes needed)
+// CREATE RAZORPAY ORDER
 router.post("/create-razorpay-order", requireAuth, async (req, res) => {
   const userId = req.user?.id;
   const { orderId } = req.body;
@@ -180,7 +180,7 @@ router.post("/create-razorpay-order", requireAuth, async (req, res) => {
   }
 });
 
-// VERIFY PAYMENT - Correct (no changes needed)
+// VERIFY PAYMENT - Correct
 router.post("/verify-payment", requireAuth, async (req, res) => {
   const userId = req.user?.id;
   const {
@@ -258,7 +258,7 @@ router.post("/verify-payment", requireAuth, async (req, res) => {
 
       if (orderAmountInPaise !== paidAmountInPaise) {
         throw new Error(
-          `Payment amount mismatch. Expected: ${orderAmountInPaise} paise, Received: ${paidAmountInPaise} paise`
+          `Payment amount mismatch. Expected: ${orderAmountInPaise} paise, Received: ${paidAmountInPaise} paise`,
         );
       }
 
@@ -322,7 +322,7 @@ router.post("/verify-payment", requireAuth, async (req, res) => {
   }
 });
 
-// HANDLE PAYMENT FAILURE - Correct (no changes needed)
+// HANDLE PAYMENT FAILURE
 router.post("/payment-failed", requireAuth, async (req, res) => {
   const userId = req.user?.id;
   const { orderId, error } = req.body;
@@ -362,8 +362,8 @@ router.post("/payment-failed", requireAuth, async (req, res) => {
             tx.product.update({
               where: { id: item.productId },
               data: { stock: { increment: item.quantity } },
-            })
-          )
+            }),
+          ),
         );
       });
     }
@@ -381,7 +381,7 @@ router.post("/payment-failed", requireAuth, async (req, res) => {
   }
 });
 
-// Get Payment Details - Correct (no changes needed)
+// Get Payment Details
 router.get("/order/:orderId", requireAuth, async (req, res) => {
   const userId = req.user?.id;
   const { orderId } = req.params;
@@ -429,7 +429,7 @@ router.get("/order/:orderId", requireAuth, async (req, res) => {
   }
 });
 
-// Initiate Refund - Correct (no changes needed)
+// Initiate Refund
 router.post("/refund", requireAuth, requireAdmin, async (req, res) => {
   const { orderId, amount, reason } = req.body;
 

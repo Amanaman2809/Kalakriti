@@ -10,6 +10,9 @@ import {
   ChevronDown,
   ChevronUp,
   MessageSquare,
+  Check,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -32,7 +35,19 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [isWishlistLoading, setIsWishlistLoading] = useState(false);
+  const [isCartLoading, setIsCartLoading] = useState(false);
+  const [showAddedEffect, setShowAddedEffect] = useState(false);
   const router = useRouter();
+
+  // ✅ Stock status checks (matching ProductCard pattern)
+  const isOutOfStock = product?.stock === 0;
+  const isLowStock = product && product.stock > 0 && product.stock <= 5;
+
+  // ✅ Discount calculations (matching ProductCard pattern)
+  const hasDiscount = product && (product.discountPct || 0) > 0;
+  const finalPrice = product?.finalPrice || product?.price || 0;
+  const originalPrice = product?.price || 0;
 
   useEffect(() => {
     if (!productId) {
@@ -45,7 +60,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
       try {
         setLoading(true);
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/products/${productId}`
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/products/${productId}`,
         );
 
         if (!response.ok) {
@@ -78,7 +93,9 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!product) return;
+    if (!product || isOutOfStock) return;
+
+    setIsCartLoading(true);
 
     const item: CartParams = {
       productId: product.id,
@@ -87,6 +104,11 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
 
     try {
       await addToCart(item);
+
+      // Show animation effect (matching ProductCard pattern)
+      setShowAddedEffect(true);
+      setTimeout(() => setShowAddedEffect(false), 1000);
+
       toast.success(
         `${quantity} ${quantity > 1 ? "items" : "item"} added to Cart`,
         {
@@ -95,13 +117,15 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
             background: "#4BB543",
             color: "#fff",
           },
-        }
+        },
       );
     } catch (error) {
       console.error("Failed to add to cart:", error);
       toast.error("Failed to add item to cart", {
         position: "bottom-right",
       });
+    } finally {
+      setIsCartLoading(false);
     }
   };
 
@@ -109,11 +133,14 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
     e.preventDefault();
     e.stopPropagation();
 
+    setIsWishlistLoading(true);
+
     const url = process.env.NEXT_PUBLIC_API_BASE_URL;
     if (!url) {
       toast.error("Service unavailable. Please try again later.", {
         position: "bottom-right",
       });
+      setIsWishlistLoading(false);
       return;
     }
 
@@ -123,6 +150,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
         position: "bottom-right",
       });
       router.push("/login");
+      setIsWishlistLoading(false);
       return;
     }
 
@@ -153,6 +181,8 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
       toast.error(error.message || "Failed to add to wishlist", {
         position: "bottom-right",
       });
+    } finally {
+      setIsWishlistLoading(false);
     }
   };
 
@@ -203,7 +233,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
             {descriptionPoints.length > 3 && (
               <button
                 onClick={() => setShowFullDescription(true)}
-                className="text-primary mt-3 flex items-center text-sm font-medium hover:underline"
+                className="text-primary mt-3 flex items-center text-sm font-medium hover:underline transition-colors duration-300"
               >
                 Read more <ChevronDown className="h-4 w-4 ml-1" />
               </button>
@@ -213,7 +243,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
         {showFullDescription && descriptionPoints.length > 3 && (
           <button
             onClick={() => setShowFullDescription(false)}
-            className="text-primary mt-3 flex items-center text-sm font-medium hover:underline"
+            className="text-primary mt-3 flex items-center text-sm font-medium hover:underline transition-colors duration-300"
           >
             Show less <ChevronUp className="h-4 w-4 ml-1" />
           </button>
@@ -236,7 +266,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
         <p className="text-red-500 text-lg">{error}</p>
         <button
           onClick={() => router.back()}
-          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-300"
         >
           Go Back
         </button>
@@ -250,7 +280,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
         <p className="text-lg">Product not found</p>
         <button
           onClick={() => router.back()}
-          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-300"
         >
           Go Back
         </button>
@@ -265,9 +295,9 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
         <div className="mb-6">
           <button
             onClick={() => router.back()}
-            className="flex items-center text-secondary hover:text-primary transition-colors"
+            className="flex items-center text-secondary hover:text-primary transition-colors duration-300 group"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform duration-300" />
             <span className="ml-1 font-medium">Back to products</span>
           </button>
         </div>
@@ -275,7 +305,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
         {/* Product content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Image gallery */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-accent overflow-hidden group hover:shadow-xl transition-all duration-500">
             {/* Main image */}
             <div className="relative aspect-square bg-gray-50 rounded-lg overflow-hidden mb-6">
               <Image
@@ -285,10 +315,37 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
                 }
                 alt={product.name}
                 fill
-                className="object-cover"
+                className="object-cover group-hover:scale-105 transition-transform duration-700"
                 priority
                 sizes="(max-width: 768px) 100vw, 50vw"
               />
+
+              {/* Added to cart animation effect */}
+              {showAddedEffect && (
+                <div className="absolute inset-0 flex items-center justify-center bg-primary/20 backdrop-blur-sm animate-fade-in-out">
+                  <div className="bg-white rounded-full p-4 shadow-2xl animate-bounce-in">
+                    <Check className="w-8 h-8 text-green-600" />
+                  </div>
+                </div>
+              )}
+
+              {/* Discount Badge - matching ProductCard pattern */}
+              {hasDiscount && (
+                <div className="absolute top-4 left-4 z-10">
+                  <div className="bg-white/95 backdrop-blur-sm text-red-600 px-3 py-2 rounded-full text-sm font-semibold shadow-md border border-red-200 flex items-center gap-1 animate-pulse-gentle">
+                    <span className="text-xs">⚡</span>
+                    {product.discountPct}% OFF
+                  </div>
+                </div>
+              )}
+
+              {/* Rating badge - matching ProductCard pattern */}
+              <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-full flex items-center gap-1 text-yellow-400 shadow-sm">
+                <Star className="w-4 h-4 fill-current" />
+                <span className="text-sm font-medium text-gray-600">
+                  {feedback?.avg_rating.toFixed(1) || "0.0"}
+                </span>
+              </div>
             </div>
 
             {/* Thumbnail images */}
@@ -301,10 +358,10 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
                       e.preventDefault();
                       setCurrentImageIndex(index);
                     }}
-                    className={`relative aspect-square rounded-md overflow-hidden border-2 transition-all ${
+                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all duration-300 ${
                       currentImageIndex === index
                         ? "border-primary scale-95 shadow-md"
-                        : "border-transparent hover:border-gray-200"
+                        : "border-transparent hover:border-primary/50 hover:scale-105"
                     }`}
                   >
                     <Image
@@ -321,23 +378,23 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
           </div>
 
           {/* Product info */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-accent">
             {/* Category */}
             <Link
               href={`/categories/${product.categoryId}`}
-              className="text-sm text-primary hover:underline font-medium"
+              className="text-sm text-primary hover:underline font-medium transition-colors duration-300"
             >
               {product.category.name}
             </Link>
 
             {/* Title */}
-            <h1 className="text-3xl font-bold mt-2 mb-3 text-gray-900">
+            <h1 className="text-3xl font-bold mt-2 mb-3 text-text group-hover:text-primary transition-colors duration-300">
               {product.name}
             </h1>
 
             {/* Rating */}
             <div className="flex items-center mb-4 gap-2">
-              <div className="bg-primary/10 px-3 py-1 rounded-full flex items-center gap-1">
+              <div className="bg-primary/10 px-3 py-2 rounded-full flex items-center gap-1">
                 <span className="text-lg font-bold text-primary">
                   {feedback?.avg_rating.toFixed(1) || "0.0"}
                 </span>
@@ -348,45 +405,69 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
               </span>
             </div>
 
-            {/* Price */}
+            {/* Price with discount - matching ProductCard pattern */}
             <div className="mb-6">
-              <p className="text-3xl font-bold text-gray-900">
-                ₹{product.price.toLocaleString("en-IN")}
-              </p>
-              {product.stock > 0 ? (
-                <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                  In Stock ({product.stock} available)
-                </p>
-              ) : (
-                <p className="text-sm text-red-500 mt-2 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                  Out of Stock
-                </p>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-3xl font-bold text-text">
+                  ₹{finalPrice.toLocaleString("en-IN")}
+                </span>
+                {hasDiscount && (
+                  <span className="text-lg text-gray-500 line-through">
+                    ₹{originalPrice.toLocaleString("en-IN")}
+                  </span>
+                )}
+              </div>
+
+              {/* Discount savings */}
+              {hasDiscount && (
+                <span className="text-sm text-green-600 font-semibold bg-green-50 px-3 py-1 rounded-full">
+                  You save ₹
+                  {(originalPrice - finalPrice).toLocaleString("en-IN")}
+                </span>
               )}
+
+              {/* Stock Status - matching ProductCard pattern */}
+              <div className="mt-3 h-6 flex items-center">
+                {isOutOfStock ? (
+                  <span className="inline-flex items-center gap-1 text-red-600 text-sm font-medium">
+                    <AlertCircle className="w-4 h-4" />
+                    Currently Unavailable
+                  </span>
+                ) : isLowStock ? (
+                  <span className="inline-flex items-center gap-1 text-orange-600 text-sm font-medium">
+                    <AlertCircle className="w-4 h-4" />
+                    Only {product.stock} left in stock
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-green-600 text-sm font-medium">
+                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                    In Stock ({product.stock} available)
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Quantity selector */}
-            {product.stock > 0 && (
+            {!isOutOfStock && (
               <div className="mb-6">
                 <h2 className="text-sm font-medium mb-2 text-gray-700">
                   Quantity
                 </h2>
-                <div className="flex items-center border border-gray-200 rounded-lg w-fit">
+                <div className="flex items-center border border-gray-200 rounded-lg w-fit overflow-hidden">
                   <button
                     onClick={decrementQuantity}
                     disabled={quantity <= 1}
-                    className="px-3 py-2 text-gray-600 hover:bg-gray-50 disabled:text-gray-300 transition-colors"
+                    className="px-4 py-3 text-gray-600 hover:bg-gray-50 disabled:text-gray-300 transition-colors duration-300"
                   >
                     -
                   </button>
-                  <span className="px-4 py-2 border-x border-gray-200 text-gray-900 font-medium">
+                  <span className="px-6 py-3 border-x border-gray-200 text-gray-900 font-medium min-w-12 text-center">
                     {quantity}
                   </span>
                   <button
                     onClick={incrementQuantity}
                     disabled={quantity >= product.stock}
-                    className="px-3 py-2 text-gray-600 hover:bg-gray-50 disabled:text-gray-300 transition-colors"
+                    className="px-4 py-3 text-gray-600 hover:bg-gray-50 disabled:text-gray-300 transition-colors duration-300"
                   >
                     +
                   </button>
@@ -403,7 +484,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
                     <Link
                       key={tag}
                       href={`/search?query=${tag}`}
-                      className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full hover:bg-gray-200 transition-colors"
+                      className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full hover:bg-gray-200 transition-colors duration-300"
                     >
                       {tag}
                     </Link>
@@ -412,52 +493,76 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
               </div>
             )}
 
-            {/* Actions */}
+            {/* Actions - matching ProductCard patterns */}
             <div className="flex flex-col sm:flex-row gap-3 mt-8">
               <button
                 onClick={handleAddToCart}
-                disabled={product.stock === 0}
-                className={`flex-1 py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors ${
-                  product.stock === 0
-                    ? "bg-gray-200 cursor-not-allowed"
-                    : "bg-primary hover:bg-primary/90 text-white"
-                } font-medium`}
+                disabled={isOutOfStock || isCartLoading}
+                className={`flex-1 py-4 px-6 rounded-lg flex items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden font-medium ${
+                  isOutOfStock
+                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    : "bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl hover:scale-105"
+                } disabled:opacity-70`}
               >
-                <ShoppingCart className="h-5 w-5" />
-                {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
+                {/* Shine effect on hover - matching ProductCard pattern */}
+                {!isOutOfStock && !isCartLoading && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-white/20 to-primary/0 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                )}
+
+                {isOutOfStock ? (
+                  <>
+                    <AlertCircle className="w-5 h-5" />
+                    Out of Stock
+                  </>
+                ) : isCartLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="w-5 h-5" />
+                    Add to Cart
+                  </>
+                )}
               </button>
 
               <button
                 onClick={addToWishlist}
-                className="p-3 rounded-lg border border-gray-300 text-gray-700 hover:border-primary hover:text-primary flex items-center justify-center transition-colors"
+                disabled={isWishlistLoading}
+                className={`p-4 rounded-lg border transition-all duration-300 flex items-center justify-center ${
+                  isWishlistLoading
+                    ? "border-gray-300 text-gray-400"
+                    : "border-gray-300 text-gray-700 hover:border-primary hover:text-primary hover:scale-105"
+                } disabled:opacity-70`}
                 aria-label="Add to wishlist"
               >
-                <Heart className="h-5 w-5" />
+                {isWishlistLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Heart className="w-5 h-5" />
+                )}
               </button>
             </div>
           </div>
         </div>
 
         {/* Description section */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-8">
-          <h2 className="text-2xl font-bold mb-6 text-gray-900">
-            About this item
-          </h2>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-accent mt-8">
+          <h2 className="text-2xl font-bold mb-6 text-text">About this item</h2>
           {renderDescription()}
         </div>
 
         {/* Support section */}
-        <div className="bg-blue-50 p-6 rounded-xl shadow-sm border border-blue-100 mt-6">
-          <h3 className="text-xl font-bold mb-4 text-gray-900">
-            Need Assistance?
-          </h3>
+        <div className="bg-blue-50 p-6 rounded-2xl shadow-sm border border-blue-100 mt-6">
+          <h3 className="text-xl font-bold mb-4 text-text">Need Assistance?</h3>
           <p className="text-gray-700 mb-4">
             Facing an issue with your order? Our support team is here to help.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <a
               href="tel:+919853823363"
-              className="inline-flex items-center gap-2 bg-white text-gray-700 px-4 py-2 rounded-lg text-sm border border-gray-300 hover:bg-gray-50 transition-colors"
+              className="inline-flex items-center gap-2 bg-white text-gray-700 px-4 py-3 rounded-lg text-sm border border-gray-300 hover:bg-gray-50 transition-all duration-300 hover:scale-105"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -479,7 +584,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
               href="https://wa.me/919853823363"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-secondary text-primary px-4 py-2 rounded-lg text-sm hover:bg-primary hover:text-accent transition-colors"
+              className="inline-flex items-center gap-2 bg-secondary text-primary px-4 py-3 rounded-lg text-sm hover:bg-primary hover:text-accent transition-all duration-300 hover:scale-105"
             >
               <MessageSquare className="h-5 w-5" />
               WhatsApp Assistance
@@ -494,21 +599,23 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ feedback }) => {
         {similarProducts.length - 1 > 0 && (
           <div className="mt-12">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Similar Products
-              </h2>
+              <h2 className="text-2xl font-bold text-text">Similar Products</h2>
               <Link
                 href={`/categories/${product.categoryId}`}
-                className="text-primary hover:underline text-sm font-medium"
+                className="text-primary hover:underline text-sm font-medium transition-colors duration-300"
               >
                 View all
               </Link>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
               {similarProducts
-                .filter((product) => product.id !== productId)
-                .map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                .filter((similarProduct) => similarProduct.id !== productId)
+                .map((similarProduct) => (
+                  <ProductCard
+                    key={similarProduct.id}
+                    product={similarProduct}
+                    // You might want to pass interactions prop here if needed
+                  />
                 ))}
             </div>
           </div>

@@ -65,7 +65,6 @@ router.post(
       phone: string;
     };
 
-    console.log("User ID:", req.user?.id);
     const userID = req.user?.id;
 
     if (!userID || !name || !email || !phone) {

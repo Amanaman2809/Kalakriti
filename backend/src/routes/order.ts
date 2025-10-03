@@ -1,6 +1,7 @@
 import express from "express";
 import { OrderStatus, PrismaClient } from "../generated/prisma/client";
 import { requireAdmin, requireAuth } from "../middlewares/requireAuth";
+import { transformProduct } from "../lib/productTransform";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -56,7 +57,16 @@ router.get("/", requireAuth, async (req, res) => {
       },
     });
 
-    res.json(orders);
+    // Use transformProduct on product
+    const transformedOrders = orders.map((order) => ({
+      ...order,
+      items: order.items.map((item) => ({
+        ...item,
+        product: transformProduct(item.product),
+      })),
+    }));
+
+    res.json({ orders: transformedOrders });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch orders" });
@@ -130,7 +140,9 @@ router.post("/", requireAuth, async (req, res) => {
         name: product.name,
         requestedQty: item.quantity,
         availableStock: product.stock,
-        discountedPrice: product.price * (1 - (product.discountPct || 0) / 100),
+        discountedPrice: Math.floor(
+          product.price * (1 - (product.discountPct || 0) / 100),
+        ),
       };
     });
 
@@ -144,8 +156,9 @@ router.post("/", requireAuth, async (req, res) => {
       cartItems.reduce(
         (sum, item) =>
           sum +
-          item.product.price *
-            (1 - (item.product.discountPct || 0) / 100) *
+          Math.floor(
+            item.product.price * (1 - (item.product.discountPct || 0) / 100),
+          ) *
             item.quantity,
         0,
       ),

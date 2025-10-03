@@ -7,6 +7,11 @@ declare global {
       email: string;
       role: Role;
     }
+
+    interface Request {
+      user?: User;
+    }
   }
 }
+
 export {};

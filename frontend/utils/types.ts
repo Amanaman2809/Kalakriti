@@ -63,6 +63,7 @@ export interface Product {
   name: string;
   description: string | null;
   price: number;
+  finalPrice: number;
   stock: number;
   categoryId: string;
   tags: string[];
@@ -70,6 +71,7 @@ export interface Product {
   createdAt: Date;
   updatedAt: Date;
   category: Category;
+  discountPct: number | null;
   wishlistItems?: WishlistItem[];
   orderItems?: OrderItem[];
   CartItem?: CartItem[];
