@@ -62,6 +62,8 @@ export interface Product {
   id: string;
   name: string;
   description: string | null;
+  avgRating: number;
+  numReviews: number;
   price: number;
   finalPrice: number;
   stock: number;

@@ -73,7 +73,7 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
   const {
     name,
     description,
-    discount,
+    discountPct,
     price,
     stock,
     categoryId,
@@ -81,7 +81,7 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
     images,
   } = req.body;
 
-  if (discount < 0 || discount > 100) {
+  if (discountPct < 0 || discountPct > 100) {
     return res.status(400).json({ error: "Discount must be between 0-100%" });
   }
 
@@ -106,7 +106,7 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
         description,
         price: priceInPaise, //Store in paise
         stock: Math.max(Number(stock), 0),
-        discountPct: Number(discount) || 0,
+        discountPct: Number(discountPct) || 0,
         categoryId,
         tags,
         images,

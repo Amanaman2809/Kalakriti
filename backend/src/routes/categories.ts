@@ -33,7 +33,10 @@ router.get("/category/:id/products", async (req, res) => {
     // Convert product prices from paise to rupees
     const productsWithRupeePrices = products.map((product) => ({
       ...product,
-      price: paiseToRupees(product.price),
+      price: paiseToRupees(product.price), // original
+      finalPrice: Math.floor(
+        paiseToRupees(product.price) * (1 - (product.discountPct || 0) / 100),
+      ),
     }));
 
     res.json(productsWithRupeePrices);
@@ -63,7 +66,7 @@ router.post(
     } catch (err) {
       res.status(500).json({ error: "Category creation failed" });
     }
-  }
+  },
 );
 
 // Update the Category Name and Image
@@ -88,7 +91,7 @@ router.put(
     } catch (err) {
       res.status(500).json({ error: "Category update failed" });
     }
-  }
+  },
 );
 
 // Delete a category
@@ -105,7 +108,7 @@ router.delete(
     } catch (err) {
       res.status(500).json({ error: "Category deletion failed" });
     }
-  }
+  },
 );
 
 export default router;

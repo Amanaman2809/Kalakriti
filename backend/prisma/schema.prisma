@@ -4,9 +4,246 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  createdAt     DateTime       @default(now())
+  password      String?
+  phone         String         @unique
+  role          Role           @default(USER)
+  updatedAt     DateTime       @updatedAt
+  isVerified    Boolean        @default(false)
+  name          String
+  oauthId       String?
+  oauthProvider String?
+  otp           String?
+  otpExpiresAt  DateTime?
+  addresses     Address[]
+  cartItems     CartItem[]
+  feedbacks     Feedback[]
+  orders        Order[]
+  payments      Payment[]
+  refunds       Refund[]
+  storeCredits  StoreCredit[]
+  wishlist      WishlistItem[]
+}
+
+model Address {
+  id         String   @id @default(uuid())
+  street     String
+  city       String
+  state      String
+  country    String
+  postalCode String
+  phone      String
+  userId     String
+  createdAt  DateTime @default(now())
+  isDefault  Boolean  @default(false)
+  updatedAt  DateTime @default(now()) @updatedAt
+  user       User     @relation(fields: [userId], references: [id])
+  orders     Order[]  @relation("OrderAddress")
+
+  @@index([userId])
+  @@index([isDefault])
+  @@index([userId, isDefault])
+}
+
+model Product {
+  id            String         @id @default(uuid())
+  name          String
+  description   String?
+  price         Int
+  stock         Int            @default(0)
+  tags          String[]
+  images        String[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  categoryId    String
+  discountPct   Int?           @db.SmallInt
+  cartItems     CartItem[]
+  feedbacks     Feedback[]
+  orderItems    OrderItem[]
+  category      Category       @relation(fields: [categoryId], references: [id])
+  averageRating Float          @default(0.0)
+  numReviews    Int            @default(0)
+  wishlistItems WishlistItem[]
+}
+
+model Category {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  image    String?
+  products Product[]
+}
+
+model WishlistItem {
+  id        String  @id @default(uuid())
+  userId    String
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  user      User    @relation(fields: [userId], references: [id])
+
+  @@unique([userId, productId])
+}
+
+model Feedback {
+  id        String   @id @default(uuid())
+  rating    Int      @db.SmallInt
+  comment   String?
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product   Product  @relation(fields: [productId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, productId])
+}
+
+/// *
+///  * Ledger-style StoreCredit
+///  * amount: positive for credit, negative for debit entries
+///  * remaining is optional; we will prefer to compute remaining via relation
+model StoreCredit {
+  id           String        @id @default(uuid())
+  userId       String
+  amount       Int
+  reason       String?
+  createdAt    DateTime      @default(now())
+  expiresAt    DateTime?
+  orderCredits OrderCredit[]
+  user         User          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// *
+///  * Order - explicit amounts:
+///  * grossAmount = sum(items.price*qty)  (paise)
+///  * shippingAmount = shipping (paise)
+///  * taxAmount = tax (paise)
+///  * creditsApplied = total credits consumed for this order (paise)
+///  * netAmount = grossAmount + shippingAmount + taxAmount - creditsApplied
+model Order {
+  id                 String        @id @default(uuid())
+  userId             String
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  paymentMode        PaymentMode
+  paymentStatus      PaymentStatus
+  status             OrderStatus
+  addressId          String
+  carrierName        String?
+  deliveredAt        DateTime?
+  estimatedDelivery  DateTime?
+  shippedAt          DateTime?
+  statusUpdatedAt    DateTime      @default(now())
+  trackingNumber     String?
+  cancellationReason String?
+  cancelledAt        DateTime?
+  creditsApplied     Int
+  grossAmount        Int
+  netAmount          Int
+  shippingAmount     Int
+  taxAmount          Int
+  address            Address       @relation("OrderAddress", fields: [addressId], references: [id])
+  user               User          @relation(fields: [userId], references: [id])
+  orderCredits       OrderCredit[]
+  items              OrderItem[]
+  payments           Payment[]
+  refunds            Refund[]
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+/// *
+///  * Order item stores price (paise) at time of order
+model OrderItem {
+  id              String  @id @default(uuid())
+  orderId         String
+  productId       String
+  quantity        Int
+  price           Int
+  discountApplied Int?
+  order           Order   @relation(fields: [orderId], references: [id])
+  product         Product @relation(fields: [productId], references: [id])
+}
+
+/// *
+///  * Mapping which StoreCredit rows funded which Order (partial allowed).
+///  * amount = how much taken from that StoreCredit (positive number).
+///  * If a StoreCredit row had amount=500 and orderCredit.amount=200, remaining = 300.
+model OrderCredit {
+  id            String      @id @default(uuid())
+  orderId       String
+  storeCreditId String
+  amount        Int
+  createdAt     DateTime    @default(now())
+  order         Order       @relation(fields: [orderId], references: [id])
+  storeCredit   StoreCredit @relation(fields: [storeCreditId], references: [id])
+
+  @@index([orderId])
+  @@index([storeCreditId])
+}
+
+/// *
+///  * Payment record for gateway interactions (Razorpay/Stripe etc.)
+///  * provider = "razorpay" or "stripe"
+///  * providerPaymentId = external id (for lookups)
+model Payment {
+  id                String        @id @default(uuid())
+  orderId           String
+  userId            String
+  provider          String?
+  providerPaymentId String?
+  amount            Int
+  status            PaymentStatus
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  meta              Json?
+  order             Order         @relation(fields: [orderId], references: [id])
+  user              User          @relation(fields: [userId], references: [id])
+
+  @@index([orderId])
+  @@index([userId])
+}
+
+/// *
+///  * Refund audit record
+///  * method = GATEWAY or STORE_CREDIT
+model Refund {
+  id        String       @id @default(uuid())
+  orderId   String
+  userId    String
+  method    RefundMethod
+  amount    Int
+  reason    String?
+  createdAt DateTime     @default(now())
+  meta      Json?
+  order     Order        @relation(fields: [orderId], references: [id])
+  user      User         @relation(fields: [userId], references: [id])
+
+  @@index([orderId])
+  @@index([userId])
+}
+
+/// *
+///  * CartItem as before
+model CartItem {
+  id        String  @id @default(uuid())
+  userId    String
+  productId String
+  quantity  Int
+  product   Product @relation(fields: [productId], references: [id])
+  user      User    @relation(fields: [userId], references: [id])
+
+  @@unique([userId, productId])
 }
 
 enum Role {
@@ -27,283 +264,14 @@ enum PaymentStatus {
 }
 
 enum OrderStatus {
-  PENDING
   PLACED
   SHIPPED
   DELIVERED
+  PENDING
   CANCELLED
 }
 
 enum RefundMethod {
   GATEWAY
   STORE_CREDIT
-}
-
-/**
- * Money fields are Int representing smallest currency unit (paise).
- * e.g. 19900 => ₹199.00
- */
-
-model User {
-  id            String    @id @default(uuid())
-  name          String
-  email         String    @unique
-  phone         String    @unique
-  password      String? // nullable for OAuth
-  oauthId       String?
-  oauthProvider String?
-  otp           String?
-  otpExpiresAt  DateTime?
-
-  isVerified Boolean @default(false)
-
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  addresses    Address[]
-  orders       Order[]
-  wishlist     WishlistItem[]
-  cartItems    CartItem[]
-  feedbacks    Feedback[]
-  storeCredits StoreCredit[] // ledger entries
-  payments     Payment[]
-  refunds      Refund[]
-}
-
-model Address {
-  id         String   @id @default(uuid())
-  street     String
-  city       String
-  state      String
-  country    String
-  postalCode String
-  phone      String
-  isDefault  Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @default(now()) @updatedAt
-
-  userId String
-  user   User    @relation(fields: [userId], references: [id])
-  orders Order[] @relation("OrderAddress")
-
-  @@index([userId])
-  @@index([isDefault])
-  @@index([userId, isDefault])
-}
-
-model Product {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  price       Int // In paise
-  stock       Int      @default(0)
-  categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id])
-  tags        String[]
-  images      String[]
-  discountPct Int?     @db.SmallInt // percentage discount (nullable)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  wishlistItems WishlistItem[]
-  orderItems    OrderItem[]
-  cartItems     CartItem[]
-  feedbacks     Feedback[]
-}
-
-model Category {
-  id       String    @id @default(uuid())
-  name     String    @unique
-  image    String?
-  products Product[]
-}
-
-model WishlistItem {
-  id        String @id @default(uuid())
-  userId    String
-  productId String
-
-  user    User    @relation(fields: [userId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
-
-  @@unique([userId, productId])
-}
-
-model Feedback {
-  id        String   @id @default(uuid())
-  rating    Int      @db.SmallInt
-  comment   String?
-  userId    String
-  productId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user    User    @relation(fields: [userId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
-
-  @@unique([userId, productId])
-}
-
-/**
- * Ledger-style StoreCredit
- * amount: positive for credit, negative for debit entries
- * remaining is optional; we will prefer to compute remaining via relation
- */
-model StoreCredit {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  amount    Int // paise, +credit, -debit
-  reason    String?
-  createdAt DateTime  @default(now())
-  expiresAt DateTime?
-
-  // link to OrderCredit if this credit has been (partially) consumed
-  orderCredits OrderCredit[]
-
-  @@index([userId])
-  @@index([expiresAt])
-}
-
-/**
- * Order - explicit amounts:
- * grossAmount = sum(items.price*qty)  (paise)
- * shippingAmount = shipping (paise)
- * taxAmount = tax (paise)
- * creditsApplied = total credits consumed for this order (paise)
- * netAmount = grossAmount + shippingAmount + taxAmount - creditsApplied
- */
-model Order {
-  id            String        @id @default(uuid())
-  userId        String
-  paymentMode   PaymentMode
-  paymentStatus PaymentStatus
-  status        OrderStatus
-
-  grossAmount    Int // paise
-  shippingAmount Int // paise
-  taxAmount      Int // paise
-  creditsApplied Int // paise - sum of amounts coming from OrderCredit
-  netAmount      Int // paise - amount actually owed after credits
-
-  addressId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  shippedAt         DateTime?
-  deliveredAt       DateTime?
-  estimatedDelivery DateTime?
-  carrierName       String?
-  trackingNumber    String?
-  statusUpdatedAt   DateTime  @default(now())
-
-  cancelledAt        DateTime?
-  cancellationReason String?
-
-  user         User          @relation(fields: [userId], references: [id])
-  address      Address       @relation("OrderAddress", fields: [addressId], references: [id])
-  items        OrderItem[]
-  payments     Payment[]
-  refunds      Refund[]
-  orderCredits OrderCredit[]
-
-  @@index([userId])
-  @@index([createdAt])
-}
-
-/**
- * Order item stores price (paise) at time of order
- */
-model OrderItem {
-  id              String @id @default(uuid())
-  orderId         String
-  productId       String
-  quantity        Int
-  price           Int // original product price at order-time
-  discountApplied Int? // per-unit discount in paise at order-time
-
-  order   Order   @relation(fields: [orderId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
-}
-
-/**
- * Mapping which StoreCredit rows funded which Order (partial allowed).
- * amount = how much taken from that StoreCredit (positive number).
- * If a StoreCredit row had amount=500 and orderCredit.amount=200, remaining = 300.
- */
-model OrderCredit {
-  id            String   @id @default(uuid())
-  orderId       String
-  storeCreditId String
-  amount        Int // paise, positive (how much was consumed from the StoreCredit by this order)
-  createdAt     DateTime @default(now())
-
-  order       Order       @relation(fields: [orderId], references: [id])
-  storeCredit StoreCredit @relation(fields: [storeCreditId], references: [id])
-
-  @@index([orderId])
-  @@index([storeCreditId])
-}
-
-/**
- * Payment record for gateway interactions (Razorpay/Stripe etc.)
- * provider = "razorpay" or "stripe"
- * providerPaymentId = external id (for lookups)
- */
-model Payment {
-  id                String        @id @default(uuid())
-  orderId           String
-  userId            String
-  provider          String?
-  providerPaymentId String? // gateway id
-  amount            Int // paise
-  status            PaymentStatus
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  meta              Json? // store gateway response if needed
-
-  order Order @relation(fields: [orderId], references: [id])
-  user  User  @relation(fields: [userId], references: [id])
-
-  @@index([orderId])
-  @@index([userId])
-}
-
-/**
- * Refund audit record
- * method = GATEWAY or STORE_CREDIT
- */
-model Refund {
-  id        String       @id @default(uuid())
-  orderId   String
-  userId    String
-  method    RefundMethod
-  amount    Int // paise
-  reason    String?
-  createdAt DateTime     @default(now())
-  meta      Json?
-
-  order Order @relation(fields: [orderId], references: [id])
-  user  User  @relation(fields: [userId], references: [id])
-
-  @@index([orderId])
-  @@index([userId])
-}
-
-/**
- * CartItem as before
- */
-model CartItem {
-  id        String @id @default(uuid())
-  userId    String
-  productId String
-  quantity  Int
-
-  user    User    @relation(fields: [userId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
-
-  @@unique([userId, productId])
 }

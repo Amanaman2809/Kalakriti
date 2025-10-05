@@ -225,7 +225,7 @@ export default function ProductCard({
                     isOutOfStock ? "text-gray-400" : "text-text"
                   }`}
                 >
-                  ₹{product.finalPrice.toLocaleString()}
+                  ₹{product.finalPrice}
                 </span>
                 {hasDiscount && (
                   <span className="text-sm text-gray-500 line-through">
