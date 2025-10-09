@@ -6,14 +6,17 @@ import { transformProduct } from "../lib/productTransform";
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Helper function for precise financial calculations
-const toPreciseRupees = (amount: number): number => {
-  return Math.round(amount * 100) / 100; // Always 2 decimal places
+// ✅ FIXED: Helper functions to work with PAISE
+const toPaise = (rupees: number): number => {
+  return Math.round(rupees * 100); // Convert rupees to paise
 };
 
-// Helper function to round to nearest rupee (no decimals)
-const toRoundedRupees = (amount: number): number => {
-  return Math.round(amount); // Round to whole rupees for customer charges
+const toRoundedPaise = (paise: number): number => {
+  return Math.round(paise / 100) * 100; // Round to nearest whole rupee (100 paise)
+};
+
+const toRupees = (paise: number): number => {
+  return paise / 100; // Convert paise to rupees for display
 };
 
 // for admin
@@ -73,7 +76,7 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
-// Place Order - FIXED FOR FINANCIAL PRECISION & PROPER WORKFLOW
+// Place Order - FIXED FOR PAISE CALCULATIONS
 router.post("/", requireAuth, async (req, res) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -135,56 +138,59 @@ router.post("/", requireAuth, async (req, res) => {
           `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
         );
       }
+      
+      // Calculate discounted price in RUPEES first
+      const discountedPriceInRupees = Math.floor(
+        (product.price * (1 - (product.discountPct || 0) / 100))/100
+      );
+      
       return {
         productId: product.id,
         name: product.name,
         requestedQty: item.quantity,
         availableStock: product.stock,
-        discountedPrice: Math.floor(
-          product.price * (1 - (product.discountPct || 0) / 100),
-        ),
+        discountedPriceInRupees: discountedPriceInRupees,
+        discountedPriceInPaise: toPaise(discountedPriceInRupees),
       };
     });
 
     console.log("Stock validation passed:", stockValidation);
 
-    // ✅ STEP 3: PRECISE FINANCIAL CALCULATIONS - NO MONEY ERRORS
+    // ✅ STEP 3: PRECISE FINANCIAL CALCULATIONS - ALL IN PAISE
     console.log("=== FINANCIAL CALCULATIONS ===");
 
-    // Calculate gross amount with precise values
-    const grossAmount = toPreciseRupees(
-      cartItems.reduce(
-        (sum, item) =>
-          sum +
-          Math.floor(
-            item.product.price * (1 - (item.product.discountPct || 0) / 100),
-          ) *
-            item.quantity,
-        0,
-      ),
+    // Calculate gross amount in PAISE
+    const grossAmountInPaise = cartItems.reduce(
+      (sum, item) => {
+        const validation = stockValidation.find(s => s.productId === item.productId);
+        return sum + (validation!.discountedPriceInPaise * item.quantity);
+      },
+      0
     );
 
-    // Shipping calculation
-    const shippingAmount = grossAmount >= 999 ? 0 : 99;
+    // Shipping calculation in PAISE (₹999 threshold = 99900 paise)
+    const shippingAmountInPaise = grossAmountInPaise >= 99900 ? 0 : 9900; // ₹99 = 9900 paise
 
-    // Tax calculation - precise but rounded for customer
-    const calculatedTax = toPreciseRupees(grossAmount * 0.18);
-    const taxAmount = toRoundedRupees(calculatedTax); // Round tax to nearest rupee
+    // Tax calculation in PAISE (18%)
+    const taxAmountInPaise = Math.round(grossAmountInPaise * 0.18);
 
-    // Total before credits
-    const grossPlusExtras = toRoundedRupees(
-      grossAmount + shippingAmount + taxAmount,
-    );
+    // Total before credits - all in PAISE
+    const totalBeforeRoundingInPaise = grossAmountInPaise + shippingAmountInPaise + taxAmountInPaise;
 
-    console.log("Financial calculations:", {
-      grossAmount: grossAmount,
-      shippingAmount: shippingAmount,
-      calculatedTax: calculatedTax,
-      taxAmount: taxAmount,
-      grossPlusExtras: grossPlusExtras,
+    // ✅ Round to nearest whole rupee (nearest 100 paise)
+    const grossPlusExtrasInPaise = toRoundedPaise(totalBeforeRoundingInPaise);
+
+    console.log("Financial calculations (in PAISE):", {
+      grossAmountInPaise,                    // 9000 (₹90)
+      shippingAmountInPaise,                 // 9900 (₹99)
+      taxAmountInPaise,                      // 1620 (₹16.20)
+      totalBeforeRoundingInPaise,            // 20520 (₹205.20)
+      grossPlusExtrasInPaise,                // 20500 (₹205) - rounded
+      grossAmountInRupees: toRupees(grossAmountInPaise),
+      finalTotalInRupees: toRupees(grossPlusExtrasInPaise),
     });
 
-    // ✅ STEP 4: Handle store credits
+    // ✅ STEP 4: Handle store credits (in PAISE)
     const now = new Date();
     const credits = await prisma.storeCredit.findMany({
       where: {
@@ -195,13 +201,13 @@ router.post("/", requireAuth, async (req, res) => {
       orderBy: { createdAt: "asc" },
     });
 
-    let availableCredit = credits.reduce((s, c) => s + c.amount, 0);
-    let creditsToApply = 0;
+    let availableCreditInPaise = credits.reduce((s, c) => s + c.amount, 0);
+    let creditsToApplyInPaise = 0;
     let orderCreditsToCreate: { storeCreditId: string; amount: number }[] = [];
 
-    if (availableCredit > 0) {
-      creditsToApply = Math.min(availableCredit, grossPlusExtras);
-      let remainingToUse = creditsToApply;
+    if (availableCreditInPaise > 0) {
+      creditsToApplyInPaise = Math.min(availableCreditInPaise, grossPlusExtrasInPaise);
+      let remainingToUse = creditsToApplyInPaise;
       for (const c of credits) {
         if (remainingToUse <= 0) break;
         const usable = Math.min(c.amount, remainingToUse);
@@ -210,16 +216,17 @@ router.post("/", requireAuth, async (req, res) => {
       }
     }
 
-    // ✅ FINAL AMOUNT - ALWAYS WHOLE RUPEES
-    const netAmount = toRoundedRupees(grossPlusExtras - creditsToApply);
+    // ✅ FINAL AMOUNT - Rounded to whole rupees in PAISE
+    const netAmountInPaise = toRoundedPaise(grossPlusExtrasInPaise - creditsToApplyInPaise);
 
-    console.log("Final order amounts:", {
-      grossAmount,
-      shippingAmount,
-      taxAmount,
-      grossPlusExtras,
-      creditsToApply,
-      netAmount,
+    console.log("Final order amounts (in PAISE):", {
+      grossAmountInPaise,                    // 9000
+      shippingAmountInPaise,                 // 9900
+      taxAmountInPaise,                      // 1620
+      grossPlusExtrasInPaise,                // 20500
+      creditsToApplyInPaise,                 // 0
+      netAmountInPaise,                      // 20500
+      netAmountInRupees: toRupees(netAmountInPaise), // ₹205
     });
 
     // ✅ STEP 5: Create order and handle stock in TRANSACTION
@@ -241,28 +248,28 @@ router.post("/", requireAuth, async (req, res) => {
           }
         }
 
-        // ✅ CREATE ORDER FIRST
+        // ✅ CREATE ORDER FIRST - Store everything in PAISE
         const createdOrder = await tx.order.create({
           data: {
             userId,
             addressId,
             paymentMode,
-            paymentStatus: netAmount === 0 ? "PAID" : "PENDING",
-            status: "PENDING", // ✅ PENDING until payment confirmed
-            grossAmount: toRoundedRupees(grossAmount),
-            shippingAmount,
-            taxAmount,
-            creditsApplied: creditsToApply,
-            netAmount,
+            paymentStatus: netAmountInPaise === 0 ? "PAID" : "PENDING",
+            status: "PENDING",
+            grossAmount: grossAmountInPaise,          // Store in paise
+            shippingAmount: shippingAmountInPaise,    // Store in paise
+            taxAmount: taxAmountInPaise,              // Store in paise
+            creditsApplied: creditsToApplyInPaise,    // Store in paise
+            netAmount: netAmountInPaise,              // Store in paise
             items: {
-              create: cartItems.map((ci) => ({
-                productId: ci.productId,
-                quantity: ci.quantity,
-                price: toRoundedRupees(
-                  stockValidation.find((s) => s.productId === ci.productId)
-                    ?.discountedPrice || 0,
-                ),
-              })),
+              create: cartItems.map((ci) => {
+                const validation = stockValidation.find(s => s.productId === ci.productId);
+                return {
+                  productId: ci.productId,
+                  quantity: ci.quantity,
+                  price: validation!.discountedPriceInPaise, // Store in paise
+                };
+              }),
             },
           },
           include: {
@@ -299,11 +306,11 @@ router.post("/", requireAuth, async (req, res) => {
           });
         }
 
-        if (creditsToApply > 0) {
+        if (creditsToApplyInPaise > 0) {
           await tx.storeCredit.create({
             data: {
               userId,
-              amount: -creditsToApply,
+              amount: -creditsToApplyInPaise,
               reason: `Applied to order ${createdOrder.id}`,
             },
           });
@@ -313,7 +320,7 @@ router.post("/", requireAuth, async (req, res) => {
         await tx.cartItem.deleteMany({ where: { userId } });
 
         // Handle zero-amount orders
-        if (netAmount === 0) {
+        if (netAmountInPaise === 0) {
           await tx.payment.create({
             data: {
               orderId: createdOrder.id,
@@ -356,13 +363,13 @@ router.post("/", requireAuth, async (req, res) => {
       });
     }
 
-    if (paymentMode === "ONLINE" && netAmount > 0) {
+    if (paymentMode === "ONLINE" && netAmountInPaise > 0) {
       return res.status(200).json({
         success: true,
         message: "Order created. Please complete payment",
         order: order,
         requiresPayment: true,
-        paymentAmount: netAmount,
+        paymentAmount: toRupees(netAmountInPaise), // Send in rupees for display
       });
     }
 
@@ -374,10 +381,6 @@ router.post("/", requireAuth, async (req, res) => {
     });
   } catch (error: any) {
     console.error("❌ Order placement failed:", error);
-
-    // ✅ RESTORE STOCK if error occurred after stock decrement
-    // This is handled by transaction rollback automatically
-
     return res.status(500).json({
       error: error.message || "Failed to place order",
     });
@@ -426,8 +429,8 @@ router.patch("/:id/cancel", requireAuth, async (req, res) => {
         id,
         userId,
         reason || "Cancelled by customer",
-        tx,
-      ),
+        tx
+      )
     );
 
     return res.json({
@@ -485,12 +488,12 @@ router.get("/:id", requireAuth, async (req, res) => {
 
     const totalDiscount = itemsWithTotals.reduce(
       (sum, item) => sum + item.discount,
-      0,
+      0
     );
 
     const grossAmount = itemsWithTotals.reduce(
       (sum, item) => sum + item.total,
-      0,
+      0
     );
     const shippingAmount = order.shippingAmount;
     const taxAmount = order.taxAmount;
@@ -628,7 +631,7 @@ router.patch("/:id/status", requireAuth, requireAdmin, async (req, res) => {
           id,
           order.userId,
           "Cancelled by admin",
-          tx,
+          tx
         );
       });
       return res.json(cancelledOrder);
@@ -655,7 +658,7 @@ async function cancelOrderWithTransaction(
   orderId: string,
   userId: string,
   reason: string,
-  tx: any,
+  tx: any
 ) {
   const order = await tx.order.findUnique({
     where: { id: orderId },
@@ -693,7 +696,7 @@ async function cancelOrderWithTransaction(
         where: { id: item.productId },
         data: { stock: { increment: item.quantity } },
       });
-    }),
+    })
   );
 
   // Refund all store credits applied to the order

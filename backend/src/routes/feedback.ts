@@ -41,10 +41,16 @@ router.post("/products/:id/feedback", requireAuth, async (req, res) => {
           },
         },
         data: { rating, comment },
+        include: {
+          user: { select: { name: true } },
+        },
       });
     } else {
       feedback = await prisma.feedback.create({
         data: { rating, comment, userId, productId },
+        include: {
+          user: { select: { name: true } },
+        },
       });
     }
 
@@ -55,7 +61,7 @@ router.post("/products/:id/feedback", requireAuth, async (req, res) => {
       _count: { _all: true },
     });
 
-    // Update the product’s denormalized fields
+    // Update the product's denormalized fields
     await prisma.product.update({
       where: { id: productId },
       data: {
@@ -64,9 +70,22 @@ router.post("/products/:id/feedback", requireAuth, async (req, res) => {
       },
     });
 
-    res.status(200).json({ message: "Feedback saved", feedback });
+    // Calculate summary
+    const summary = {
+      averageRating: Number((stats._avg.rating ?? 0).toFixed(1)),
+      totalReviews: stats._count._all,
+    };
+
+    console.log("📊 Feedback saved, summary:", summary);
+
+    // Return response with summary
+    res.status(200).json({
+      message: "Feedback saved",
+      feedback,
+      summary,
+    });
   } catch (err) {
-    console.error(err);
+    console.error("Feedback error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -83,7 +102,7 @@ router.get("/products/:id/feedbacks", async (req, res) => {
       skip: (page - 1) * pageSize,
       take: pageSize,
       include: {
-        user: { select: { name: true } }, // show reviewer name
+        user: { select: { name: true } },
       },
     });
 
@@ -105,8 +124,10 @@ router.get("/products/:id/feedback-summary", async (req, res) => {
     });
 
     res.json({
-      avg_rating: stats._avg.rating ? Number(stats._avg.rating.toFixed(1)) : 0,
-      total_reviews: stats._count._all,
+      averageRating: stats._avg.rating
+        ? Number(stats._avg.rating.toFixed(1))
+        : 0,
+      totalReviews: stats._count._all,
     });
   } catch (err) {
     console.error(err);

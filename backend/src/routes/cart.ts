@@ -39,6 +39,8 @@ router.get("/", requireAuth, async (req, res) => {
             images: true,
             createdAt: true,
             updatedAt: true,
+            averageRating: true, //  ADD THIS
+            numReviews: true, // ADD THIS
             category: {
               select: {
                 id: true,

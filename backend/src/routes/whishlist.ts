@@ -32,6 +32,10 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
             discountPct: true,
             stock: true,
             images: true,
+            averageRating: true, // ADD THIS
+            numReviews: true, // ADD THIS
+            description: true, // Optional but useful
+            categoryId: true, // Optional but useful
           },
         },
       },
