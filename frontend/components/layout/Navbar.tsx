@@ -384,10 +384,9 @@ export default function Navbar() {
             <Link href="/" className="flex-shrink-0 flex items-center gap-2">
               <Image
                 src="/logo_sm.png"
-                width={100}
-                height={100}
+                width={80}
+                height={80}
                 alt="Chalava Logo"
-                className="h-16 w-16"
                 priority
               />
               <div className="hidden sm:block">
@@ -437,16 +436,16 @@ export default function Navbar() {
             <div className="relative">
               <Image
                 src="/logo_sm.png"
-                width={100}
-                height={100}
+                width={80}
+                height={80}
                 alt="Chalava Logo"
-                className="h-16 w-16 transition-transform group-hover:scale-105"
+                className=" transition-transform group-hover:scale-105"
                 priority
               />
             </div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors">
-                Chalava
+                Chalava.in
               </h1>
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <Sparkles className="w-3 h-3 text-primary" />

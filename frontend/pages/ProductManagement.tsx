@@ -18,7 +18,8 @@ import {
   RefreshCw,
   Grid3X3,
   List,
-  TrendingUp
+  TrendingUp,
+  Percent
 } from "lucide-react";
 import { Product, Category } from "@/utils/types";
 import { useDropzone } from "react-dropzone";
@@ -36,6 +37,7 @@ interface ProductFormData {
   categoryId: string;
   tags: string;
   images: string[];
+  discountPct: string; // Added discount field
 }
 
 export default function ProductManagement() {
@@ -52,15 +54,16 @@ export default function ProductManagement() {
   const [filterCategory, setFilterCategory] = useState<string>("");
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
 
-  // Form state
+  // Form state - Added discountPct
   const [formData, setFormData] = useState<ProductFormData>({
     name: "",
     description: "",
     price: "",
     stock: "",
-    categoryId: categories.length === 0 ? "" : categories[0].id, 
+    categoryId: categories.length === 0 ? "" : categories[0].id,
     tags: "",
     images: [],
+    discountPct: "0", // Default 0% discount
   });
 
   // Filtered products
@@ -75,28 +78,25 @@ export default function ProductManagement() {
     setIsUploading(true);
 
     try {
-      // Validate files
-      const invalidFiles = acceptedFiles.filter(file => 
+      const invalidFiles = acceptedFiles.filter(file =>
         file.size > 5 * 1024 * 1024 || !file.type.startsWith('image/')
       );
-      
+
       if (invalidFiles.length > 0) {
         toast.error(`${invalidFiles.length} file(s) rejected. Max size: 5MB, Images only.`);
       }
 
-      const validFiles = acceptedFiles.filter(file => 
+      const validFiles = acceptedFiles.filter(file =>
         file.size <= 5 * 1024 * 1024 && file.type.startsWith('image/')
       );
 
       if (validFiles.length === 0) return;
 
-      // Get signature from backend
       const signResponse = await fetch(`${API_BASE_URL}/api/cloudinary/sign`);
       if (!signResponse.ok) throw new Error("Failed to get signature");
 
       const { timestamp, signature, api_key } = await signResponse.json();
 
-      // Upload files
       const uploadPromises = validFiles.map(async (file) => {
         const formDataUpload = new FormData();
         formDataUpload.append("file", file);
@@ -136,7 +136,7 @@ export default function ProductManagement() {
     },
     multiple: true,
     disabled: isUploading,
-    maxSize: 5 * 1024 * 1024, // 5MB
+    maxSize: 5 * 1024 * 1024,
   });
 
   const fetchData = async (showRefreshing = false) => {
@@ -173,11 +173,13 @@ export default function ProductManagement() {
       setRefreshing(false);
     }
   };
+
   useEffect(() => {
     if (categories.length > 0 && !formData.categoryId) {
       setFormData(prev => ({ ...prev, categoryId: categories[0].id }));
     }
   }, [categories]);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -191,6 +193,16 @@ export default function ProductManagement() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
+
+    // Validate discount percentage
+    if (name === 'discountPct') {
+      const numValue = parseFloat(value);
+      if (value !== '' && (numValue < 0 || numValue > 100)) {
+        toast.error("Discount must be between 0 and 100");
+        return;
+      }
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -222,6 +234,7 @@ export default function ProductManagement() {
       categoryId: categories.length > 0 ? categories[0].id : "",
       tags: "",
       images: [],
+      discountPct: "0",
     });
   };
 
@@ -246,12 +259,17 @@ export default function ProductManagement() {
       toast.error("At least one product image is required");
       return false;
     }
+    const discount = parseFloat(formData.discountPct);
+    if (isNaN(discount) || discount < 0 || discount > 100) {
+      toast.error("Discount must be between 0 and 100");
+      return false;
+    }
     return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     const token = localStorage.getItem("token");
@@ -265,6 +283,7 @@ export default function ProductManagement() {
         ...formData,
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock),
+        discountPct: parseFloat(formData.discountPct), // Include discount
         tags: formData.tags.split(",").map(tag => tag.trim()).filter(tag => tag.length > 0),
       };
 
@@ -303,13 +322,14 @@ export default function ProductManagement() {
       categoryId: product.categoryId || (categories.length > 0 ? categories[0].id : ""),
       tags: product.tags.join(", "),
       images: product.images,
+      discountPct: (product.discountPct || 0).toString(), // Load existing discount
     });
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId) return;
-    
+
     if (!validateForm()) return;
 
     const token = localStorage.getItem("token");
@@ -323,6 +343,7 @@ export default function ProductManagement() {
         ...formData,
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock),
+        discount: parseFloat(formData.discountPct), // Backend expects 'discount' field
         tags: formData.tags.split(",").map(tag => tag.trim()).filter(tag => tag.length > 0),
       };
 
@@ -396,6 +417,11 @@ export default function ProductManagement() {
     setFilterCategory("");
   };
 
+  // Calculate final price with discount
+  const calculateFinalPrice = (price: number, discount: number) => {
+    return Math.floor(price * (1 - discount / 100));
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -457,31 +483,31 @@ export default function ProductManagement() {
       {!isAdding && !editingId && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[
-            { 
-              label: 'Total Products', 
-              value: products.length, 
-              icon: Package, 
+            {
+              label: 'Total Products',
+              value: products.length,
+              icon: Package,
               color: 'text-blue-600 bg-blue-50',
               change: '+12%'
             },
-            { 
-              label: 'In Stock', 
-              value: products.filter(p => p.stock > 0).length, 
-              icon: Check, 
+            {
+              label: 'In Stock',
+              value: products.filter(p => p.stock > 0).length,
+              icon: Check,
               color: 'text-green-600 bg-green-50',
               change: '+5%'
             },
-            { 
-              label: 'Low Stock', 
-              value: products.filter(p => p.stock > 0 && p.stock <= 10).length, 
-              icon: AlertTriangle, 
+            {
+              label: 'Low Stock',
+              value: products.filter(p => p.stock > 0 && p.stock <= 10).length,
+              icon: AlertTriangle,
               color: 'text-yellow-600 bg-yellow-50',
               change: '-3%'
             },
-            { 
-              label: 'Out of Stock', 
-              value: products.filter(p => p.stock === 0).length, 
-              icon: X, 
+            {
+              label: 'Out of Stock',
+              value: products.filter(p => p.stock === 0).length,
+              icon: X,
               color: 'text-red-600 bg-red-50',
               change: '-8%'
             }
@@ -514,7 +540,7 @@ export default function ProductManagement() {
           <h3 className="text-2xl font-bold text-gray-900 mb-8">
             {editingId ? "Edit Product" : "Add New Product"}
           </h3>
-          
+
           <form onSubmit={editingId ? handleUpdate : handleSubmit}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Left Column - Basic Info */}
@@ -583,6 +609,39 @@ export default function ProductManagement() {
                   </div>
                 </div>
 
+                {/* NEW: Discount Field */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Discount (%) *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      name="discountPct"
+                      value={formData.discountPct}
+                      onChange={handleInputChange}
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                      placeholder="0"
+                    />
+                    <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  </div>
+                  {formData.price && formData.discountPct && parseFloat(formData.discountPct) > 0 && (
+                    <div className="mt-2 text-sm">
+                      <span className="text-gray-600">Original Price: </span>
+                      <span className="font-semibold text-gray-900">₹{parseFloat(formData.price).toFixed(2)}</span>
+                      <span className="mx-2">→</span>
+                      <span className="text-gray-600">Final Price: </span>
+                      <span className="font-semibold text-green-600">
+                        ₹{calculateFinalPrice(parseFloat(formData.price), parseFloat(formData.discountPct)).toFixed(2)}
+                      </span>
+                      <span className="ml-2 text-green-600">({formData.discountPct}% off)</span>
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Category *
@@ -629,11 +688,10 @@ export default function ProductManagement() {
                   </label>
                   <div
                     {...getRootProps()}
-                    className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
-                      isDragActive
+                    className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${isDragActive
                         ? "border-primary bg-primary/10"
                         : "border-gray-300 hover:border-gray-400"
-                    } ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+                      } ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     <input {...getInputProps()} />
                     {isUploading ? (
@@ -724,7 +782,7 @@ export default function ProductManagement() {
               <h2 className="text-xl font-bold text-gray-900">
                 Products ({filteredProducts.length})
               </h2>
-              
+
               <div className="flex items-center gap-4">
                 {/* Search */}
                 <div className="relative">
@@ -767,17 +825,15 @@ export default function ProductManagement() {
                 <div className="flex items-center bg-gray-100 rounded-xl p-1">
                   <button
                     onClick={() => setViewMode('table')}
-                    className={`p-2 rounded-lg transition-colors ${
-                      viewMode === 'table' ? 'bg-white shadow-sm text-primary' : 'text-gray-600 hover:text-gray-900'
-                    }`}
+                    className={`p-2 rounded-lg transition-colors ${viewMode === 'table' ? 'bg-white shadow-sm text-primary' : 'text-gray-600 hover:text-gray-900'
+                      }`}
                   >
                     <List className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setViewMode('grid')}
-                    className={`p-2 rounded-lg transition-colors ${
-                      viewMode === 'grid' ? 'bg-white shadow-sm text-primary' : 'text-gray-600 hover:text-gray-900'
-                    }`}
+                    className={`p-2 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-white shadow-sm text-primary' : 'text-gray-600 hover:text-gray-900'
+                      }`}
                   >
                     <Grid3X3 className="w-4 h-4" />
                   </button>
@@ -837,7 +893,7 @@ export default function ProductManagement() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      {['Product', 'Category', 'Price', 'Stock', 'Actions'].map(header => (
+                      {['Product', 'Category', 'Price', 'Discount', 'Final Price', 'Stock', 'Actions'].map(header => (
                         <th
                           key={header}
                           className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
@@ -915,15 +971,15 @@ export default function ProductManagement() {
 }
 
 // Product Grid Card Component
-const ProductGridCard = ({ 
-  product, 
-  categories, 
-  onEdit, 
-  onDelete, 
-  deleteConfirmId, 
-  isDeleting, 
-  onConfirmDelete, 
-  onCancelDelete 
+const ProductGridCard = ({
+  product,
+  categories,
+  onEdit,
+  onDelete,
+  deleteConfirmId,
+  isDeleting,
+  onConfirmDelete,
+  onCancelDelete
 }: {
   product: Product;
   categories: Category[];
@@ -949,21 +1005,29 @@ const ProductGridCard = ({
           <ImageIcon className="h-16 w-16 text-gray-400" />
         </div>
       )}
-      
+
+      {/* Discount Badge */}
+      {product.discountPct && product.discountPct > 0 && (
+        <div className="absolute top-3 right-3">
+          <span className="bg-red-500 text-white px-2 py-1 text-xs rounded-full font-bold">
+            {product.discountPct}% OFF
+          </span>
+        </div>
+      )}
+
       {/* Stock Badge */}
       <div className="absolute top-3 left-3">
-        <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-          product.stock > 10
+        <span className={`px-2 py-1 text-xs rounded-full font-medium ${product.stock > 10
             ? "bg-green-100 text-green-800"
             : product.stock > 0
-            ? "bg-yellow-100 text-yellow-800"
-            : "bg-red-100 text-red-800"
-        }`}>
+              ? "bg-yellow-100 text-yellow-800"
+              : "bg-red-100 text-red-800"
+          }`}>
           {product.stock} in stock
         </span>
       </div>
     </div>
-    
+
     <div className="p-4">
       <div className="mb-2">
         <h3 className="font-semibold text-gray-900 line-clamp-1 group-hover:text-primary transition-colors">
@@ -973,12 +1037,25 @@ const ProductGridCard = ({
           {categories.find(c => c.id === product.categoryId)?.name || "Uncategorized"}
         </p>
       </div>
-      
-      <div className="flex items-center justify-between">
-        <span className="text-lg font-bold text-primary">
-          ₹{product.price.toLocaleString()}
-        </span>
-        
+
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex flex-col">
+          {product.discountPct && product.discountPct > 0 ? (
+            <>
+              <span className="text-sm text-gray-500 line-through">
+                ₹{product.price.toLocaleString()}
+              </span>
+              <span className="text-lg font-bold text-green-600">
+                ₹{product.finalPrice.toLocaleString()}
+              </span>
+            </>
+          ) : (
+            <span className="text-lg font-bold text-primary">
+              ₹{product.price.toLocaleString()}
+            </span>
+          )}
+        </div>
+
         <div className="flex items-center gap-1">
           {deleteConfirmId === product.id ? (
             <>
@@ -1034,15 +1111,15 @@ const ProductGridCard = ({
 );
 
 // Product Table Row Component
-const ProductTableRow = ({ 
-  product, 
-  categories, 
-  onEdit, 
-  onDelete, 
-  deleteConfirmId, 
-  isDeleting, 
-  onConfirmDelete, 
-  onCancelDelete 
+const ProductTableRow = ({
+  product,
+  categories,
+  onEdit,
+  onDelete,
+  deleteConfirmId,
+  isDeleting,
+  onConfirmDelete,
+  onCancelDelete
 }: {
   product: Product;
   categories: Category[];
@@ -1090,16 +1167,33 @@ const ProductTableRow = ({
       {categories.find(c => c.id === product.categoryId)?.name || "Uncategorized"}
     </td>
     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-      ₹{product.price.toLocaleString()}
+      <span className={product.discountPct && product.discountPct > 0 ? "line-through text-gray-500" : ""}>
+        ₹{product.price.toLocaleString()}
+      </span>
     </td>
     <td className="px-6 py-4 whitespace-nowrap">
-      <span className={`px-3 py-1 text-xs rounded-full font-medium ${
-        product.stock > 10
+      {product.discountPct && product.discountPct > 0 ? (
+        <span className="px-2 py-1 text-xs rounded-full font-medium bg-red-100 text-red-800">
+          {product.discountPct}%
+        </span>
+      ) : (
+        <span className="text-sm text-gray-500">-</span>
+      )}
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
+      {product.discountPct && product.discountPct > 0 ? (
+        `₹${product.finalPrice.toLocaleString()}`
+      ) : (
+        <span className="text-primary">₹{product.price.toLocaleString()}</span>
+      )}
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap">
+      <span className={`px-3 py-1 text-xs rounded-full font-medium ${product.stock > 10
           ? "bg-green-100 text-green-800"
           : product.stock > 0
-          ? "bg-yellow-100 text-yellow-800"
-          : "bg-red-100 text-red-800"
-      }`}>
+            ? "bg-yellow-100 text-yellow-800"
+            : "bg-red-100 text-red-800"
+        }`}>
         {product.stock} in stock
       </span>
     </td>

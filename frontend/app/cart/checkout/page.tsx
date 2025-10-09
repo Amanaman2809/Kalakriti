@@ -139,10 +139,21 @@ export default function CheckoutPage() {
   }, [mounted]);
 
   const calculateTotals = useCallback(() => {
-    const subtotal = cartItems.reduce(
+    // ✅ FIXED: Use finalPrice instead of price for discounted totals
+    const originalTotal = cartItems.reduce(
       (sum, item) => sum + item.product.price * item.quantity,
       0,
     );
+
+    const subtotal = cartItems.reduce(
+      (sum, item) => {
+        const finalPrice = item.product.finalPrice || item.product.price;
+        return sum + finalPrice * item.quantity;
+      },
+      0,
+    );
+
+    const totalDiscount = originalTotal - subtotal;
     const shipping = subtotal >= 999 ? 0 : 99;
     const tax = Math.round(subtotal * 0.18);
     const total = Math.round(subtotal + shipping + tax);
@@ -150,10 +161,10 @@ export default function CheckoutPage() {
     const creditApplied = Math.min(storeCredit, total);
     const finalTotal = Math.max(0, total - creditApplied);
 
-    return { subtotal, shipping, tax, total, creditApplied, finalTotal };
+    return { subtotal, shipping, tax, total, creditApplied, finalTotal, originalTotal, totalDiscount };
   }, [cartItems, storeCredit]);
-
-  const { subtotal, shipping, tax, total, creditApplied, finalTotal } = calculateTotals();
+  
+  const { subtotal, shipping, tax, total, creditApplied, finalTotal, originalTotal, totalDiscount } = calculateTotals();
 
   const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setAddressData((prev) => ({
@@ -386,7 +397,7 @@ export default function CheckoutPage() {
       const res = await response.json();
       console.log("Order response:", res);
 
-      const orderId = res?.orderId || res?.order?.id;
+      const orderId = res?.order?.id;
 
       if (!orderId) {
         throw new Error("Order ID not received");
@@ -522,6 +533,8 @@ export default function CheckoutPage() {
               error={errors.order}
               onPlaceOrder={handlePlaceOrder}
               paymentProcessing={paymentProcessing}
+              originalTotal={originalTotal}        // ADD THIS
+              totalDiscount={totalDiscount}        //  ADD THIS
             />
           </div>
         </div>
@@ -911,7 +924,10 @@ interface OrderSummaryProps {
   error: string | null;
   onPlaceOrder: () => void;
   paymentProcessing: boolean;
+  originalTotal: number;      // ADD THIS
+  totalDiscount: number;       // ADD THIS
 }
+
 
 const OrderSummary = ({
   cartItems,
@@ -928,145 +944,185 @@ const OrderSummary = ({
   error,
   onPlaceOrder,
   paymentProcessing,
-}: OrderSummaryProps) => (
-  <div className="bg-white rounded-2xl shadow-sm border border-accent p-6 sticky top-8">
-    <h2 className="text-xl font-semibold text-text mb-6">Order Summary</h2>
+  originalTotal,       // NEW
+  totalDiscount,       // NEW
+}: OrderSummaryProps) => {
+  const hasDiscount = totalDiscount > 0;
 
-    {/* Cart Items */}
-    <div className="space-y-4 mb-6 max-h-64 overflow-y-auto">
-      {cartItems.map((item: CartItem) => (
-        <div key={item.id} className="flex items-center gap-3 py-2">
-          <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-accent">
-            <Image
-              src={item.product.images?.[0] || "/placeholder-product.png"}
-              alt={item.product.name}
-              fill
-              className="object-cover"
-              sizes="48px"
-            />
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-accent p-6 sticky top-8">
+      <h2 className="text-xl font-semibold text-text mb-6">Order Summary</h2>
+
+      {/* Cart Items */}
+      <div className="space-y-4 mb-6 max-h-64 overflow-y-auto">
+        {cartItems.map((item: CartItem) => {
+          const itemFinalPrice = item.product.finalPrice || item.product.price;
+          const itemHasDiscount = (item.product.discountPct || 0) > 0;
+
+          return (
+            <div key={item.id} className="flex items-center gap-3 py-2">
+              <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-accent">
+                <Image
+                  src={item.product.images?.[0] || "/placeholder-product.png"}
+                  alt={item.product.name}
+                  fill
+                  className="object-cover"
+                  sizes="48px"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-sm line-clamp-1">
+                  {item.product.name}
+                </h3>
+                <p className="text-gray-500 text-xs">Qty: {item.quantity}</p>
+              </div>
+              <div className="text-right">
+                <p className="font-semibold text-sm">
+                  ₹{(itemFinalPrice * item.quantity).toLocaleString()}
+                </p>
+                {/* 🔥 NEW: Show original price if discounted */}
+                {itemHasDiscount && (
+                  <p className="text-xs text-gray-400 line-through">
+                    ₹{(item.product.price * item.quantity).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Price Breakdown */}
+      <div className="space-y-3 mb-6 border-t pt-4">
+        {/* 🔥 NEW: Show original price if there's discount */}
+        {hasDiscount && (
+          <div className="flex justify-between text-gray-500">
+            <span>Original Price</span>
+            <span className="line-through">₹{originalTotal.toLocaleString()}</span>
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-sm line-clamp-1">
-              {item.product.name}
-            </h3>
-            <p className="text-gray-500 text-xs">Qty: {item.quantity}</p>
+        )}
+
+        {/* 🔥 NEW: Show discount savings */}
+        {hasDiscount && (
+          <div className="flex justify-between text-green-600 font-medium">
+            <span className="flex items-center gap-1">
+              <span>🎉</span>
+              Discount Savings
+            </span>
+            <span>- ₹{totalDiscount.toLocaleString()}</span>
           </div>
-          <p className="font-semibold text-sm">
-            ₹{(item.product.price * item.quantity).toLocaleString()}
-          </p>
+        )}
+
+        <div className="flex justify-between text-gray-600">
+          <span>Subtotal</span>
+          <span className="font-medium">₹{subtotal.toLocaleString()}</span>
         </div>
-      ))}
-    </div>
 
-    {/* Price Breakdown */}
-    <div className="space-y-3 mb-6 border-t pt-4">
-      <div className="flex justify-between text-gray-600">
-        <span>Subtotal</span>
-        <span>₹{subtotal.toLocaleString()}</span>
-      </div>
-      <div className="flex justify-between text-gray-600">
-        <span>Shipping</span>
-        <span className={shipping === 0 ? "text-green-600 font-medium" : ""}>
-          {shipping === 0 ? "FREE" : `₹${shipping.toLocaleString()}`}
-        </span>
-      </div>
-      <div className="flex justify-between text-gray-600">
-        <span>Tax (GST 18%)</span>
-        <span>₹{tax.toLocaleString()}</span>
-      </div>
-    </div>
+        {hasDiscount && <div className="border-t border-gray-200"></div>}
 
-    <div className="border-t pt-4 mb-6">
-      {creditApplied > 0 && (
-        <div className="flex justify-between text-gray-600 mb-2">
-          <span>Store Credit Applied</span>
-          <span className="text-green-600">
-            -₹{creditApplied.toLocaleString()}
+        <div className="flex justify-between text-gray-600">
+          <span>Shipping</span>
+          <span className={shipping === 0 ? "text-green-600 font-medium" : ""}>
+            {shipping === 0 ? "FREE" : `₹${shipping.toLocaleString()}`}
           </span>
         </div>
-      )}
-      <div className="flex justify-between items-center">
-        <span className="text-lg font-semibold text-text">Final Total</span>
-        <span className="text-2xl font-bold text-primary">
-          ₹{finalTotal.toLocaleString()}
-        </span>
+        <div className="flex justify-between text-gray-600">
+          <span>Tax (GST 18%)</span>
+          <span>₹{tax.toLocaleString()}</span>
+        </div>
       </div>
 
-      {subtotal < 999 && (
-        <div className="bg-accent p-3 rounded-lg mt-4">
-          <p className="text-sm text-primary">
-            Add ₹{(999 - subtotal).toLocaleString()} more for FREE shipping!
-          </p>
+      <div className="border-t pt-4 mb-6">
+        {creditApplied > 0 && (
+          <div className="flex justify-between text-gray-600 mb-2">
+            <span>Store Credit Applied</span>
+            <span className="text-green-600">
+              -₹{creditApplied.toLocaleString()}
+            </span>
+          </div>
+        )}
+        <div className="flex justify-between items-center">
+          <span className="text-lg font-semibold text-text">Final Total</span>
+          <div className="text-right">
+            <span className="text-2xl font-bold text-primary">
+              ₹{finalTotal.toLocaleString()}
+            </span>
+            {/* 🔥 NEW: Show savings note */}
+            {hasDiscount && (
+              <p className="text-xs text-green-600 font-medium mt-1">
+                You saved ₹{totalDiscount.toLocaleString()}!
+              </p>
+            )}
+          </div>
+        </div>
+
+        {storeCredit > creditApplied && (
+          <div className="flex justify-between text-gray-600 mt-2">
+            <span>Remaining Credit</span>
+            <span className="text-green-600">
+              ₹{(storeCredit - creditApplied).toLocaleString()}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Rest of the component stays the same... */}
+      <button
+        onClick={onPlaceOrder}
+        disabled={!selectedAddress || !paymentMethod || isLoading || paymentProcessing}
+        className={`w-full py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 transition-all duration-200 ${!selectedAddress || !paymentMethod || paymentProcessing
+            ? "bg-gray-200 cursor-not-allowed text-gray-500"
+            : "bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl"
+          }`}
+      >
+        {isLoading || paymentProcessing ? (
+          <>
+            <Loader2 className="h-5 w-5 animate-spin" />
+            {paymentMethod === "online" && paymentProcessing ? "Processing Payment..." : "Processing Order..."}
+          </>
+        ) : !selectedAddress ? (
+          "Add Address to Continue"
+        ) : !paymentMethod ? (
+          "Select Payment Method"
+        ) : paymentMethod === "online" ? (
+          <>
+            <CreditCard className="h-5 w-5" />
+            Pay ₹{finalTotal.toLocaleString()}
+            <ChevronRight className="h-5 w-5" />
+          </>
+        ) : (
+          <>
+            <Shield className="h-5 w-5" />
+            Place Secure Order
+            <ChevronRight className="h-5 w-5" />
+          </>
+        )}
+      </button>
+
+      {error && (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-600 text-sm text-center">{error}</p>
         </div>
       )}
 
-      {storeCredit > creditApplied && (
-        <div className="flex justify-between text-gray-600 mt-2">
-          <span>Remaining Credit</span>
-          <span className="text-green-600">
-            ₹{(storeCredit - creditApplied).toLocaleString()}
-          </span>
+      {/* Trust Indicators */}
+      <div className="mt-6 space-y-3">
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Shield className="h-4 w-4 text-green-600" />
+          <span>Secure SSL encrypted payment</span>
         </div>
-      )}
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Truck className="h-4 w-4 text-blue-600" />
+          <span>Free shipping on orders above ₹999</span>
+        </div>
+      </div>
+
+      <p className="text-xs text-gray-500 text-center mt-4">
+        By placing your order, you agree to our Terms of Service and Privacy Policy
+      </p>
     </div>
-
-    {/* Place Order Button */}
-    <button
-      onClick={onPlaceOrder}
-      disabled={!selectedAddress || !paymentMethod || isLoading || paymentProcessing}
-      className={`w-full py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 transition-all duration-200 ${!selectedAddress || !paymentMethod || paymentProcessing
-          ? "bg-gray-200 cursor-not-allowed text-gray-500"
-          : "bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl"
-        }`}
-    >
-      {isLoading || paymentProcessing ? (
-        <>
-          <Loader2 className="h-5 w-5 animate-spin" />
-          {paymentMethod === "online" && paymentProcessing ? "Processing Payment..." : "Processing Order..."}
-        </>
-      ) : !selectedAddress ? (
-        "Add Address to Continue"
-      ) : !paymentMethod ? (
-        "Select Payment Method"
-      ) : paymentMethod === "online" ? (
-        <>
-          <CreditCard className="h-5 w-5" />
-          Pay ₹{finalTotal.toLocaleString()}
-          <ChevronRight className="h-5 w-5" />
-        </>
-      ) : (
-        <>
-          <Shield className="h-5 w-5" />
-          Place Secure Order
-          <ChevronRight className="h-5 w-5" />
-        </>
-      )}
-    </button>
-
-    {error && (
-      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-        <p className="text-red-600 text-sm text-center">{error}</p>
-      </div>
-    )}
-
-    {/* Trust Indicators */}
-    <div className="mt-6 space-y-3">
-      <div className="flex items-center gap-2 text-sm text-gray-600">
-        <Shield className="h-4 w-4 text-green-600" />
-        <span>Secure SSL encrypted payment</span>
-      </div>
-      <div className="flex items-center gap-2 text-sm text-gray-600">
-        <Truck className="h-4 w-4 text-blue-600" />
-        <span>Free shipping on orders above ₹999</span>
-      </div>
-    </div>
-
-    <p className="text-xs text-gray-500 text-center mt-4">
-      By placing your order, you agree to our Terms of Service and Privacy
-      Policy
-    </p>
-  </div>
-);
+  );
+};
 
 // Empty states
 const EmptyCart = () => (

@@ -125,8 +125,12 @@ export default function CartPage() {
   }, []);
 
   const calculateSubtotal = useCallback(() => {
-    return cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+    return cartItems.reduce((sum, item) => {
+      const finalPrice = item.product.finalPrice || item.product.price;
+      return sum + finalPrice * item.quantity;
+    }, 0);
   }, [cartItems]);
+
 
   const calculateTotalItems = useCallback(() => {
     return cartItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -233,8 +237,10 @@ export default function CartPage() {
               <OrderSummary
                 subtotal={calculateSubtotal()}
                 totalItems={calculateTotalItems()}
+                cartItems={cartItems}  // Add this prop
               />
             </div>
+
           </div>
         )}
       </div>
@@ -258,51 +264,120 @@ const CartItemCard = ({
 }) => {
   const isProcessing = processingItems[item.id];
 
+  // Discount calculations
+  const hasDiscount = (item.product.discountPct || 0) > 0;
+  const finalPrice = item.product.finalPrice || item.product.price;
+  const originalPrice = item.product.price;
+
+  // Rating values
+  const avgRating = item.product.averageRating || 0;
+  const numReviews = item.product.numReviews || 0;
+
+  // Stock checks
+  const isOutOfStock = item.product.stock <= 0;
+  const isLowStock = item.product.stock > 0 && item.product.stock <= 5;
+
   return (
-    <div className="flex gap-4 p-4 border border-accent rounded-xl hover:border-secondary/30 transition-colors">
+    <div className="flex gap-4 p-4 border border-accent rounded-xl hover:border-secondary/30 transition-colors group">
       {/* Product Image */}
-      <Link href={`/products/${item.product.id}`} className="flex-shrink-0">
+      <Link href={`/products/${item.product.id}`} className="flex-shrink-0 relative">
         <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-lg overflow-hidden bg-accent">
           <Image
             src={item.product.images?.[0] || "/placeholder-product.png"}
             alt={item.product.name}
             fill
-            className="object-cover hover:scale-105 transition-transform"
-            sizes="112px"
+            className="object-cover group-hover:scale-105 transition-transform"
+            sizes="150px"
           />
+
+          {/* Discount Badge on Image */}
+          {hasDiscount && (
+            <div className="absolute top-1 left-1">
+              <div className="bg-white/95 backdrop-blur-sm text-red-600 px-2 py-1 rounded-full text-xs font-semibold shadow-md border border-red-200 flex items-center gap-1">
+                {item.product.discountPct}% OFF
+              </div>
+            </div>
+          )}
         </div>
       </Link>
 
       {/* Product Info */}
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-start mb-2">
-          <Link href={`/products/${item.product.id}`}>
-            <h3 className="text-lg font-semibold text-text hover:text-primary transition-colors line-clamp-2">
-              {item.product.name}
-            </h3>
-          </Link>
-          <div className="text-right ml-4">
+          <div className="flex-1 mr-4">
+            <Link href={`/products/${item.product.id}`}>
+              <h3 className="text-lg font-semibold text-text hover:text-primary transition-colors line-clamp-1">
+                {item.product.name}
+              </h3>
+            </Link>
+
+            {/* 🔥 NEW: Product Description */}
+            {item.product.description && (
+              <p className="text-sm text-gray-600 line-clamp-1 mt-1">
+                {item.product.description}
+              </p>
+            )}
+          </div>
+
+          <div className="text-right flex-shrink-0">
             <p className="text-lg font-bold text-text">
-              ₹{(item.product.price * item.quantity).toLocaleString()}
+              ₹{(finalPrice * item.quantity).toLocaleString()}
             </p>
-            <p className="text-sm text-gray-500">
-              ₹{item.product.price.toLocaleString()} each
+            {hasDiscount && (
+              <p className="text-sm text-gray-400 line-through">
+                ₹{(originalPrice * item.quantity).toLocaleString()}
+              </p>
+            )}
+            <p className="text-xs text-gray-500 mt-0.5">
+              ₹{finalPrice.toLocaleString()} each
             </p>
           </div>
         </div>
 
-        {/* Product rating and description */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex items-center">
-            {[...Array(5)].map((_, i) => (
-              <Star
-                key={i}
-                className={`w-4 h-4 ${i < 4 ? 'text-silver fill-current' : 'text-gray-300'}`}
-              />
-            ))}
+        {/* Product rating and stock */}
+        <div className="flex items-center gap-3 mb-3 flex-wrap">
+          {/* Dynamic Rating */}
+          <div className="flex items-center gap-1">
+            <div className="flex items-center">
+              {[...Array(5)].map((_, i) => (
+                <Star
+                  key={i}
+                  className={`w-3.5 h-3.5 ${i < Math.floor(avgRating)
+                      ? 'text-yellow-400 fill-current'
+                      : 'text-gray-300'
+                    }`}
+                />
+              ))}
+            </div>
+            <span className="text-xs text-gray-500">
+              {avgRating > 0 ? avgRating.toFixed(1) : "0.0"}
+              {numReviews > 0 && ` (${numReviews})`}
+            </span>
           </div>
-          <span className="text-sm text-gray-500">(4.5)</span>
-          <span className="text-sm text-green-600 font-medium">In Stock</span>
+
+          {/* Stock Status */}
+          <div className="text-xs">
+            {isOutOfStock ? (
+              <span className="text-red-600 font-medium bg-red-50 px-2 py-1 rounded">
+                Out of Stock
+              </span>
+            ) : isLowStock ? (
+              <span className="text-orange-600 font-medium bg-orange-50 px-2 py-1 rounded">
+                Only {item.product.stock} left
+              </span>
+            ) : (
+              <span className="text-green-600 font-medium bg-green-50 px-2 py-1 rounded">
+                In Stock
+              </span>
+            )}
+          </div>
+
+          {/* Savings Badge */}
+          {hasDiscount && (
+            <span className="text-xs text-green-600 font-semibold bg-green-50 px-2 py-1 rounded">
+              Save ₹{((originalPrice - finalPrice) * item.quantity).toLocaleString()}
+            </span>
+          )}
         </div>
 
         {/* Quantity and Actions */}
@@ -325,7 +400,7 @@ const CartItemCard = ({
             </span>
             <button
               onClick={() => onUpdateQuantity(item.id, item.product.id, item.quantity + 1)}
-              disabled={isProcessing}
+              disabled={isProcessing || isOutOfStock}
               className="p-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-r-lg transition-colors"
             >
               <Plus className="h-4 w-4" />
@@ -358,6 +433,7 @@ const CartItemCard = ({
     </div>
   );
 };
+
 
 // Empty cart component
 const EmptyCart = () => (
@@ -392,67 +468,141 @@ const EmptyCart = () => (
 // Order summary component
 const OrderSummary = ({
   subtotal,
-  totalItems
+  totalItems,
+  cartItems // Add cartItems prop
 }: {
   subtotal: number;
   totalItems: number;
+  cartItems: CartItem[]; // Add this
 }) => {
-  const shipping = subtotal >= 999 ? 0 : 99; // ✅ Changed to >=
-  const tax = Math.round(subtotal * 0.18); // ✅ Round tax
-  const total = Math.round(subtotal + shipping + tax); // ✅ Round total
+  // Calculate original price (before discounts)
+  const originalTotal = cartItems.reduce((sum, item) => {
+    return sum + item.product.price * item.quantity;
+  }, 0);
+
+  // Calculate total discount
+  const totalDiscount = originalTotal - subtotal;
+  const hasDiscount = totalDiscount > 0;
+
+  const shipping = subtotal >= 999 ? 0 : 99;
+  const tax = Math.round(subtotal * 0.18);
+  const total = Math.round(subtotal + shipping + tax);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-accent p-6 sticky top-8">
       <h2 className="text-xl font-semibold text-text mb-6">Order Summary</h2>
 
       <div className="space-y-4 mb-6">
-        <div className="flex justify-between">
-          <span className="text-gray-600">Subtotal ({totalItems} items)</span>
-          <span className="font-medium">₹{subtotal.toLocaleString()}</span>
-        </div>
+        {/* Original Price (if there's a discount) */}
+        {hasDiscount && (
+          <div className="flex justify-between text-gray-500">
+            <span>Original Price</span>
+            <span className="line-through">₹{originalTotal.toLocaleString()}</span>
+          </div>
+        )}
 
+        {/* Discount Savings */}
+        {hasDiscount && (
+          <div className="flex justify-between text-green-600 font-medium">
+            <span className="flex items-center gap-1">
+              <span className="text-sm">🎉</span>
+              Discount Savings
+            </span>
+            <span>- ₹{totalDiscount.toLocaleString()}</span>
+          </div>
+        )}
+
+        {/* Subtotal */}
         <div className="flex justify-between">
-          <span className="text-gray-600">Shipping</span>
-          <span className={`font-medium ${shipping === 0 ? 'text-green-600' : ''}`}>
-            {shipping === 0 ? 'FREE' : `₹${shipping}`}
+          <span className="text-gray-600">
+            Subtotal ({totalItems} {totalItems === 1 ? 'item' : 'items'})
+          </span>
+          <span className="font-medium text-text">
+            ₹{subtotal.toLocaleString()}
           </span>
         </div>
 
+        {/* Divider if discount exists */}
+        {hasDiscount && <div className="border-t border-gray-200"></div>}
+
+        {/* Shipping */}
+        <div className="flex justify-between">
+          <span className="text-gray-600">Shipping</span>
+          <span className={`font-medium ${shipping === 0 ? 'text-green-600' : ''}`}>
+            {shipping === 0 ? (
+              <span className="flex items-center gap-1">
+                <span className="text-sm">✓</span>
+                FREE
+              </span>
+            ) : (
+              `₹${shipping}`
+            )}
+          </span>
+        </div>
+
+        {/* Tax */}
         <div className="flex justify-between">
           <span className="text-gray-600">Tax (GST 18%)</span>
           <span className="font-medium">₹{tax.toLocaleString()}</span>
         </div>
 
+        {/* Free shipping progress bar */}
         {subtotal < 999 && (
-          <div className="bg-accent p-3 rounded-lg">
-            <p className="text-sm text-primary">
-              Add ₹{(999 - subtotal).toLocaleString()} more for FREE shipping!
+          <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-medium text-blue-900 text-sm">
+                Add ₹{(999 - subtotal).toLocaleString()} for FREE shipping
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Discount achieved message */}
+        {hasDiscount && (
+          <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+            <p className="text-sm text-green-800 font-medium flex items-center gap-2">
+              <span className="text-base">💰</span>
+              You&apos;re saving ₹{totalDiscount.toLocaleString()} on this order!
             </p>
           </div>
         )}
       </div>
 
+      {/* Total */}
       <div className="border-t border-accent pt-4 mb-6">
-        <div className="flex justify-between items-center">
-          <span className="text-lg font-semibold text-text">Total</span>
-          <span className="text-2xl font-bold text-primary">₹{total.toLocaleString()}</span>
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-lg font-semibold text-text">Total Amount</span>
+          <div className="text-right">
+            <span className="text-2xl font-bold text-primary">
+              ₹{total.toLocaleString()}
+            </span>
+            {hasDiscount && (
+              <p className="text-xs text-gray-500 mt-1">
+                (After discount)
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
+      {/* Checkout Button */}
       <Link
         href="/cart/checkout"
-        className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white py-4 rounded-xl font-semibold text-lg transition-colors shadow-lg hover:shadow-xl"
+        className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white py-4 rounded-xl font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02] mb-4"
       >
         Proceed to Checkout
         <ChevronRight className="h-5 w-5" />
       </Link>
 
-      <p className="text-xs text-gray-500 text-center mt-4">
-        Secure checkout powered by industry-standard encryption
-      </p>
+      {/* Security Badge */}
+      <div className="flex items-center justify-center gap-2 text-gray-500">
+        <Shield className="h-4 w-4" />
+        <p className="text-xs">Secure checkout with SSL encryption</p>
+      </div>
     </div>
   );
 };
+
 
 // Trust badges component
 const TrustBadges = () => (

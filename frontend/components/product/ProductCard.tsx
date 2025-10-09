@@ -31,6 +31,10 @@ export default function ProductCard({
   // ✅ Discount calculations
   const hasDiscount = (product.discountPct || 0) > 0;
 
+  // 🔥 NEW: Get rating values from product
+  const avgRating = product.averageRating || 0;
+  const numReviews = product.numReviews || 0;
+
   const [isMounted, setIsMounted] = useState(false);
   const [showAddedEffect, setShowAddedEffect] = useState(false);
 
@@ -173,11 +177,18 @@ export default function ProductCard({
             </div>
           )}
 
-          {/* Rating badge - only show if not out of stock */}
+          {/* 🔥 UPDATED: Dynamic Rating badge */}
           {!isOutOfStock && (
             <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 text-yellow-400 shadow-sm">
               <Star className="w-3 h-3 fill-current" />
-              <span className="text-xs font-medium text-gray-600">4.5</span>
+              <span className="text-xs font-medium text-gray-600">
+                {avgRating > 0 ? avgRating.toFixed(1) : "0.0"}
+              </span>
+              {numReviews > 0 && (
+                <span className="text-[10px] text-gray-500">
+                  ({numReviews})
+                </span>
+              )}
             </div>
           )}
         </div>

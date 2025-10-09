@@ -396,7 +396,15 @@ export default function Home() {
           {/* Products Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
             {products.map((product) => {
-              return <ProductCard key={product.id} product={product} />;
+              return (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  interactions={interactions}
+                  toggleWishlist={toggleWishlist}
+                  addToCartHandler={addToCartHandler}
+                />
+              );
             })}
           </div>
 

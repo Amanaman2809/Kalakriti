@@ -130,7 +130,7 @@ export default function WishlistPage() {
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertCircle className="w-8 h-8 text-red-500" />
               </div>
-              <h3 className="text-xl font-semibold text-red-800 mb-2">Couldn&quot;t load wishlist</h3>
+              <h3 className="text-xl font-semibold text-red-800 mb-2">Couldn&apos;t load wishlist</h3>
               <p className="text-red-600 mb-6">{error}</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
@@ -260,10 +260,22 @@ const WishlistItemCard = ({
   onMoveToCart: (id: string, name: string) => void;
 }) => {
   const { product } = item;
+
+  // Stock checks
   const isOutOfStock = product.stock <= 0;
+  const isLowStock = product.stock > 0 && product.stock <= 5;
+
+  // Discount calculations
+  const hasDiscount = (product.discountPct || 0) > 0;
+  const finalPrice = product.finalPrice || product.price;
+  const originalPrice = product.price;
+
+  // Rating values
+  const avgRating = product.averageRating || 0;
+  const numReviews = product.numReviews || 0;
 
   return (
-    <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-accent hover:border-secondary/30">
+    <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-accent hover:border-secondary/30 hover:-translate-y-2">
       <Link href={`/products/${product.id}`}>
         <div className="relative aspect-square overflow-hidden">
           <Image
@@ -283,6 +295,16 @@ const WishlistItemCard = ({
             </div>
           )}
 
+          {/* Discount Badge */}
+          {hasDiscount && !isOutOfStock && (
+            <div className="absolute top-3 left-3 z-10">
+              <div className="bg-white/95 backdrop-blur-sm text-red-600 px-2 py-1 rounded-full text-xs font-semibold shadow-md border border-red-200 flex items-center gap-1">
+                <span className="text-[10px]">⚡</span>
+                {product.discountPct}% OFF
+              </div>
+            </div>
+          )}
+
           {/* Quick view button */}
           <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
             <button className="p-2 bg-white/90 rounded-full shadow-lg hover:bg-white transition-colors">
@@ -290,12 +312,20 @@ const WishlistItemCard = ({
             </button>
           </div>
 
-          {/* Price badge */}
-          <div className="absolute top-4 left-4">
-            <span className="bg-primary text-white px-3 py-1 rounded-full text-sm font-semibold">
-              ₹{product.price.toLocaleString()}
-            </span>
-          </div>
+          {/* Rating badge */}
+          {!isOutOfStock && (
+            <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 text-yellow-400 shadow-sm">
+              <Star className="w-3 h-3 fill-current" />
+              <span className="text-xs font-medium text-gray-600">
+                {avgRating > 0 ? avgRating.toFixed(1) : "0.0"}
+              </span>
+              {numReviews > 0 && (
+                <span className="text-[10px] text-gray-500">
+                  ({numReviews})
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </Link>
 
@@ -307,27 +337,40 @@ const WishlistItemCard = ({
           </h3>
         </Link>
 
-        {/* Rating */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex items-center">
-            {[...Array(5)].map((_, i) => (
-              <Star
-                key={i}
-                className={`w-4 h-4 ${i < 4 ? 'text-silver fill-current' : 'text-gray-300'}`}
-              />
-            ))}
+        {/* Price with discount */}
+        <div className="mb-3">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`text-xl font-bold ${isOutOfStock ? 'text-gray-400' : 'text-text'}`}>
+              ₹{finalPrice.toLocaleString()}
+            </span>
+            {hasDiscount && (
+              <span className="text-sm text-gray-500 line-through">
+                ₹{originalPrice.toLocaleString()}
+              </span>
+            )}
           </div>
-          <span className="text-sm text-gray-500">(4.5)</span>
+          {hasDiscount && (
+            <span className="text-xs text-green-600 font-semibold bg-green-50 px-2 py-1 rounded-full">
+              You save ₹{(originalPrice - finalPrice).toLocaleString()}
+            </span>
+          )}
         </div>
 
         {/* Stock status */}
-        <div className="mb-4">
+        <div className="mb-4 h-6 flex items-center">
           {isOutOfStock ? (
-            <span className="text-sm text-red-600 font-medium bg-red-50 px-2 py-1 rounded">
-              Out of Stock
+            <span className="inline-flex items-center gap-1 text-red-600 text-sm font-medium">
+              <AlertCircle className="w-4 h-4" />
+              Currently Unavailable
+            </span>
+          ) : isLowStock ? (
+            <span className="inline-flex items-center gap-1 text-orange-600 text-sm font-medium">
+              <AlertCircle className="w-4 h-4" />
+              Only {product.stock} left in stock
             </span>
           ) : (
-            <span className="text-sm text-green-600 font-medium bg-green-50 px-2 py-1 rounded">
+            <span className="inline-flex items-center gap-1 text-green-600 text-sm font-medium">
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
               In Stock ({product.stock} available)
             </span>
           )}
@@ -340,7 +383,7 @@ const WishlistItemCard = ({
             disabled={isProcessing || isOutOfStock}
             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium transition-all duration-200 ${isOutOfStock
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-primary text-white hover:bg-primary/90'
+                : 'bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl'
               } disabled:opacity-70`}
           >
             {isProcessing ? (
@@ -385,7 +428,7 @@ const EmptyWishlist = ({ router }: { router: any }) => (
     <h2 className="text-3xl font-bold text-text mb-4">Your wishlist is empty</h2>
     <p className="text-gray-600 max-w-md mb-8 leading-relaxed">
       Save products you love by clicking the heart icon.
-      They&quot;ll appear here so you can easily find them later!
+      They&apos;ll appear here so you can easily find them later!
     </p>
     <div className="flex flex-col sm:flex-row gap-4">
       <button

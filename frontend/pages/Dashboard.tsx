@@ -160,7 +160,7 @@ export default function AdminDashboard() {
             <p className="text-sm text-gray-500">Orders</p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-primary">₹{amount.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-primary">₹{amount?.toLocaleString()}</p>
             <p className="text-sm text-gray-500">Sales</p>
           </div>
         </div>

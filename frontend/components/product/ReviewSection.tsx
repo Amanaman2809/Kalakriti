@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Star, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
-import { FeedbackSummary } from "@/utils/types";
 
 interface Feedback {
   id: string;
@@ -11,7 +10,16 @@ interface Feedback {
   createdAt: string;
 }
 
-export default function ReviewSection({ productId }: { productId: string }) {
+// 🔥 UPDATE THIS INTERFACE - Add the optional callback prop
+interface ReviewSectionProps {
+  productId: string;
+  onRatingUpdate?: (averageRating: number, totalReviews: number) => void;
+}
+
+export default function ReviewSection({
+  productId,
+  onRatingUpdate
+}: ReviewSectionProps) {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [summary, setSummary] = useState<{
     averageRating: number;
@@ -42,8 +50,14 @@ export default function ReviewSection({ productId }: { productId: string }) {
       const summaryData = await summaryRes.json();
       const feedbackData = await feedbacksRes.json();
 
-      setSummary(summaryData || { averageRating: 0, totalReviews: 0 });
+      const newSummary = summaryData || { averageRating: 0, totalReviews: 0 };
+      setSummary(newSummary);
       setFeedbacks(Array.isArray(feedbackData) ? feedbackData : []);
+
+      // 🔥 Notify parent component of rating update
+      if (onRatingUpdate) {
+        onRatingUpdate(newSummary.averageRating, newSummary.totalReviews);
+      }
     } catch (err) {
       console.error(err);
       toast.error("Failed to load reviews");
@@ -62,6 +76,11 @@ export default function ReviewSection({ productId }: { productId: string }) {
     e.preventDefault();
     const token = localStorage.getItem("token");
 
+    if (!token) {
+      toast.error("Please login to submit feedback");
+      return;
+    }
+
     if (rating < 1) {
       toast.error("Please select a rating");
       return;
@@ -78,18 +97,39 @@ export default function ReviewSection({ productId }: { productId: string }) {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ rating, comment }),
-        },
+        }
       );
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to submit feedback");
 
-      toast.success("Feedback submitted");
+      console.log("Feedback response:", data); // Debug log
+
+      // 🔥 Update UI immediately with response data
+      if (data.summary) {
+        setSummary(data.summary);
+        if (onRatingUpdate) {
+          console.log("Calling onRatingUpdate with:", data.summary); // Debug
+          onRatingUpdate(data.summary.averageRating, data.summary.totalReviews);
+        }
+      }
+
+      // Add new feedback to the list
+      if (data.feedback) {
+        setFeedbacks(prev => [data.feedback, ...prev]);
+      }
+
+      toast.success("Feedback submitted successfully");
       setComment("");
       setRating(0);
-      fetchFeedbacks();
+
+      // 🔥 Refetch to ensure consistency (after a short delay)
+      setTimeout(() => {
+        fetchFeedbacks();
+      }, 500);
     } catch (err: any) {
-      toast.error(err.message);
+      console.error("Feedback submission error:", err);
+      toast.error(err.message || "Failed to submit feedback");
     } finally {
       setSubmitting(false);
     }
@@ -108,10 +148,10 @@ export default function ReviewSection({ productId }: { productId: string }) {
       <div className="flex items-center gap-3 mb-6">
         <Star className="w-5 h-5 text-yellow-400 fill-current" />
         <span className="text-lg font-semibold">
-          {summary.averageRating} / 5
+          {summary.averageRating > 0 ? summary.averageRating.toFixed(1) : "0.0"} / 5
         </span>
         <span className="text-gray-600 text-sm">
-          ({summary.totalReviews} reviews)
+          ({summary.totalReviews} {summary.totalReviews === 1 ? "review" : "reviews"})
         </span>
       </div>
 
@@ -125,11 +165,17 @@ export default function ReviewSection({ productId }: { productId: string }) {
             <Star
               key={i}
               onClick={() => setRating(i)}
-              className={`w-6 h-6 cursor-pointer ${
-                i <= rating ? "text-yellow-400 fill-current" : "text-gray-300"
-              }`}
+              className={`w-6 h-6 cursor-pointer transition-all ${i <= rating
+                  ? "text-yellow-400 fill-current scale-110"
+                  : "text-gray-300 hover:text-yellow-200"
+                }`}
             />
           ))}
+          {rating > 0 && (
+            <span className="ml-2 text-sm text-gray-600">
+              {rating} star{rating !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
         <textarea
           value={comment}
@@ -140,8 +186,8 @@ export default function ReviewSection({ productId }: { productId: string }) {
         />
         <button
           type="submit"
-          disabled={submitting}
-          className="mt-3 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-70"
+          disabled={submitting || rating < 1}
+          className="mt-3 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
         >
           {submitting ? "Submitting..." : "Submit Feedback"}
         </button>
@@ -149,29 +195,34 @@ export default function ReviewSection({ productId }: { productId: string }) {
 
       {/* Reviews List */}
       {feedbacks.length === 0 ? (
-        <p className="text-gray-500 text-sm">No reviews yet.</p>
+        <p className="text-gray-500 text-sm">No reviews yet. Be the first to review!</p>
       ) : (
         <ul className="space-y-4">
-          {feedbacks?.map((f) => (
+          {feedbacks.map((f) => (
             <li key={f.id} className="border rounded-lg p-4 bg-white shadow-sm">
               <div className="flex items-center gap-2 mb-1">
                 {[...Array(5)].map((_, i) => (
                   <Star
                     key={i}
-                    className={`w-4 h-4 ${
-                      i < f.rating
+                    className={`w-4 h-4 ${i < f.rating
                         ? "text-yellow-400 fill-current"
                         : "text-gray-300"
-                    }`}
+                      }`}
                   />
                 ))}
-                <span className="text-sm text-gray-600 ml-2">
+                <span className="text-sm text-gray-600 ml-2 font-medium">
                   {f.user.name}
                 </span>
               </div>
-              <p className="text-gray-700 text-sm">{f.comment}</p>
+              {f.comment && (
+                <p className="text-gray-700 text-sm mt-2">{f.comment}</p>
+              )}
               <p className="text-xs text-gray-400 mt-1">
-                {new Date(f.createdAt).toLocaleDateString()}
+                {new Date(f.createdAt).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
               </p>
             </li>
           ))}

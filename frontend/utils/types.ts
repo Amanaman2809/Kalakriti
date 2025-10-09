@@ -62,7 +62,7 @@ export interface Product {
   id: string;
   name: string;
   description: string | null;
-  avgRating: number;
+  averageRating: number;
   numReviews: number;
   price: number;
   finalPrice: number;

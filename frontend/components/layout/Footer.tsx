@@ -35,34 +35,34 @@ const quickLinks = [
 const socialLinks = [
   {
     name: "Instagram",
-    href: "https://instagram.com/Chalava",
+    href: "https://www.instagram.com/chalava_____?utm_source=qr&igsh=MWk1OXRyMnFrdGVzOA==",
     icon: <Instagram className="w-5 h-5" />,
     color: "hover:text-pink-400",
   },
-  {
-    name: "Facebook",
-    href: "https://facebook.com/Chalava",
-    icon: <Facebook className="w-5 h-5" />,
-    color: "hover:text-blue-400",
-  },
-  {
-    name: "Twitter",
-    href: "https://twitter.com/Chalava",
-    icon: <Twitter className="w-5 h-5" />,
-    color: "hover:text-sky-400",
-  },
-  {
-    name: "YouTube",
-    href: "https://youtube.com/@Chalava",
-    icon: <Youtube className="w-5 h-5" />,
-    color: "hover:text-red-400",
-  },
-  {
-    name: "LinkedIn",
-    href: "https://linkedin.com/company/Chalava",
-    icon: <Linkedin className="w-5 h-5" />,
-    color: "hover:text-blue-500",
-  },
+  // {
+  //   name: "Facebook",
+  //   href: "https://facebook.com/Chalava",
+  //   icon: <Facebook className="w-5 h-5" />,
+  //   color: "hover:text-blue-400",
+  // },
+  // {
+  //   name: "Twitter",
+  //   href: "https://twitter.com/Chalava",
+  //   icon: <Twitter className="w-5 h-5" />,
+  //   color: "hover:text-sky-400",
+  // },
+  // {
+  //   name: "YouTube",
+  //   href: "https://youtube.com/@Chalava",
+  //   icon: <Youtube className="w-5 h-5" />,
+  //   color: "hover:text-red-400",
+  // },
+  // {
+  //   name: "LinkedIn",
+  //   href: "https://linkedin.com/company/Chalava",
+  //   icon: <Linkedin className="w-5 h-5" />,
+  //   color: "hover:text-blue-500",
+  // },
 ];
 
 function Footer() {
@@ -84,7 +84,7 @@ function Footer() {
           <div className="lg:col-span-1">
             <div className="flex items-center gap-4 mb-6">
               <div className="relative">
-                <div className="absolute inset-0 bg-accent rounded-xl"></div>
+                <div className="absolute inset-0 bg-accent rounded-lg"></div>
                 <Image
                   src="/logo_sm.png"
                   width={60}
@@ -94,7 +94,7 @@ function Footer() {
                 />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-white">Chalava</h3>
+                <h3 className="text-2xl font-bold text-white">Chalava.in</h3>
                 <div className="flex items-center gap-1 text-sm text-secondary">
                   <Heart className="w-3 h-3 fill-current" />
                   <span>Handcrafted Excellence</span>
@@ -118,7 +118,7 @@ function Footer() {
                   <Mail className="w-4 h-4" />
                 </div>
                 <span className="text-sm font-medium">
-                  Chalava@handicrafts.com
+                Chalavamail@gmail.com
                 </span>
               </a>
 

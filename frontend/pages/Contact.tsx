@@ -182,8 +182,8 @@ export default function Contact() {
                 <ContactInfo
                   icon={<Mail className="w-5 h-5 text-primary" />}
                   title="Email Us"
-                  content="Chalava@handicrafts.com"
-                  link="mailto:Chalava@handicrafts.com"
+                  content="Chalavamail@gmail.com"
+                  link="mailto:Chalavamail@gmail.com"
                 />
 
                 <ContactInfo
@@ -425,12 +425,12 @@ export default function Contact() {
 
           <div className="flex gap-4 justify-center">
             <SocialLink
-              href="https://instagram.com/Chalava"
+              href="https://www.instagram.com/chalava_____?utm_source=qr&igsh=MWk1OXRyMnFrdGVzOA=="
               icon={<Instagram className="w-5 h-5" />}
               label="Instagram"
               className="bg-pink-50 hover:bg-pink-100 text-pink-600 hover:text-pink-700"
             />
-            <SocialLink
+            {/* <SocialLink
               href="https://facebook.com/Chalava"
               icon={<Facebook className="w-5 h-5" />}
               label="Facebook"
@@ -447,7 +447,7 @@ export default function Contact() {
               icon={<Linkedin className="w-5 h-5" />}
               label="LinkedIn"
               className="bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700"
-            />
+            /> */}
           </div>
 
           <p className="text-sm text-gray-600 mt-6 text-center">

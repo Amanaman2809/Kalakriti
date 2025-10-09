@@ -37,14 +37,33 @@ const ProductDetail = () => {
   const [showAddedEffect, setShowAddedEffect] = useState(false);
   const router = useRouter();
 
+  // ADD: State to track current ratings (separate from product data)
+  const [currentRating, setCurrentRating] = useState({
+    avgRating: 0,
+    numReviews: 0,
+  });
+
   // ✅ Stock status checks (matching ProductCard pattern)
   const isOutOfStock = product?.stock === 0;
   const isLowStock = product && product.stock > 0 && product.stock <= 5;
 
-  // ✅ Discount calculations (matching ProductCard pattern)
+  // Discount calculations
   const hasDiscount = product && (product.discountPct || 0) > 0;
   const finalPrice = product?.finalPrice || product?.price || 0;
   const originalPrice = product?.price || 0;
+
+  useEffect(() => {
+    if (product) {
+      console.log("Initializing rating from product:", {
+        avgRating: product.averageRating,
+        numReviews: product.numReviews,
+      });
+      setCurrentRating({
+        avgRating: product.averageRating || 0,
+        numReviews: product.numReviews || 0,
+      });
+    }
+  }, [product]);
 
   useEffect(() => {
     if (!productId) {
@@ -57,7 +76,7 @@ const ProductDetail = () => {
       try {
         setLoading(true);
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/products/${productId}`,
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/products/${productId}`
         );
 
         if (!response.ok) {
@@ -65,7 +84,7 @@ const ProductDetail = () => {
         }
 
         const data: Product = await response.json();
-        console.log(data);
+        console.log("Product data:", data); // Debug log
         setProduct(data);
 
         if (data.category?.id) {
@@ -87,6 +106,15 @@ const ProductDetail = () => {
     fetchProductDetails();
   }, [productId]);
 
+  // NEW: Callback function to update ratings from ReviewSection
+  const handleRatingUpdate = (averageRating: number, totalReviews: number) => {
+    console.log("Rating updated:", averageRating, totalReviews);
+    setCurrentRating({
+      avgRating: averageRating,
+      numReviews: totalReviews,
+    });
+  };
+  
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -249,7 +277,7 @@ const ProductDetail = () => {
       </div>
     );
   };
-
+  
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -285,6 +313,19 @@ const ProductDetail = () => {
       </div>
     );
   }
+  if (!product) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <p className="text-lg">Product not found</p>
+        <button
+          onClick={() => router.back()}
+          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-300"
+        >
+          Go Back
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-background min-h-screen">
@@ -293,7 +334,7 @@ const ProductDetail = () => {
         <div className="mb-6">
           <button
             onClick={() => router.back()}
-            className="flex items-center text-secondary hover:text-primary transition-colors duration-300 group"
+            className="flex items-center text-primary hover:text-primary/70 transition-colors duration-300 group"
           >
             <ChevronLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform duration-300" />
             <span className="ml-1 font-medium">Back to products</span>
@@ -318,7 +359,6 @@ const ProductDetail = () => {
                 sizes="(max-width: 768px) 100vw, 50vw"
               />
 
-              {/* Added to cart animation effect */}
               {showAddedEffect && (
                 <div className="absolute inset-0 flex items-center justify-center bg-primary/20 backdrop-blur-sm animate-fade-in-out">
                   <div className="bg-white rounded-full p-4 shadow-2xl animate-bounce-in">
@@ -327,7 +367,7 @@ const ProductDetail = () => {
                 </div>
               )}
 
-              {/* Discount Badge - matching ProductCard pattern */}
+              {/* Discount Badge */}
               {hasDiscount && (
                 <div className="absolute top-4 left-4 z-10">
                   <div className="bg-white/95 backdrop-blur-sm text-red-600 px-3 py-2 rounded-full text-sm font-semibold shadow-md border border-red-200 flex items-center gap-1 animate-pulse-gentle">
@@ -337,15 +377,17 @@ const ProductDetail = () => {
                 </div>
               )}
 
-              {/* Rating badge - matching ProductCard pattern */}
+              {/* UPDATED: Rating badge - now uses currentRating state */}
               <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-full flex items-center gap-1 text-yellow-400 shadow-sm">
                 <Star className="w-4 h-4 fill-current" />
                 <span className="text-sm font-medium text-gray-600">
-                  {product?.avgRating?.toFixed(1) || "0.0"}
+                  {currentRating.avgRating > 0
+                    ? currentRating.avgRating.toFixed(1)
+                    : "0.0"}
                 </span>
-                {product?.numReviews > 0 && (
+                {currentRating.numReviews > 0 && (
                   <span className="text-xs font-medium text-gray-600">
-                    ({product?.numReviews})
+                    ({currentRating.numReviews})
                   </span>
                 )}
               </div>
@@ -361,11 +403,10 @@ const ProductDetail = () => {
                       e.preventDefault();
                       setCurrentImageIndex(index);
                     }}
-                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all duration-300 ${
-                      currentImageIndex === index
+                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all duration-300 ${currentImageIndex === index
                         ? "border-primary scale-95 shadow-md"
                         : "border-transparent hover:border-primary/50 hover:scale-105"
-                    }`}
+                      }`}
                   >
                     <Image
                       src={img}
@@ -395,20 +436,23 @@ const ProductDetail = () => {
               {product.name}
             </h1>
 
-            {/* Rating */}
+            {/* UPDATED: Rating - now uses currentRating state */}
             <div className="flex items-center mb-4 gap-2">
               <div className="bg-primary/10 px-3 py-2 rounded-full flex items-center gap-1">
                 <span className="text-lg font-bold text-primary">
-                  {product?.avgRating?.toFixed(1) || "0.0"}
+                  {currentRating.avgRating > 0
+                    ? currentRating.avgRating.toFixed(1)
+                    : "0.0"}
                 </span>
-                <Star className="h-5 w-5 fill-primary" />
+                <Star className="h-5 w-5 fill-primary text-primary" />
               </div>
               <span className="text-sm text-gray-600">
-                {product?.numReviews || 0} reviews
+                {currentRating.numReviews}{" "}
+                {currentRating.numReviews === 1 ? "review" : "reviews"}
               </span>
             </div>
 
-            {/* Price with discount - matching ProductCard pattern */}
+            {/* Price with discount */}
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-3xl font-bold text-text">
@@ -429,7 +473,7 @@ const ProductDetail = () => {
                 </span>
               )}
 
-              {/* Stock Status - matching ProductCard pattern */}
+              {/* Stock Status */}
               <div className="mt-3 h-6 flex items-center">
                 {isOutOfStock ? (
                   <span className="inline-flex items-center gap-1 text-red-600 text-sm font-medium">
@@ -501,11 +545,10 @@ const ProductDetail = () => {
               <button
                 onClick={handleAddToCart}
                 disabled={isOutOfStock || isCartLoading}
-                className={`flex-1 py-4 px-6 rounded-lg flex items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden font-medium ${
-                  isOutOfStock
+                className={`flex-1 py-4 px-6 rounded-lg flex items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden font-medium ${isOutOfStock
                     ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                     : "bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl hover:scale-105"
-                } disabled:opacity-70`}
+                  } disabled:opacity-70`}
               >
                 {/* Shine effect on hover - matching ProductCard pattern */}
                 {!isOutOfStock && !isCartLoading && (
@@ -533,11 +576,10 @@ const ProductDetail = () => {
               <button
                 onClick={addToWishlist}
                 disabled={isWishlistLoading}
-                className={`p-4 rounded-lg border transition-all duration-300 flex items-center justify-center ${
-                  isWishlistLoading
+                className={`p-4 rounded-lg border transition-all duration-300 flex items-center justify-center ${isWishlistLoading
                     ? "border-gray-300 text-gray-400"
                     : "border-gray-300 text-gray-700 hover:border-primary hover:text-primary hover:scale-105"
-                } disabled:opacity-70`}
+                  } disabled:opacity-70`}
                 aria-label="Add to wishlist"
               >
                 {isWishlistLoading ? (
@@ -552,10 +594,11 @@ const ProductDetail = () => {
 
         {/* Description section */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-accent mt-8">
-          <h2 className="text-2xl font-bold mb-6 text-text">About this item</h2>
+          <h2 className="text-2xl font-bold mb-6 text-text">
+            About this item
+          </h2>
           {renderDescription()}
-        </div>
-
+      </div>
         {/* Support section */}
         <div className="bg-blue-50 p-6 rounded-2xl shadow-sm border border-blue-100 mt-6">
           <h3 className="text-xl font-bold mb-4 text-text">Need Assistance?</h3>
@@ -617,13 +660,16 @@ const ProductDetail = () => {
                   <ProductCard
                     key={similarProduct.id}
                     product={similarProduct}
-                    // You might want to pass interactions prop here if needed
+                  // You might want to pass interactions prop here if needed
                   />
                 ))}
             </div>
           </div>
         )}
-        <ReviewSection productId={productId} />
+        <ReviewSection
+          productId={productId}
+          onRatingUpdate={handleRatingUpdate}
+        />
       </div>
     </div>
   );
