@@ -8,13 +8,31 @@ export interface Customer {
 
 export interface OrderDetails {
   id: string;
-  netAmount: number;
-  grossAmount: number;
-  shippingAmount: number;
-  taxAmount: number;
-  creditsApplied: number;
-  paymentStatus: "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+  createdAt: string;
+  status: "PLACED" | "SHIPPED" | "DELIVERED" | "CANCELLED";
   paymentMode: "COD" | "ONLINE";
+  total: number;
+  netAmount: number;
+  address?: {
+    street: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+    phone: string;
+  };
+  carrierName?: string;
+  trackingNumber?: string;
+  items: Array<{
+    id: string;
+    productId: string;
+    quantity: number;
+    price: number;
+    product: {
+      name: string;
+      images: string[];
+    };
+  }>;
 }
 
 export interface RazorpayOrder {

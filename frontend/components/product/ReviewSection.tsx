@@ -18,7 +18,7 @@ interface ReviewSectionProps {
 
 export default function ReviewSection({
   productId,
-  onRatingUpdate
+  onRatingUpdate,
 }: ReviewSectionProps) {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [summary, setSummary] = useState<{
@@ -97,26 +97,26 @@ export default function ReviewSection({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ rating, comment }),
-        }
+        },
       );
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to submit feedback");
 
-      console.log("Feedback response:", data); // Debug log
+      // console.log("Feedback response:", data); // Debug log
 
       // 🔥 Update UI immediately with response data
       if (data.summary) {
         setSummary(data.summary);
         if (onRatingUpdate) {
-          console.log("Calling onRatingUpdate with:", data.summary); // Debug
+          // console.log("Calling onRatingUpdate with:", data.summary); // Debug
           onRatingUpdate(data.summary.averageRating, data.summary.totalReviews);
         }
       }
 
       // Add new feedback to the list
       if (data.feedback) {
-        setFeedbacks(prev => [data.feedback, ...prev]);
+        setFeedbacks((prev) => [data.feedback, ...prev]);
       }
 
       toast.success("Feedback submitted successfully");
@@ -148,10 +148,12 @@ export default function ReviewSection({
       <div className="flex items-center gap-3 mb-6">
         <Star className="w-5 h-5 text-yellow-400 fill-current" />
         <span className="text-lg font-semibold">
-          {summary.averageRating > 0 ? summary.averageRating.toFixed(1) : "0.0"} / 5
+          {summary.averageRating > 0 ? summary.averageRating.toFixed(1) : "0.0"}{" "}
+          / 5
         </span>
         <span className="text-gray-600 text-sm">
-          ({summary.totalReviews} {summary.totalReviews === 1 ? "review" : "reviews"})
+          ({summary.totalReviews}{" "}
+          {summary.totalReviews === 1 ? "review" : "reviews"})
         </span>
       </div>
 
@@ -165,10 +167,11 @@ export default function ReviewSection({
             <Star
               key={i}
               onClick={() => setRating(i)}
-              className={`w-6 h-6 cursor-pointer transition-all ${i <= rating
+              className={`w-6 h-6 cursor-pointer transition-all ${
+                i <= rating
                   ? "text-yellow-400 fill-current scale-110"
                   : "text-gray-300 hover:text-yellow-200"
-                }`}
+              }`}
             />
           ))}
           {rating > 0 && (
@@ -195,7 +198,9 @@ export default function ReviewSection({
 
       {/* Reviews List */}
       {feedbacks.length === 0 ? (
-        <p className="text-gray-500 text-sm">No reviews yet. Be the first to review!</p>
+        <p className="text-gray-500 text-sm">
+          No reviews yet. Be the first to review!
+        </p>
       ) : (
         <ul className="space-y-4">
           {feedbacks.map((f) => (
@@ -204,10 +209,11 @@ export default function ReviewSection({
                 {[...Array(5)].map((_, i) => (
                   <Star
                     key={i}
-                    className={`w-4 h-4 ${i < f.rating
+                    className={`w-4 h-4 ${
+                      i < f.rating
                         ? "text-yellow-400 fill-current"
                         : "text-gray-300"
-                      }`}
+                    }`}
                   />
                 ))}
                 <span className="text-sm text-gray-600 ml-2 font-medium">

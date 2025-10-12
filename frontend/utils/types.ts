@@ -5,17 +5,24 @@ export const PaymentStatusValues: PaymentStatus[] = [
   "FAILED",
 ];
 export const OrderStatusValues: OrderStatus[] = [
+  "PENDING",
   "PLACED",
   "SHIPPED",
   "DELIVERED",
   "CANCELLED",
 ];
+
 export const AddressTypeValues: AddressType[] = ["HOME", "WORK", "OTHER"];
 export const RoleValues: Role[] = ["USER", "ADMIN"];
 
 export type PaymentMode = "COD" | "ONLINE";
 export type PaymentStatus = "PENDING" | "PAID" | "FAILED";
-export type OrderStatus = "PLACED" | "SHIPPED" | "DELIVERED" | "CANCELLED";
+export type OrderStatus =
+  | "PLACED"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "CANCELLED"
+  | "PENDING";
 export type AddressType = "HOME" | "WORK" | "OTHER";
 export type Role = "USER" | "ADMIN";
 
@@ -30,7 +37,7 @@ export interface Review {
   id: string;
   rating: number;
   comment: string | null;
-  createdAt: Date;
+  createdAt: string;
   user: {
     name: string;
   };
@@ -47,8 +54,8 @@ export interface PFeedback {
   comment: string | null;
   productId: string;
   userId: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
   user: User;
   product: Product;
 }
@@ -70,8 +77,8 @@ export interface Product {
   categoryId: string;
   tags: string[];
   images: string[];
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
   category: Category;
   discountPct: number | null;
   wishlistItems?: WishlistItem[];
@@ -131,8 +138,8 @@ export interface Address {
   postalCode: string;
   phone: string;
   isDefault: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
   type: AddressType | null;
   userId: string;
   user: User;
@@ -142,22 +149,40 @@ export interface Address {
 export interface Order {
   id: string;
   userId: string;
+
   paymentMode: PaymentMode;
   paymentStatus: PaymentStatus;
-  status: OrderStatus;
-  total: number;
+  status: OrderStatus | "PENDING"; // support backend enum
+
   addressId: string;
   address: Address;
-  createdAt: Date;
-  updatedAt: Date;
-  shippedAt: Date | null;
-  deliveredAt: Date | null;
-  estimatedDelivery: Date | null;
+
+  // Financials
+  creditsApplied: number;
+  grossAmount: number;
+  netAmount: number;
+  shippingAmount: number;
+  taxAmount: number;
+
+  // Tracking / logistics
   carrierName: string | null;
   trackingNumber: string | null;
-  statusUpdatedAt: Date;
-  user: User;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+  estimatedDelivery: string | null;
+  statusUpdatedAt: string;
+
+  // Cancellation
+  cancellationReason: string | null;
+  cancelledAt: string | null;
+
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+
+  // Relations
   items: OrderItem[];
+  user?: User; // optional, not included in API
 }
 
 export interface OrderItem {
@@ -182,11 +207,36 @@ export interface User {
   otpExpiresAt: Date | null;
   isVerified: boolean;
   role: Role;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
   addresses: Address[];
   orders: Order[];
   wishlist: WishlistItem[];
   cartItems: CartItem[];
   Feedback: PFeedback[];
+}
+
+export interface OrderFinancials {
+  grossAmount: number;
+  shippingAmount: number;
+  taxAmount: number;
+  totalDiscount: number;
+  creditsApplied: number;
+  totalAmount: number;
+  finalAmountToPay: number;
+}
+
+export interface OrderPayment {
+  id: string;
+  provider: string;
+  amount: number;
+  status: string;
+  createdAt: string;
+  meta: any;
+}
+
+export interface OrderDetail extends Order {
+  financials: OrderFinancials;
+  payments: OrderPayment[];
+  items: (OrderItem & { total: number; discount: number })[];
 }

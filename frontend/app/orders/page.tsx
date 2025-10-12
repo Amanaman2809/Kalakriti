@@ -1,5 +1,5 @@
-'use client';
-import { useEffect, useState } from 'react';
+"use client";
+import { useEffect, useState } from "react";
 import {
   Truck,
   Check,
@@ -13,40 +13,45 @@ import {
   Filter,
   Loader2,
   AlertCircle,
-  X
-} from 'lucide-react';
-import Link from 'next/link';
-import { Order, OrderStatus } from '@/utils/types';
+  X,
+} from "lucide-react";
+import Link from "next/link";
+import { Order, OrderStatus } from "@/utils/types";
 
 export default function OrderHistory() {
+  const [paying, setPaying] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<OrderStatus | 'ALL'>('ALL');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState<OrderStatus | "ALL">("ALL");
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem("token");
         if (!token) {
-          setError('Unauthorized - Please login');
+          setError("Unauthorized - Please login");
           return;
         }
 
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/orders`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/orders`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
 
-        if (!response.ok) throw new Error('Failed to fetch orders');
+        if (!response.ok) throw new Error("Failed to fetch orders");
 
         const data = await response.json();
-        setOrders(data);
+        console.log(data);
+        setOrders(data.orders);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load orders');
+        setError(err instanceof Error ? err.message : "Failed to load orders");
       } finally {
         setLoading(false);
       }
@@ -55,45 +60,82 @@ export default function OrderHistory() {
     fetchOrders();
   }, []);
 
+  // TODO: Implement payment completion logic
+  const handleCompletePayment = async (orderId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Unauthorized - Please login");
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/payments/initiate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ orderId }),
+        },
+      );
+
+      if (!response.ok) throw new Error("Failed to initiate payment");
+
+      const { paymentUrl } = await response.json();
+
+      // redirect to gateway
+      window.location.href = paymentUrl;
+    } catch (err) {
+      console.error(err);
+      setError("Unable to start payment");
+    }
+  };
 
   const getStatusConfig = (status: OrderStatus) => {
     const configs = {
-      'PLACED': {
-        color: 'bg-yellow-50 text-yellow-800 border-yellow-200',
+      PLACED: {
+        color: "bg-yellow-50 text-yellow-800 border-yellow-200",
         icon: <Clock className="w-4 h-4" />,
-        label: 'Order Placed'
+        label: "Order Placed",
       },
-      'SHIPPED': {
-        color: 'bg-blue-50 text-blue-800 border-blue-200',
+      SHIPPED: {
+        color: "bg-blue-50 text-blue-800 border-blue-200",
         icon: <Truck className="w-4 h-4" />,
-        label: 'Shipped'
+        label: "Shipped",
       },
-      'DELIVERED': {
-        color: 'bg-green-50 text-green-800 border-green-200',
+      DELIVERED: {
+        color: "bg-green-50 text-green-800 border-green-200",
         icon: <Check className="w-4 h-4" />,
-        label: 'Delivered'
+        label: "Delivered",
       },
-      'CANCELLED': {
-        color: 'bg-red-50 text-red-800 border-red-200',
+      CANCELLED: {
+        color: "bg-red-50 text-red-800 border-red-200",
         icon: <X className="w-4 h-4" />,
-        label: 'Cancelled'
+        label: "Cancelled",
+      },
+    };
+    return (
+      configs[status] || {
+        color: "bg-gray-50 text-gray-800 border-gray-200",
+        icon: <Package className="w-4 h-4" />,
+        label: status,
       }
-    };
-    return configs[status] || {
-      color: 'bg-gray-50 text-gray-800 border-gray-200',
-      icon: <Package className="w-4 h-4" />,
-      label: status
-    };
+    );
   };
 
-
   // Filter orders based on search term and status
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = searchTerm === '' ||
+  const filteredOrders = orders?.filter((order) => {
+    const matchesSearch =
+      searchTerm === "" ||
       order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.items.some(item => item.product.name.toLowerCase().includes(searchTerm.toLowerCase()));
+      order.items.some((item) =>
+        item.product.name.toLowerCase().includes(searchTerm.toLowerCase()),
+      );
 
-    const matchesStatus = filterStatus === 'ALL' || order.status === filterStatus;
+    const matchesStatus =
+      filterStatus === "ALL" || order.status === filterStatus;
 
     return matchesSearch && matchesStatus;
   });
@@ -121,7 +163,9 @@ export default function OrderHistory() {
             <div className="text-center max-w-md">
               <div className="bg-white rounded-2xl shadow-lg p-8 border border-accent">
                 <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold text-text mb-2">Unable to Load Orders</h2>
+                <h2 className="text-xl font-semibold text-text mb-2">
+                  Unable to Load Orders
+                </h2>
                 <p className="text-gray-600 mb-6">{error}</p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Link
@@ -131,7 +175,7 @@ export default function OrderHistory() {
                     <ArrowLeft className="h-4 w-4" />
                     Back to Home
                   </Link>
-                  {error.includes('Unauthorized') && (
+                  {error.includes("Unauthorized") && (
                     <Link
                       href="/login"
                       className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors"
@@ -156,7 +200,9 @@ export default function OrderHistory() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
               <h1 className="text-3xl font-bold text-text">Your Orders</h1>
-              <p className="text-gray-600 mt-1">Track and manage your order history</p>
+              <p className="text-gray-600 mt-1">
+                Track and manage your order history
+              </p>
             </div>
             <Link
               href="/products"
@@ -182,7 +228,9 @@ export default function OrderHistory() {
             <div className="relative">
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as OrderStatus | 'ALL')}
+                onChange={(e) =>
+                  setFilterStatus(e.target.value as OrderStatus | "ALL")
+                }
                 className="appearance-none bg-white border border-gray-300 rounded-xl px-4 py-3 pr-8 focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
               >
                 <option value="ALL">All Orders</option>
@@ -198,7 +246,8 @@ export default function OrderHistory() {
           {/* Results Count */}
           {searchTerm && (
             <p className="text-sm text-gray-600 mb-4">
-              {filteredOrders.length} result{filteredOrders.length !== 1 ? 's' : ''}
+              {filteredOrders.length} result
+              {filteredOrders.length !== 1 ? "s" : ""}
               {searchTerm && ` for "${searchTerm}"`}
             </p>
           )}
@@ -211,8 +260,13 @@ export default function OrderHistory() {
                 <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Package className="h-12 w-12 text-gray-400" />
                 </div>
-                <h3 className="text-xl font-semibold text-text mb-2">No orders yet</h3>
-                <p className="text-gray-600 mb-8">Your order history will appear here once you make your first purchase</p>
+                <h3 className="text-xl font-semibold text-text mb-2">
+                  No orders yet
+                </h3>
+                <p className="text-gray-600 mb-8">
+                  Your order history will appear here once you make your first
+                  purchase
+                </p>
                 <Link
                   href="/products"
                   className="inline-flex items-center gap-2 bg-primary text-white px-8 py-4 rounded-xl hover:bg-primary/90 transition-colors font-medium"
@@ -226,12 +280,16 @@ export default function OrderHistory() {
                 <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Search className="h-12 w-12 text-gray-400" />
                 </div>
-                <h3 className="text-xl font-semibold text-text mb-2">No matching orders</h3>
-                <p className="text-gray-600 mb-6">Try adjusting your search terms or filters</p>
+                <h3 className="text-xl font-semibold text-text mb-2">
+                  No matching orders
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Try adjusting your search terms or filters
+                </p>
                 <button
                   onClick={() => {
-                    setSearchTerm('');
-                    setFilterStatus('ALL');
+                    setSearchTerm("");
+                    setFilterStatus("ALL");
                   }}
                   className="text-primary hover:text-primary/80 font-medium"
                 >
@@ -253,7 +311,9 @@ export default function OrderHistory() {
                   <div className="p-6 border-b border-accent">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                       <div className="flex flex-wrap items-center gap-4">
-                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${statusConfig.color}`}>
+                        <span
+                          className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${statusConfig.color}`}
+                        >
                           {statusConfig.icon}
                           {statusConfig.label}
                         </span>
@@ -263,16 +323,18 @@ export default function OrderHistory() {
                           </span>
                           <div className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
-                            {new Date(order.createdAt).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
+                            {new Date(order.createdAt).toLocaleDateString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              },
+                            )}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        
                         <Link
                           href={`/orders/${order.id}`}
                           className="flex items-center gap-2 text-primary hover:text-primary/80 font-medium group"
@@ -296,7 +358,10 @@ export default function OrderHistory() {
                               className="w-12 h-12 rounded-lg border-2 border-white overflow-hidden bg-gray-100"
                             >
                               <img
-                                src={item.product.images?.[0] || '/placeholder-product.png'}
+                                src={
+                                  item.product.images?.[0] ||
+                                  "/placeholder-product.png"
+                                }
                                 alt={item.product.name}
                                 className="w-full h-full object-cover"
                               />
@@ -313,33 +378,60 @@ export default function OrderHistory() {
                         <div>
                           <h3 className="font-semibold text-text line-clamp-1">
                             {order.items[0]?.product.name}
-                            {order.items.length > 1 && ` and ${order.items.length - 1} more item${order.items.length > 2 ? 's' : ''}`}
+                            {order.items.length > 1 &&
+                              ` and ${order.items.length - 1} more item${order.items.length > 2 ? "s" : ""}`}
                           </h3>
                           <p className="text-sm text-gray-600">
-                            {order.items.length} item{order.items.length !== 1 ? 's' : ''} •
-                            <span className="font-semibold ml-1">₹{order.total.toLocaleString()}</span>
+                            {order.items.length} item
+                            {order.items.length !== 1 ? "s" : ""} •
+                            <span className="font-semibold ml-1">
+                              ₹{(order.netAmount / 100).toLocaleString()}
+                            </span>
                           </p>
                         </div>
                       </div>
 
                       {/* Quick Actions */}
                       <div className="flex items-center gap-3">
-                        {order.status === 'DELIVERED' && (
-                          <Link
-                            href={`/products/${order.items[0].productId}`}
-                            className="text-sm text-gray-600 hover:text-primary transition-colors"
-                          >
-                            Buy Again
-                          </Link>
-                        )}
-                        {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
-                          <Link
-                            href={`/orders/${order.id}`}
-                            className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
-                          >
-                            Track Order
-                          </Link>
-                        )}
+                        {/* Quick Actions */}
+                        <div className="flex items-center gap-3">
+                          {order.status === "DELIVERED" && (
+                            <Link
+                              href={`/products/${order.items[0].productId}`}
+                              className="text-sm text-gray-600 hover:text-primary transition-colors"
+                            >
+                              Buy Again
+                            </Link>
+                          )}
+
+                          {order.paymentStatus === "PENDING" && (
+                            <button
+                              onClick={() => {
+                                setPaying(order.id);
+                                handleCompletePayment(order.id).finally(() =>
+                                  setPaying(null),
+                                );
+                              }}
+                              disabled={paying === order.id}
+                              className="text-sm text-white bg-primary px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                              {paying === order.id
+                                ? "Processing..."
+                                : "Complete Payment"}
+                            </button>
+                          )}
+
+                          {order.status !== "DELIVERED" &&
+                            order.status !== "CANCELLED" &&
+                            order.paymentStatus !== "PENDING" && (
+                              <Link
+                                href={`/orders/${order.id}`}
+                                className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                              >
+                                Track Order
+                              </Link>
+                            )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -354,7 +446,8 @@ export default function OrderHistory() {
           <div className="mt-12 bg-gradient-to-r from-primary/5 to-secondary/5 rounded-2xl p-8 text-center">
             <h3 className="text-xl font-semibold text-text mb-4">Need Help?</h3>
             <p className="text-gray-600 mb-6">
-              Have questions about your order? Our customer support team is here to help.
+              Have questions about your order? Our customer support team is here
+              to help.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link

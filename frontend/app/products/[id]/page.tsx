@@ -54,10 +54,10 @@ const ProductDetail = () => {
 
   useEffect(() => {
     if (product) {
-      console.log("Initializing rating from product:", {
-        avgRating: product.averageRating,
-        numReviews: product.numReviews,
-      });
+      // console.log("Initializing rating from product:", {
+      //   avgRating: product.averageRating,
+      //   numReviews: product.numReviews,
+      // });
       setCurrentRating({
         avgRating: product.averageRating || 0,
         numReviews: product.numReviews || 0,
@@ -76,7 +76,7 @@ const ProductDetail = () => {
       try {
         setLoading(true);
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/products/${productId}`
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/products/${productId}`,
         );
 
         if (!response.ok) {
@@ -84,7 +84,7 @@ const ProductDetail = () => {
         }
 
         const data: Product = await response.json();
-        console.log("Product data:", data); // Debug log
+        // console.log("Product data:", data); // Debug log
         setProduct(data);
 
         if (data.category?.id) {
@@ -108,13 +108,13 @@ const ProductDetail = () => {
 
   // NEW: Callback function to update ratings from ReviewSection
   const handleRatingUpdate = (averageRating: number, totalReviews: number) => {
-    console.log("Rating updated:", averageRating, totalReviews);
+    // console.log("Rating updated:", averageRating, totalReviews);
     setCurrentRating({
       avgRating: averageRating,
       numReviews: totalReviews,
     });
   };
-  
+
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -277,7 +277,7 @@ const ProductDetail = () => {
       </div>
     );
   };
-  
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -403,10 +403,11 @@ const ProductDetail = () => {
                       e.preventDefault();
                       setCurrentImageIndex(index);
                     }}
-                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all duration-300 ${currentImageIndex === index
+                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all duration-300 ${
+                      currentImageIndex === index
                         ? "border-primary scale-95 shadow-md"
                         : "border-transparent hover:border-primary/50 hover:scale-105"
-                      }`}
+                    }`}
                   >
                     <Image
                       src={img}
@@ -545,10 +546,11 @@ const ProductDetail = () => {
               <button
                 onClick={handleAddToCart}
                 disabled={isOutOfStock || isCartLoading}
-                className={`flex-1 py-4 px-6 rounded-lg flex items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden font-medium ${isOutOfStock
+                className={`flex-1 py-4 px-6 rounded-lg flex items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden font-medium ${
+                  isOutOfStock
                     ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                     : "bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl hover:scale-105"
-                  } disabled:opacity-70`}
+                } disabled:opacity-70`}
               >
                 {/* Shine effect on hover - matching ProductCard pattern */}
                 {!isOutOfStock && !isCartLoading && (
@@ -576,10 +578,11 @@ const ProductDetail = () => {
               <button
                 onClick={addToWishlist}
                 disabled={isWishlistLoading}
-                className={`p-4 rounded-lg border transition-all duration-300 flex items-center justify-center ${isWishlistLoading
+                className={`p-4 rounded-lg border transition-all duration-300 flex items-center justify-center ${
+                  isWishlistLoading
                     ? "border-gray-300 text-gray-400"
                     : "border-gray-300 text-gray-700 hover:border-primary hover:text-primary hover:scale-105"
-                  } disabled:opacity-70`}
+                } disabled:opacity-70`}
                 aria-label="Add to wishlist"
               >
                 {isWishlistLoading ? (
@@ -594,11 +597,9 @@ const ProductDetail = () => {
 
         {/* Description section */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-accent mt-8">
-          <h2 className="text-2xl font-bold mb-6 text-text">
-            About this item
-          </h2>
+          <h2 className="text-2xl font-bold mb-6 text-text">About this item</h2>
           {renderDescription()}
-      </div>
+        </div>
         {/* Support section */}
         <div className="bg-blue-50 p-6 rounded-2xl shadow-sm border border-blue-100 mt-6">
           <h3 className="text-xl font-bold mb-4 text-text">Need Assistance?</h3>
@@ -660,7 +661,7 @@ const ProductDetail = () => {
                   <ProductCard
                     key={similarProduct.id}
                     product={similarProduct}
-                  // You might want to pass interactions prop here if needed
+                    // You might want to pass interactions prop here if needed
                   />
                 ))}
             </div>
