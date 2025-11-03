@@ -106,14 +106,24 @@ export default function Contact() {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call - replace with your actual endpoint
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const url = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-      // Here you would typically send the form data to your API
-      console.log("Form submitted:", formData);
+      const response = await fetch(`${url}/api/contact/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send message');
+      }
 
       setIsSubmitted(true);
-      toast.success("Message sent successfully! We'll get back to you soon.", {
+      toast.success(data.message || "Message sent successfully! We'll get back to you soon.", {
         duration: 5000,
         position: "top-center",
       });
@@ -126,14 +136,14 @@ export default function Contact() {
         subject: "",
         message: "",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting form:", error);
-      toast.error("Failed to send message. Please try again.");
+      toast.error(error.message || "Failed to send message. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
-
+  
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -430,24 +440,6 @@ export default function Contact() {
               label="Instagram"
               className="bg-pink-50 hover:bg-pink-100 text-pink-600 hover:text-pink-700"
             />
-            {/* <SocialLink
-              href="https://facebook.com/Chalava"
-              icon={<Facebook className="w-5 h-5" />}
-              label="Facebook"
-              className="bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700"
-            />
-            <SocialLink
-              href="https://youtube.com/@Chalava"
-              icon={<Youtube className="w-5 h-5" />}
-              label="YouTube"
-              className="bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700"
-            />
-            <SocialLink
-              href="https://linkedin.com/company/Chalava"
-              icon={<Linkedin className="w-5 h-5" />}
-              label="LinkedIn"
-              className="bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700"
-            /> */}
           </div>
 
           <p className="text-sm text-gray-600 mt-6 text-center">
