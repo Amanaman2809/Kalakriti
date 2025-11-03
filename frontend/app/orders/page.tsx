@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Order, OrderStatus } from "@/utils/types";
+import { toast } from "react-hot-toast";
 
 export default function OrderHistory() {
   const [paying, setPaying] = useState<string | null>(null);
@@ -60,36 +61,172 @@ export default function OrderHistory() {
     fetchOrders();
   }, []);
 
-  // TODO: Implement payment completion logic
+  // ✅ Load Razorpay Script
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  // ✅ Complete Payment Handler with Razorpay Integration
   const handleCompletePayment = async (orderId: string) => {
     try {
+      setPaying(orderId);
       const token = localStorage.getItem("token");
       if (!token) {
-        setError("Unauthorized - Please login");
+        toast.error("Unauthorized - Please login");
         return;
       }
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/payments/initiate`,
+      // Load Razorpay script
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        toast.error("Failed to load payment gateway");
+        return;
+      }
+
+      // Create Razorpay order
+      const orderResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/payments/create-razorpay-order`,
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({ orderId }),
         },
       );
 
-      if (!response.ok) throw new Error("Failed to initiate payment");
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json();
+        throw new Error(errorData.error || "Failed to create payment order");
+      }
 
-      const { paymentUrl } = await response.json();
+      const orderData = await orderResponse.json();
 
-      // redirect to gateway
-      window.location.href = paymentUrl;
+      // Configure Razorpay options
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.razorpayOrder.amount,
+        currency: orderData.razorpayOrder.currency,
+        name: "Chalava",
+        description: `Order #${orderId.slice(0, 8).toUpperCase()}`,
+        order_id: orderData.razorpayOrder.id,
+        prefill: {
+          name: orderData.customer.name,
+          email: orderData.customer.email,
+          contact: orderData.customer.phone,
+        },
+        theme: {
+          color: "#2a3d66", // Your primary color
+        },
+        handler: async function (response: any) {
+          try {
+            // Verify payment
+            const verifyResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/payments/verify-payment`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  orderId: orderId,
+                }),
+              },
+            );
+
+            const verifyData = await verifyResponse.json();
+
+            if (verifyData.success) {
+              toast.success("🎉 Payment successful!", {
+                duration: 3000,
+                position: "top-center",
+              });
+
+              // Refresh orders list
+              const updatedOrdersResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/orders`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                },
+              );
+              if (updatedOrdersResponse.ok) {
+                const updatedData = await updatedOrdersResponse.json();
+                setOrders(updatedData.orders);
+              }
+
+              // Navigate to order details
+              window.location.href = `/orders/${orderId}`;
+            } else {
+              toast.error("Payment verification failed. Please contact support.");
+            }
+          } catch (error) {
+            console.error("Payment verification error:", error);
+            toast.error("Payment verification failed");
+          } finally {
+            setPaying(null);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setPaying(null);
+            toast.error("Payment cancelled");
+          },
+        },
+      };
+
+      // Open Razorpay checkout
+      const razorpay = new (window as any).Razorpay(options);
+      razorpay.on("payment.failed", async function (response: any) {
+        console.error("Payment failed:", response.error);
+
+        // Notify backend about payment failure
+        try {
+          await fetch(
+            `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/payments/payment-failed`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                orderId: orderId,
+                error: response.error,
+              }),
+            },
+          );
+        } catch (err) {
+          console.error("Failed to notify backend about payment failure:", err);
+        }
+
+        toast.error(
+          `Payment failed: ${response.error.description || "Please try again"}`,
+          { duration: 4000 }
+        );
+        setPaying(null);
+      });
+
+      razorpay.open();
     } catch (err) {
-      console.error(err);
-      setError("Unable to start payment");
+      console.error("Payment initiation error:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Unable to start payment"
+      );
+      setPaying(null);
     }
   };
 
@@ -317,6 +454,12 @@ export default function OrderHistory() {
                           {statusConfig.icon}
                           {statusConfig.label}
                         </span>
+                        {order.paymentStatus === "PENDING" && (
+                          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border bg-orange-50 text-orange-800 border-orange-200">
+                            <AlertCircle className="w-4 h-4" />
+                            Payment Pending
+                          </span>
+                        )}
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           <span className="font-mono bg-gray-100 px-2 py-1 rounded">
                             #{order.id.slice(0, 8).toUpperCase()}
@@ -393,45 +536,45 @@ export default function OrderHistory() {
 
                       {/* Quick Actions */}
                       <div className="flex items-center gap-3">
-                        {/* Quick Actions */}
-                        <div className="flex items-center gap-3">
-                          {order.status === "DELIVERED" && (
+                        {order.status === "DELIVERED" && (
+                          <Link
+                            href={`/products/${order.items[0].productId}`}
+                            className="text-sm text-gray-600 hover:text-primary transition-colors"
+                          >
+                            Buy Again
+                          </Link>
+                        )}
+
+                        {order.paymentStatus === "PENDING" && (
+                          <button
+                            onClick={() => handleCompletePayment(order.id)}
+                            disabled={paying === order.id}
+                            className="flex items-center gap-2 text-sm text-white bg-primary px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {paying === order.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              <>
+                                <Check className="h-4 w-4" />
+                                Complete Payment
+                              </>
+                            )}
+                          </button>
+                        )}
+
+                        {order.status !== "DELIVERED" &&
+                          order.status !== "CANCELLED" &&
+                          order.paymentStatus !== "PENDING" && (
                             <Link
-                              href={`/products/${order.items[0].productId}`}
-                              className="text-sm text-gray-600 hover:text-primary transition-colors"
+                              href={`/orders/${order.id}`}
+                              className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
                             >
-                              Buy Again
+                              Track Order
                             </Link>
                           )}
-
-                          {order.paymentStatus === "PENDING" && (
-                            <button
-                              onClick={() => {
-                                setPaying(order.id);
-                                handleCompletePayment(order.id).finally(() =>
-                                  setPaying(null),
-                                );
-                              }}
-                              disabled={paying === order.id}
-                              className="text-sm text-white bg-primary px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors font-medium disabled:opacity-60 disabled:cursor-not-allowed"
-                            >
-                              {paying === order.id
-                                ? "Processing..."
-                                : "Complete Payment"}
-                            </button>
-                          )}
-
-                          {order.status !== "DELIVERED" &&
-                            order.status !== "CANCELLED" &&
-                            order.paymentStatus !== "PENDING" && (
-                              <Link
-                                href={`/orders/${order.id}`}
-                                className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
-                              >
-                                Track Order
-                              </Link>
-                            )}
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -444,7 +587,9 @@ export default function OrderHistory() {
         {/* Support Section */}
         {orders.length > 0 && (
           <div className="mt-12 bg-gradient-to-r from-primary/5 to-secondary/5 rounded-2xl p-8 text-center">
-            <h3 className="text-xl font-semibold text-text mb-4">Need Help?</h3>
+            <h3 className="text-xl font-semibold text-text mb-4">
+              Need Help?
+            </h3>
             <p className="text-gray-600 mb-6">
               Have questions about your order? Our customer support team is here
               to help.
