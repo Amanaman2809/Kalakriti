@@ -20,6 +20,9 @@ import orderFilters from "./routes/admin/orderFilters";
 import paymentRoute from "./routes/payments";
 import userRoutes from "./routes/users";
 import contactRoutes from "./routes/contact";
+import { PrismaClient } from "./generated/prisma/client";
+
+const prisma = new PrismaClient();
 
 dotenv.config();
 const app = express();
@@ -56,6 +59,17 @@ app.get("/", (_req, res) => {
   res.send("Hello from Chalava backend!");
 });
 
+
+// ---------- DATABASE PING (Keep Supabase Alive) ----------
+app.get("/db-ping", async (_req, res) => {
+  try {
+    await prisma.user.count(); // Light query
+    res.status(200).send("DB OK");
+  } catch (error) {
+    console.error("DB-PING ERROR:", error);
+    res.status(500).send("DB Error");
+  }
+});
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(PORT);
